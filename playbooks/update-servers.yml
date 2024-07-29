@@ -1,0 +1,14 @@
+---
+- name: Update servers
+  hosts: all
+  remote_user: root
+
+  tasks:
+  - name: Update Cache
+    ansible.builtin.apt:
+      name: "*"
+      update_cache: yes
+  - name: Update servers
+    ansible.builtin.package:
+      name: "*"
+      state: latest
