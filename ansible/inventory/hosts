@@ -1,9 +1,6 @@
-jellyfin
-jackett
-qbittorrent
-radarr
-sonarr
-lidarr
 docker
 ansible
 terraform
+wireguard
+nfs
+docker1
