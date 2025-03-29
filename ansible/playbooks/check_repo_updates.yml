@@ -1,0 +1,16 @@
+---
+- name: Check for updates in GitHub repository
+  hosts: localhost
+  tasks:
+    - name: Ensure repository is up-to-date
+      git:
+        repo: 'git@github.com:rauland/iac.git'
+        dest: '~/iac'
+        version: 'main'
+        force: yes
+      register: git_update
+
+    - name: Print result
+      debug:
+        msg: 'Repository updated: {{ git_update.after }}'
+
