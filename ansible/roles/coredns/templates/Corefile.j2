@@ -1,0 +1,16 @@
+netkuki.com {
+    reload
+    log
+    errors
+    hosts {
+        {{ hosts_config | indent(8) }}
+        fallthrough
+    }
+    forward . {{ forward_dns }}
+}
+
+. {
+    log
+    errors
+    forward . {{ forward_dns }}
+}

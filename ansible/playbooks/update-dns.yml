@@ -1,11 +1,7 @@
 ---
 - name: Update coredns file
-  hosts: all
+  hosts: docker-hosts
   remote_user: root
 
-  tasks:
-  - name: Copy file only if there are changes
-    ansible.builtin.copy:
-      src: /root/iac/Corefile
-      dest: /root/compose/coredns/
-      backup: yes  # Optional: creates a backup of the original file before replacing
+  roles:
+    - coredns

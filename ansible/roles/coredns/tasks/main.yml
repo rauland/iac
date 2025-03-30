@@ -1,0 +1,9 @@
+---
+# tasks file for coredns
+- name: Copy file only if there are changes
+  ansible.builtin.template:
+    src: Corefile.j2
+    dest: /root/compose/coredns/Corefile
+    # backup: yes  # Optional: creates a backup of the original file before replacing
+  notify:
+    - Restart CoreDNS

@@ -1,0 +1,10 @@
+---
+# handlers file for coredns
+#   - name: Restart CoreDNS
+#     ansible.builtin.docker_container:
+#       name: coredns
+#       state: started
+#       restart: yes
+- name: Restart CoreDNS
+  ansible.builtin.command:
+      cmd: docker restart coredns
