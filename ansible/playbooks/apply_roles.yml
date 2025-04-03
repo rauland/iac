@@ -1,0 +1,7 @@
+---
+- name: Apply roles
+  hosts: all
+  remote_user: root
+
+  roles:
+    - set-timezone

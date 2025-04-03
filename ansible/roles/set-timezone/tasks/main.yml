@@ -1,0 +1,5 @@
+---
+# tasks file for set-timezone
+- name: Ensure the correct timezone is set
+  timezone:
+    name: "{{ system_timezone }}"
