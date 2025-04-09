@@ -1,0 +1,9 @@
+---
+# tasks file for install-apps
+- name: Install each package
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ install_packages }}"
+  loop_control:
+    label: "{{ item }}"

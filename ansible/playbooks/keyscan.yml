@@ -1,0 +1,11 @@
+---
+- name: Add SSH keys to known_hosts
+  hosts: localhost
+  remote_user: ansible
+  gather_facts: false
+  
+  tasks:
+    - name: Add remote host SSH key to known_hosts
+      ansible.builtin.known_hosts:
+        name: "{{ inventory_hostname }}"
+        key: "{{ lookup('pipe', 'ssh-keyscan -H ' ~ inventory_hostname) }}"
