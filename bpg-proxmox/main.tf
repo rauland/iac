@@ -22,7 +22,7 @@ module "test-vm" {
 
 module "talos" {
   source = "./modules/talos"
-  
+  talos_node_name = var.talos_node_name
   providers = {
     proxmox = proxmox
   }
