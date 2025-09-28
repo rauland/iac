@@ -10,3 +10,8 @@ variable "virtual_environment_api_token" {
   type = string
   sensitive = true
 }
+
+variable "vm_name" {
+  description = "Name of the VM"
+  type        = string
+}
