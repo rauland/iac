@@ -1,7 +1,8 @@
 ---
 - name: Update servers
   hosts: all
-  remote_user: root
+  remote_user: ansible
+  become: true
 
   tasks:
   - name: Update Cache
