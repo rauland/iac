@@ -1,16 +1,3 @@
-terraform {
-  required_providers {
-    proxmox = {
-      source  = "bpg/proxmox"
-      version = "0.74.1"
-    }
-  }
-}
-
-data "local_file" "ssh_public_key" {
-  filename = "./ansible_id_rsa.pub"
-}
-
 resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   name      = var.vm_name
   node_name = "pve"
