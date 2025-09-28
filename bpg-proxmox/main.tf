@@ -22,7 +22,7 @@ provider "proxmox" {
 
 module "talos" {
   source = "./modules/talos"
-  talos_node_name = var.talos_node_name
+  talos_node_names = var.talos_node_names
   providers = {
     proxmox = proxmox
   }
