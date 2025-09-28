@@ -11,14 +11,14 @@ provider "proxmox" {
   }
 }
 
-module "test-vm" {
-  source = "./modules/test-vm"
-  vm_name = var.vm_name
+# module "test-vm" {
+#   source = "./modules/test-vm"
+#   vm_name = var.vm_name
   
-  providers = {
-    proxmox = proxmox
-  }
-}
+#   providers = {
+#     proxmox = proxmox
+#   }
+# }
 
 module "talos" {
   source = "./modules/talos"

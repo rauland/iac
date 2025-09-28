@@ -1,4 +1,4 @@
-variable "talos_node_name" {
-  description = "Name of the Talos Node"
-  type        = string
+variable "talos_node_names" {
+  description = "List of the Talos Node Names"
+  type        = list(string)
 }

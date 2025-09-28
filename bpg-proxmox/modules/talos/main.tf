@@ -7,7 +7,9 @@ resource "proxmox_virtual_environment_download_file" "talos-nocloud-amd64" {
 }
 
 resource "proxmox_virtual_environment_vm" "talos_vm" {
-  name      = var.talos_node_name
+  for_each = toset(var.talos_node_names)
+
+  name      = each.key
   node_name = "pve"
 
   agent {
