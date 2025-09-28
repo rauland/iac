@@ -2,7 +2,11 @@ variable "virtual_environment_endpoint" {
   type = string
 }
 
-variable "virtual_environment_endpoint" {
+variable "virtual_environment_ssh_username" {
   type = string
-  _ssh_username
 }  
+
+variable "virtual_environment_api_token" {
+  type = string
+  sensitive = true
+}
