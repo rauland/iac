@@ -19,3 +19,11 @@ module "test-vm" {
     proxmox = proxmox
   }
 }
+
+module "talos" {
+  source = "./modules/talos"
+  
+  providers = {
+    proxmox = proxmox
+  }
+}
