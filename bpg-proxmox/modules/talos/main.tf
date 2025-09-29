@@ -3,14 +3,14 @@ resource "proxmox_virtual_environment_download_file" "talos-nocloud-amd64" {
   datastore_id = "local"
   node_name    = "pve"
 
-  url = "https://factory.talos.dev/image/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515/v1.11.2/nocloud-amd64.iso"
+  url = "https://factory.talos.dev/image/d3dc673627e9b94c6cd4122289aa52c2484cddb31017ae21b75309846e257d30/v1.11.2/nocloud-amd64.iso"
 }
 
 resource "proxmox_virtual_environment_vm" "talos_vm" {
-  for_each = toset(var.talos_node_names)
+  for_each = { for node in var.talos_nodes : node.node_name => node }
 
   name      = each.key
-  node_name = "pve"
+  node_name = each.value.pve_node
 
   agent {
     enabled = true
@@ -30,8 +30,7 @@ resource "proxmox_virtual_environment_vm" "talos_vm" {
   disk {
     datastore_id = "local-lvm"
     file_id      = proxmox_virtual_environment_download_file.talos-nocloud-amd64.id
-    interface    = "virtio0"
-    iothread     = true
+    interface    = "scsi0"
     discard      = "on"
     size         = 10
   }
@@ -39,12 +38,26 @@ resource "proxmox_virtual_environment_vm" "talos_vm" {
   initialization {
     ip_config {
       ipv4 {
-        address = "dhcp"
+        address = each.value.ipv4_address
+        gateway = each.value.ipv4_gateway != null ? each.value.ipv4_gateway : null
       }
     }
+    user_data_file_id = proxmox_virtual_environment_file.talos_config[each.value.file_name].id
   }
 
   network_device {
     bridge = "vmbr0"
+  }
+}
+
+resource "proxmox_virtual_environment_file" "talos_config" {
+  for_each = var.talos_configs
+  
+  content_type = "snippets"
+  datastore_id = "local"
+  node_name    = "pve"
+
+  source_file {
+    path = each.value
   }
 }

@@ -1,5 +1,7 @@
 *.tfvars
-terraform.*
+*.tfstate*
 tfplan
 .terraform/
 .terraform.*
+_out/
+kubeconfig
