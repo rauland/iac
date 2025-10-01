@@ -1,4 +1,4 @@
-*.tfvars
+proxmox.tfvars
 *.tfstate*
 tfplan
 .terraform/
