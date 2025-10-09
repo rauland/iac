@@ -16,10 +16,6 @@ data "talos_machine_configuration" "controlplane" {
   ]
 }
 
-output "talos_controlpane_configuration" {
-  value = data.talos_machine_configuration.controlplane.machine_configuration
-}
-
 data "talos_machine_configuration" "worker" {
   cluster_name     = "homelab"
   machine_type     = "worker"
@@ -36,17 +32,9 @@ data "talos_machine_configuration" "worker" {
   ]
 }
 
-output "talos_worker_configuration" {
-  value = data.talos_machine_configuration.worker.machine_configuration
-}
-
 data "talos_client_configuration" "this" {
   cluster_name         = "homelab"
   client_configuration = talos_machine_secrets.this.client_configuration
   nodes                = ["10.0.0.50"]
   endpoints            = ["10.0.0.50"]
-}
-
-output "talos_client_configuration" {
-  value = data.talos_client_configuration.this.client_configuration
 }
