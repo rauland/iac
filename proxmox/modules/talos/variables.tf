@@ -8,11 +8,6 @@ variable "iso_url" {
   type        = string
 }
 
-variable "talos_configs" {
-  description = "List of Talos Configs"
-  type        = map(string)
-}
-
 variable "talos_nodes" {
   description = "List of Talos Nodes"
   type = map(object({
@@ -22,4 +17,12 @@ variable "talos_nodes" {
     ipv4_address = string
     ipv4_gateway = optional(string)
   }))
+}
+
+variable "controlplane_config" {
+  type = string
+}
+
+variable "worker_config" {
+  type = string
 }

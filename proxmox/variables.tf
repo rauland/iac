@@ -16,11 +16,6 @@ variable "pve_nodes" {
   type        = list(string)
 }
 
-variable "talos_configs" {
-  description = "List of Talos Configs"
-  type        = map(string)
-}
-
 variable "talos_nodes" {
   description = "List of Talos Nodes"
   type = map(object({

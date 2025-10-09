@@ -34,3 +34,7 @@ data "talos_image_factory_urls" "this" {
 output "installer_iso_url" {
   value = data.talos_image_factory_urls.this.urls.iso
 }
+
+output "installer_image" {
+  value = data.talos_image_factory_urls.this.urls.installer
+}

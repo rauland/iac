@@ -44,7 +44,10 @@ resource "proxmox_virtual_environment_vm" "talos_vm" {
         gateway = each.value.ipv4_gateway != null ? each.value.ipv4_gateway : null
       }
     }
-    user_data_file_id = proxmox_virtual_environment_file.talos_configs["${each.value.pve_node}-${each.value.node_type}"].id
+    user_data_file_id = try (
+      each.value.node_type == "controlplane" ? proxmox_virtual_environment_file.controlplane_config[each.value.pve_node].id : null ,
+      each.value.node_type == "worker" ? proxmox_virtual_environment_file.worker_config[each.value.pve_node].id : null
+    )
   }
 
   network_device {
@@ -52,25 +55,32 @@ resource "proxmox_virtual_environment_vm" "talos_vm" {
   }
 }
 
-resource "proxmox_virtual_environment_file" "talos_configs" {
-  for_each = {
-    for key in flatten([
-      for node in var.pve_nodes : [
-        for config_name, config_path in var.talos_configs :
-    "${node}-${config_name}"]]) :
-    key => {
-      node_name = split("-", key)[0]
-      node_type = split("-", key)[1]
-      path      = var.talos_configs[split("-", key)[1]]
-    }
-  }
+resource "proxmox_virtual_environment_file" "controlplane_config" {
+  for_each = toset(var.pve_nodes)
 
   content_type = "snippets"
   datastore_id = "local"
-  node_name    = each.value.node_name
+  node_name    = each.key
 
-  source_file {
-    path = each.value.path
+  source_raw {
+    file_name = "controlplane.yaml"
+    data      = var.controlplane_config
   }
 }
 
+resource "proxmox_virtual_environment_file" "worker_config" {
+  for_each = toset(var.pve_nodes)
+
+  content_type = "snippets"
+  datastore_id = "local"
+  node_name    = each.key
+
+  source_raw {
+    file_name = "worker.yaml"
+    data      = var.worker_config
+  }
+}
+
+output "controlplane" {
+  value = proxmox_virtual_environment_vm.talos_vm["controlplane-01"].id
+}
