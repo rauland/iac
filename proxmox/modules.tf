@@ -16,4 +16,3 @@ module "talos" {
   }
   depends_on = [module.factory]
 }
-  

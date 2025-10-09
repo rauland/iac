@@ -16,11 +16,6 @@ variable "pve_nodes" {
   type        = list(string)
 }
 
-variable "iso_url" {
-  description = "URL of the Talos ISO"
-  type        = string
-}
-
 variable "talos_configs" {
   description = "List of Talos Configs"
   type        = map(string)

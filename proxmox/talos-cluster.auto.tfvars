@@ -1,5 +1,4 @@
 pve_nodes = ["pve", "pve3"]
-iso_url   = "https://factory.talos.dev/image/d3dc673627e9b94c6cd4122289aa52c2484cddb31017ae21b75309846e257d30/v1.11.2/nocloud-amd64.iso"
 
 talos_configs = {
   controlplane = "./_out/controlplane.yaml"
