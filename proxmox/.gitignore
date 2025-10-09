@@ -5,3 +5,5 @@ tfplan
 .terraform.*
 _out/
 kubeconfig
+debug.txt
+talosconfig

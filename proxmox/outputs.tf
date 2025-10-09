@@ -21,6 +21,6 @@ output "talos_worker_configuration" {
 }
 
 resource "local_file" "debug_sensitive" {
-  filename = "debug.txt"
-  content  = module.kube-config.talos_controlpane_configuration
+  filename = "talosconfig"
+  content  = module.kube-config.talos_client_configuration
 }
