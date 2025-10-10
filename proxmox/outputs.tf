@@ -11,16 +11,21 @@ output "installer_image" {
 }
 
 output "talos_controlpane_configuration" {
-  value = module.kube-config.talos_controlpane_configuration
+  value = module.cluster.talos_controlpane_configuration
   sensitive = true
 }
 
 output "talos_worker_configuration" {
-  value = module.kube-config.talos_worker_configuration
+  value = module.cluster.talos_worker_configuration
   sensitive = true
 }
 
-resource "local_file" "debug_sensitive" {
+resource "local_file" "worker_configuration" {
+  filename = "debug.txt"
+  content  = module.cluster.talos_worker_configuration
+}
+
+resource "local_file" "talosconfig" {
   filename = "talosconfig"
-  content  = module.kube-config.talos_client_configuration
+  content  = module.cluster.talos_client_configuration
 }

@@ -5,8 +5,8 @@ module "factory" {
   }
 }
 
-module "kube-config" {
-  source          = "./modules/kube-config"
+module "cluster" {
+  source          = "./modules/cluster"
   installer_image = module.factory.installer_image
   providers = {
     talos = talos
@@ -18,13 +18,13 @@ module "talos" {
   source              = "./modules/talos"
   pve_nodes           = var.pve_nodes
   iso_url             = module.factory.installer_iso_url
-  controlplane_config = module.kube-config.talos_controlpane_configuration
-  worker_config       = module.kube-config.talos_worker_configuration
+  controlplane_config = module.cluster.talos_controlpane_configuration
+  worker_config       = module.cluster.talos_worker_configuration
   talos_nodes         = var.talos_nodes
   providers = {
     proxmox = proxmox
   }
-  depends_on = [module.kube-config]
+  depends_on = [module.cluster]
 }
 
 
