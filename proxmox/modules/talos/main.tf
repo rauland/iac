@@ -44,10 +44,7 @@ resource "proxmox_virtual_environment_vm" "talos_vm" {
         gateway = each.value.ipv4_gateway != null ? each.value.ipv4_gateway : null
       }
     }
-    user_data_file_id = try (
-      each.value.node_type == "controlplane" ? proxmox_virtual_environment_file.controlplane_config[each.value.pve_node].id : null ,
-      each.value.node_type == "worker" ? proxmox_virtual_environment_file.worker_config[each.value.pve_node].id : null
-    )
+    user_data_file_id = each.value.node_type == "controlplane" ? proxmox_virtual_environment_file.controlplane_config[each.value.pve_node].id : proxmox_virtual_environment_file.worker_config[each.value.pve_node].id
   }
 
   network_device {
