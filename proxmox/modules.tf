@@ -28,7 +28,7 @@ module "talos" {
 }
 
 module "bootstrap" {
-  source = "./modules/bootstrap"
+  source                = "./modules/bootstrap"
   talos_machine_secrets = module.cluster.talos_machine_secrets
-  depends_on = [module.talos]
+  depends_on            = [module.talos]
 }
