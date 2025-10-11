@@ -29,3 +29,8 @@ resource "local_file" "talosconfig" {
   filename = "talosconfig"
   content  = module.cluster.talos_client_configuration
 }
+
+resource "local_file" "kubeconfig" {
+  filename = "kubeconfig"
+  content  = module.bootstrap.kubeconfig
+}
