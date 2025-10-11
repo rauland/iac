@@ -38,3 +38,4 @@ data "talos_client_configuration" "this" {
   nodes                = ["10.0.0.50"]
   endpoints            = ["10.0.0.50"]
 }
+
