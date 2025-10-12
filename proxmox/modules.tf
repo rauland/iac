@@ -14,8 +14,8 @@ module "cluster" {
   depends_on = [module.factory]
 }
 
-module "talos" {
-  source              = "./modules/talos"
+module "nodes" {
+  source              = "./modules/nodes"
   pve_nodes           = var.pve_nodes
   iso_url             = module.factory.installer_iso_url
   controlplane_config = module.cluster.talos_controlpane_configuration
@@ -30,5 +30,5 @@ module "talos" {
 module "bootstrap" {
   source                = "./modules/bootstrap"
   talos_machine_secrets = module.cluster.talos_machine_secrets
-  depends_on            = [module.talos]
+  depends_on            = [module.nodes]
 }
