@@ -77,7 +77,3 @@ resource "proxmox_virtual_environment_file" "worker_config" {
     data      = var.worker_config
   }
 }
-
-output "controlplane" {
-  value = proxmox_virtual_environment_vm.talos_vm["controlplane-01"].id
-}
