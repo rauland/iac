@@ -1,0 +1,3 @@
+hosts_config: |
+  10.0.0.11 immich.netkuki.com immich
+  10.0.0.11 jellyfin.netkuki.com jellyfin
