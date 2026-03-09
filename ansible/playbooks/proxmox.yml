@@ -1,0 +1,7 @@
+plugin: community.proxmox.proxmox
+url: "{{ lookup('env', 'PROXMOX_URL') }}"
+user: "{{ lookup('env', 'PROXMOX_USER') }}"
+token_id: "{{ lookup('env', 'PROXMOX_TOKEN_ID') }}"
+token_secret: "{{ lookup('env', 'PROXMOX_TOKEN_SECRET') }}"
+want_facts: true
+want_proxmox_nodes: true

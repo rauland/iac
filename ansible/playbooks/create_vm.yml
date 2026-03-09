@@ -1,0 +1,15 @@
+- name: Create a VM on Proxmox
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Create new VM with minimal options
+      community.proxmox.proxmox_kvm:
+        api_user: "{{ lookup('env', 'PROXMOX_USER') }}"
+        api_token_id: "{{ lookup('env', 'PROXMOX_TOKEN_ID') }}"
+        api_token_secret: "{{ lookup('env', 'PROXMOX_TOKEN_SECRET') }}"
+        api_host: pve
+        name: example-vm
+        node: pve
+        memory: 1028
+        cores: 2
+        state: absent
