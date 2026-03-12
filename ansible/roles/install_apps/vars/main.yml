@@ -2,7 +2,5 @@
 # vars file for install-apps
 base_packages:
   - vim
-  - nmap
   - curl
-  - htop
 install_packages: "{{ base_packages + (extra_packages | default([])) }}"

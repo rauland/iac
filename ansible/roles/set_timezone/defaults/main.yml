@@ -1,2 +1,4 @@
 ---
 # defaults file for set-timezone
+# Default timezone to be set on the system
+system_timezone: "Australia/Melbourne"

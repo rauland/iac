@@ -11,4 +11,6 @@ keyed_groups:
     prefix: group
 groups:
   notmanaged: "'notmanaged' in (proxmox_tags_parsed|list)"
+  managed: "'managed' in (proxmox_tags_parsed|list)"
+  docker-host: "'docker-host' in (proxmox_tags_parsed|list)"
   # ansible-playbook ping_test.yml -l 'all:!notmanaged'
