@@ -8,9 +8,3 @@ want_proxmox_nodes: true
 keyed_groups:
   - key: proxmox_tags_parsed
     separator: ""
-    prefix: group
-groups:
-  notmanaged: "'notmanaged' in (proxmox_tags_parsed|list)"
-  managed: "'managed' in (proxmox_tags_parsed|list)"
-  docker-host: "'docker-host' in (proxmox_tags_parsed|list)"
-  # ansible-playbook ping_test.yml -l 'all:!notmanaged'

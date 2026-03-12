@@ -9,5 +9,4 @@
 
   roles:
     - set_timezone
-    - install_apps
     - manage_ansible_user
