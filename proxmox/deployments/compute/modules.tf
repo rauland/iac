@@ -1,5 +1,5 @@
 module "test-vm" {
-  source = "../../modules/test-vm"
+  source = "../../modules/vm"
   providers = {
     proxmox = proxmox
   }
