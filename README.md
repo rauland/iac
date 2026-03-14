@@ -1,4 +1,4 @@
-### IaC for Proxmox Virtual Envrionment
+# IaC for Proxmox Virtual Envrionment
 
 This repo powers my homelab/self hosted environment, currently developing features for complete IaC.
 
@@ -6,10 +6,9 @@ This repo demonstrates skills with Ansible Configuration Management and Terrafor
 
 ## Current Features
 - Ansible Roles and Dynamic Inventory
-- VM Deployments 
+- VM Deployments
+- Talos K8s POC
 
-## POC Features
-- Talos k8s
 
 ## Planned Features
 - Ansible Controller (Either LXC or Pipeline driven)
