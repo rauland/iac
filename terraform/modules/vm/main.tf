@@ -10,7 +10,6 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   description = var.description
   machine     = var.machine
   bios        = var.bios
-  # reboot      = true
 
   stop_on_destroy = var.stop_on_destroy
 
@@ -50,11 +49,6 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
         address = var.ip_config_ipv4_address
       }
     }
-
-    # user_account {
-    #   username = var.user_account_username
-    #   keys     = [trimspace(data.local_file.ssh_public_key.content)]
-    # }
 
     user_data_file_id = var.user_data_file_id
   }
