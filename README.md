@@ -5,12 +5,20 @@ This repo powers my homelab/self hosted environment, currently developing featur
 This repo demonstrates skills with Ansible Configuration Management and Terraform Infrastructure Provisioning including setting up a talos k8s cluster via a 'terraform apply'.
 
 ## Current Features
-- Ansible Roles and Dynamic Inventory
-- VM Deployments
-- Talos K8s POC
-
+- Configuration Management
+    - Ansible Roles
+        - Patching
+        - Apply Roles
+    - Dynamic Inventory
+- Infrastructure Provisioning
+    - VM Deployments
+    - Talos K8s POC
+- CI/CD
+    - Wireguard Runner POC
 
 ## Planned Features
-- Ansible Controller (Either LXC or Pipeline driven)
-- k3s Nodes
+- Configuration Management
+    - Ansible Controller (LXC or Pipeline)
+    - Ubuntu k3s/k8s Nodes
 - CI/CD
+    - Secrets Management
