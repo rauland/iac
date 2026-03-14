@@ -11,3 +11,9 @@ variable "virtual_environment_api_token" {
   sensitive = true
 }
 
+variable "vms" {
+  type = map(object({
+    node_name = string
+    tags      = list(string)
+  }))
+}

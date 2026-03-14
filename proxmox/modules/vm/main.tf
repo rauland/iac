@@ -1,61 +1,61 @@
 resource "proxmox_virtual_environment_download_file" "ubuntu_cloud_image" {
-  content_type = "iso"
-  datastore_id = "local"
-  node_name    = "pve"
-  url          = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+  content_type   = "iso"
+  datastore_id   = "local"
+  node_name      = var.node_name
+  url            = var.iso_url
   upload_timeout = 1200
 }
 
 resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
-  name            = var.vm_name
-  tags            = ["managed"]
-  node_name       = "pve"
+  name      = var.vm_name
+  tags      = var.tags
+  node_name = var.node_name
 
-  description = "Managed by Terraform"
-  machine = "q35"
-  bios = "ovmf"
-  stop_on_destroy = true
+  description     = var.description
+  machine         = var.machine
+  bios            = var.bios
+  stop_on_destroy = var.stop_on_destroy
 
   lifecycle {
     ignore_changes = [disk[0].file_id]
   }
 
   cpu {
-    cores = 1
+    cores = var.cpu_cores
   }
 
   memory {
-    dedicated = 1024
+    dedicated = var.memory_dedicated
   }
-  
+
   efi_disk {
-    datastore_id = "local-lvm"
-    type         = "4m"
+    datastore_id = var.efi_disk_datastore_id
+    type         = var.efi_disk_type
   }
 
   disk {
-    datastore_id = "local-lvm"
+    datastore_id = var.disk_datastore_id
     file_id      = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
-    interface    = "virtio0"
+    interface    = var.disk_interface
     iothread     = true
     discard      = "on"
-    size         = 20
+    size         = var.disk_size
   }
 
   initialization {
     ip_config {
       ipv4 {
-        address = "dhcp"
+        address = var.ip_config_ipv4_address
       }
     }
 
     user_account {
-      username = "ansible"
+      username = var.user_account_username
       keys     = [trimspace(data.local_file.ssh_public_key.content)]
     }
   }
 
   network_device {
-    bridge = "vmbr0"
+    bridge = var.network_device_bridge
   }
 }
