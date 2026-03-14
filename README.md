@@ -1,8 +1,8 @@
 # IaC for Proxmox Virtual Envrionment
 
-This repo powers my homelab/self hosted environment, currently developing features for complete IaC.
+Infrastructure as Code for Proxmox homelab/self hosted virtual environment.
 
-This repo demonstrates skills with Ansible Configuration Management and Terraform Infrastructure Provisioning including setting up a talos k8s cluster via a 'terraform apply'.
+This repo demonstrates skills with Ansible Configuration Management and Terraform Infrastructure Provisioning and GitHub Actions CI/CD.
 
 ## Current Features
 - Configuration Management
