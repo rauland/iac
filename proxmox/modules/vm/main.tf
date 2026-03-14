@@ -11,7 +11,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   tags      = var.tags
   node_name = var.node_name
 
-  description     = var.description
+  description     = try(var.description, null)
   machine         = var.machine
   bios            = var.bios
   stop_on_destroy = var.stop_on_destroy
