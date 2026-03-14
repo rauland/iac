@@ -13,3 +13,4 @@
   roles:
     - set_timezone
     - manage_ansible_user
+    - install_packages

@@ -1,0 +1,3 @@
+---
+# vars file for install-packages
+install_packages: "{{ (base_packages | default([])) + (extra_packages | default([])) }}"

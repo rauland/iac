@@ -1,5 +1,5 @@
 ---
-# tasks file for install-apps
+# tasks file for install-packages
 - name: Install each package
   ansible.builtin.apt:
     name: "{{ item }}"
