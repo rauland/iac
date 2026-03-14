@@ -1,11 +1,3 @@
-resource "proxmox_virtual_environment_download_file" "ubuntu_cloud_image" {
-  content_type   = "iso"
-  datastore_id   = "local"
-  node_name      = var.node_name
-  url            = var.iso_url
-  upload_timeout = 1200
-}
-
 resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   name      = var.vm_name
   tags      = var.tags
@@ -15,15 +7,18 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
     enabled = var.agent_enabled
   }
 
-  description     = var.description
-  machine         = var.machine
-  bios            = var.bios
+  description = var.description
+  machine     = var.machine
+  bios        = var.bios
+  # reboot      = true
+
   stop_on_destroy = var.stop_on_destroy
 
   lifecycle {
     ignore_changes = [
       disk[0].file_id,
-      description
+      description,
+      initialization
     ]
   }
 
@@ -42,7 +37,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
 
   disk {
     datastore_id = var.disk_datastore_id
-    file_id      = proxmox_virtual_environment_download_file.ubuntu_cloud_image.id
+    file_id      = var.cloud_image_id
     interface    = var.disk_interface
     iothread     = true
     discard      = "on"
@@ -56,10 +51,12 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
       }
     }
 
-    user_account {
-      username = var.user_account_username
-      keys     = [trimspace(data.local_file.ssh_public_key.content)]
-    }
+    # user_account {
+    #   username = var.user_account_username
+    #   keys     = [trimspace(data.local_file.ssh_public_key.content)]
+    # }
+
+    user_data_file_id = var.user_data_file_id
   }
 
   network_device {

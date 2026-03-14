@@ -3,13 +3,8 @@
   hosts: all
   remote_user: ansible
   become: true
-  pre_tasks:
-  - name: Remove old SSH key
-    delegate_to: localhost
-    ansible.builtin.command: >
-      ssh-keygen -R {{ ansible_host }}
-  vars:
-      ansible_ssh_extra_args: "-o StrictHostKeyChecking=accept-new"
+  # vars:
+  #     ansible_ssh_extra_args: "-o StrictHostKeyChecking=accept-new"
   roles:
     - set_timezone
     - manage_ansible_user

@@ -1,7 +1,6 @@
-variable "iso_url" {
-  description = "URL of the ISO image to be downloaded for the VM"
+variable "cloud_image_id" {
+  description = "ID of the downloaded cloud image"
   type        = string
-  default     = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
 }
 
 variable "vm_name" {
@@ -113,4 +112,9 @@ variable "network_device_bridge" {
   description = "Bridge for the network device"
   type        = string
   default     = "vmbr0"
+}
+
+variable "user_data_file_id" {
+  description = "ID of the user data cloud config"
+  type = string
 }
