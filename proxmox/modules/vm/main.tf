@@ -11,13 +11,16 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   tags      = var.tags
   node_name = var.node_name
 
-  description     = try(var.description, null)
+  description     = var.description
   machine         = var.machine
   bios            = var.bios
   stop_on_destroy = var.stop_on_destroy
 
   lifecycle {
-    ignore_changes = [disk[0].file_id]
+    ignore_changes = [
+      disk[0].file_id,
+      description
+    ]
   }
 
   cpu {

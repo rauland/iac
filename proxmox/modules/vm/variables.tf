@@ -22,7 +22,7 @@ variable "tags" {
 variable "description" {
   description = "Description of the VM"
   type        = string
-  default     = "Managed by Terraform"
+  default     = "Created by Terraform"
 }
 
 variable "machine" {
