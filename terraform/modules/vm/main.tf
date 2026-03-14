@@ -11,6 +11,10 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   tags      = var.tags
   node_name = var.node_name
 
+  agent {
+    enabled = var.agent_enabled
+  }
+
   description     = var.description
   machine         = var.machine
   bios            = var.bios

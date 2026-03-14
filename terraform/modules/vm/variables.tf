@@ -14,6 +14,12 @@ variable "node_name" {
   type        = string
 }
 
+variable "agent_enabled" {
+  description = "Whether to enable the QEMU agent"
+  type = bool
+  default = true
+}
+
 variable "tags" {
   description = "List of tags for the VM"
   type        = list(string)
