@@ -6,7 +6,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
   agent {
     enabled = var.agent_enabled
   }
-
+  migrate = true
   description = var.description
   machine     = var.machine
   bios        = var.bios

@@ -3,6 +3,10 @@ resource "proxmox_virtual_environment_file" "user_data_cloud_config" {
   datastore_id = "local"
   node_name    = var.node_name
 
+  lifecycle {
+    ignore_changes = [ node_name ]
+  }
+
   source_raw {
     data = <<-EOF
     #cloud-config
