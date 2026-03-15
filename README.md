@@ -11,7 +11,9 @@ This project demonstrates automation with Ansible Configuration Management and T
         - Apply Roles
     - Dynamic Inventory
 - Infrastructure Provisioning
-    - VM Deployments
+    - VM Node Deployments
+        - Ubuntu
+        - Debian
     - Talos K8s POC
 - CI/CD
     - Wireguard Runner POC
