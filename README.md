@@ -1,4 +1,4 @@
-# IaC for Proxmox Virtual Envrionment
+# IaC for Proxmox Virtual Environment
 
 Infrastructure as Code for Proxmox homelab/self hosted virtual environment.
 
