@@ -17,7 +17,10 @@ Ansible → Configure Nodes
       ▼
 Node / Kubernetes cluster
 ```
-Roles are applied based on tags provided in Terraform, if a node has the `managed` tag, they will automatically be patched.
+Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they will automatically be patched.
+
+## Limitations
+By the empherical nature of deployments, destroys and scaling. Your infrastructure must support DHCP and Auto DNS registration.
 
 ## Current Features
 - Configuration Management
