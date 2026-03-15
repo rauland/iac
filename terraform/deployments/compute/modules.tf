@@ -31,6 +31,8 @@ module "vm" {
 
   vm_name           = each.key
   node_name         = each.value.node_name
+  cpu_cores         = each.value.cpu
+  memory_dedicated  = each.value.memory
   tags              = each.value.tags
   cloud_image_id    = module.cloud_image["${each.value.node_name}-${each.value.os}"].id
   user_data_file_id = module.cloud-init[each.key].user_data_cloud_config_id

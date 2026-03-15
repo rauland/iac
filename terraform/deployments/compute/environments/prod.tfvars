@@ -1,14 +1,20 @@
 vms = {
-  test-vm = {
+  k3s-01 = {
     node_name = "pve"
-    tags      = ["managed"]
+    tags      = ["managed", "k3s"]
+    cpu       = 2
+    memory    = 2048
   }
-  test-vm2 = {
-    node_name = "pve"
-    tags      = ["managed"]
-  }
-  test-vm3 = {
+  k3s-02 = {
     node_name = "pve3"
-    tags      = ["managed"]
+    tags      = ["managed", "k3s"]
+    cpu       = 2
+    memory    = 2048
+  }
+  k3s-03 = {
+    node_name = "pvenas"
+    tags      = ["managed", "k3s"]
+    cpu       = 2
+    memory    = 2048
   }
 }

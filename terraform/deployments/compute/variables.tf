@@ -16,5 +16,7 @@ variable "vms" {
     node_name = string
     tags      = list(string)
     os        = optional(string, "ubuntu")
+    cpu       = optional(number)
+    memory    = optional(number)
   }))
 }
