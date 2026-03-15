@@ -2,7 +2,7 @@
 
 Infrastructure as Code for Proxmox homelab/self hosted virtual environment.
 
-This project demonstrates automation with Ansible Configuration Management, Terraform Infrastructure Provisioning and GitHub Actions CI/CD.
+This project demonstrates end-to-end automation with Ansible Configuration Management, Terraform Infrastructure Provisioning and GitHub Actions CI/CD.
 
 ## Overview
 ```
