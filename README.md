@@ -24,3 +24,19 @@ This project demonstrates automation with Ansible Configuration Management and T
     - Ubuntu k3s/k8s Nodes
 - CI/CD
     - Secrets Management
+    - TF Remote Backend on AWS
+- Backup container persistent data to AWS glacier
+
+## Overview
+```
+GitHub Actions
+      │
+      ▼
+Terraform → Proxmox API → VM creation
+      │
+      ▼
+Ansible → configure VMs
+      │
+      ▼
+VM / Kubernetes cluster
+```
