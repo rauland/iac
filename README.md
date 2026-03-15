@@ -40,6 +40,7 @@ By the empherical nature of deployments, destroys and scaling. Your infrastructu
 - Configuration Management
     - Ansible Controller (LXC or Pipeline)
     - Ubuntu k3s/k8s Nodes
+    - SSH Certs
 - CI/CD
     - Secrets Management
     - TF Remote Backend on AWS
