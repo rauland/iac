@@ -15,8 +15,8 @@ variable "node_name" {
 
 variable "agent_enabled" {
   description = "Whether to enable the QEMU agent"
-  type = bool
-  default = true
+  type        = bool
+  default     = true
 }
 
 variable "tags" {
@@ -116,5 +116,5 @@ variable "network_device_bridge" {
 
 variable "user_data_file_id" {
   description = "ID of the user data cloud config"
-  type = string
+  type        = string
 }

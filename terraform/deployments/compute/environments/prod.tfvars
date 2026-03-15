@@ -10,5 +10,5 @@ vms = {
   test-vm3 = {
     node_name = "pve3"
     tags      = ["managed"]
-  }  
+  }
 }
