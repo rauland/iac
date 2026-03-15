@@ -4,6 +4,20 @@ Infrastructure as Code for Proxmox homelab/self hosted virtual environment.
 
 This project demonstrates automation with Ansible Configuration Management and Terraform Infrastructure Provisioning and GitHub Actions CI/CD.
 
+## Overview
+```
+GitHub Actions
+      │
+      ▼
+Terraform → Proxmox API → VM creation
+      │
+      ▼
+Ansible → configure VMs
+      │
+      ▼
+VM / Kubernetes cluster
+```
+
 ## Current Features
 - Configuration Management
     - Ansible Roles
@@ -26,17 +40,3 @@ This project demonstrates automation with Ansible Configuration Management and T
     - Secrets Management
     - TF Remote Backend on AWS
 - Backup container persistent data to AWS glacier
-
-## Overview
-```
-GitHub Actions
-      │
-      ▼
-Terraform → Proxmox API → VM creation
-      │
-      ▼
-Ansible → configure VMs
-      │
-      ▼
-VM / Kubernetes cluster
-```
