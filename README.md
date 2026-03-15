@@ -2,25 +2,26 @@
 
 Infrastructure as Code for Proxmox homelab/self hosted virtual environment.
 
-This project demonstrates automation with Ansible Configuration Management and Terraform Infrastructure Provisioning and GitHub Actions CI/CD.
+This project demonstrates automation with Ansible Configuration Management, Terraform Infrastructure Provisioning and GitHub Actions CI/CD.
 
 ## Overview
 ```
 GitHub Actions
       │
       ▼
-Terraform → Proxmox API → VM creation
+Terraform → Proxmox API → Node creation
       │
       ▼
-Ansible → configure VMs
+Ansible → Configure Nodes
       │
       ▼
-VM / Kubernetes cluster
+Node / Kubernetes cluster
 ```
+Roles are applied based off tags provided in Terraform, if a node has the `managed` tag, they will automatically be patched.
 
 ## Current Features
 - Configuration Management
-    - Ansible Roles
+    - Ansible Playbooks
         - Patching
         - Apply Roles
     - Dynamic Inventory
