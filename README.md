@@ -5,18 +5,9 @@ Infrastructure as Code for Proxmox homelab/self hosted virtual environment.
 This project demonstrates end-to-end automation with Ansible Configuration Management, Terraform Infrastructure Provisioning and GitHub Actions CI/CD.
 
 ## Overview
-```
-GitHub Actions
-      │
-      ▼
-Terraform → Proxmox API → Node creation
-      │
-      ▼
-Ansible → Configure Nodes
-      │
-      ▼
-Node / Kubernetes cluster
-```
+<img width="2502" height="1545" alt="fossflow-export-2026-03-19T22_14_02 787Z" src="https://github.com/user-attachments/assets/74c1d70a-53e8-4cfb-947d-088b5f4c8fe3" />
+
+
 Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they will automatically be patched.
 
 ## Limitations
