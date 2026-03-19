@@ -2,6 +2,15 @@ name: S3 Bootstrap for Terraform
 
 on:
   workflow_dispatch:
+    inputs:
+      bucket_name:
+        description: 'S3 bucket name'
+        required: true
+        default: 'iac-s3-bootstrap-rauland'
+      region:
+        description: 'AWS region'
+        required: true
+        default: 'ap-southeast-2'
 
 jobs:
   bootstrap-s3:
@@ -14,25 +23,25 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-southeast-2
+          aws-region: ${{ github.event.inputs.region }}
 
       - name: Create S3 bucket
         run: |
           aws s3api create-bucket \
-            --bucket my-bootstrap-bucket \
-            --region ap-southeast-2 \
-            --create-bucket-configuration LocationConstraint=ap-southeast-2 || echo "Bucket may already exist"
+            --bucket ${{ github.event.inputs.bucket_name }} \
+            --region ${{ github.event.inputs.region }} \
+            --create-bucket-configuration LocationConstraint=${{ github.event.inputs.region }} || echo "Bucket may already exist"
 
       - name: Enable versioning
         run: |
           aws s3api put-bucket-versioning \
-            --bucket my-bootstrap-bucket \
+            --bucket ${{ github.event.inputs.bucket_name }} \
             --versioning-configuration Status=Enabled
 
       - name: Enable server-side encryption
         run: |
           aws s3api put-bucket-encryption \
-            --bucket my-bootstrap-bucket \
+            --bucket ${{ github.event.inputs.bucket_name }} \
             --server-side-encryption-configuration '{
               "Rules":[
                 {
@@ -42,9 +51,3 @@ jobs:
                 }
               ]
             }'
-
-    #   - name: Upload initial Terraform state (optional)
-    #     run: |
-    #       mkdir -p terraform
-    #       echo '{}' > terraform/terraform.tfstate
-    #       aws s3 cp terraform/terraform.tfstate s3://my-bootstrap-bucket/terraform.tfstate
