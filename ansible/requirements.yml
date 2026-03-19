@@ -1,0 +1,5 @@
+collections:
+  - name: https://github.com/ansible-collections/community.proxmox.git
+    type: git
+  - name: https://github.com/k3s-io/k3s-ansible.git
+    type: git
