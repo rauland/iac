@@ -29,12 +29,14 @@ By the empherical nature of deployments, destroys and scaling. Your infrastructu
         - Apply Roles
     - Dynamic Inventory
 - Infrastructure Provisioning
-    - VM Node Deployments
+    - Remote State Backend on AWS S3\
+    - Compute Node Deployments
         - Ubuntu
         - Debian
     - Talos K8s POC
 - CI/CD
     - Wireguard Runner POC
+    - AWS S3 State Bootstrap
 
 ## Planned Features
 - Configuration Management
@@ -43,5 +45,6 @@ By the empherical nature of deployments, destroys and scaling. Your infrastructu
     - SSH Certs
 - CI/CD
     - Secrets Management
-    - TF Remote Backend on AWS
-- Backup container persistent data to AWS glacier
+- K8s (May be in private repo)
+    - GitOps
+    - Backup container persistent data to AWS s3/glacier
