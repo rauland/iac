@@ -6,7 +6,7 @@ on:
       bucket_name:
         description: 'S3 bucket name'
         required: true
-        default: 's3-iac-rauland'
+        default: 'rauland-iac-homelab'
       region:
         description: 'AWS region'
         required: true

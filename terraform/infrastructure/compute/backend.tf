@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket         = "s3-iac-rauland"   
+    bucket         = "rauland-iac-homelab"   
     key            = "terraform/compute/terraform.tfstate"  
     region         = "ap-southeast-2"        
     encrypt        = true                     
