@@ -1,6 +1,6 @@
 module "cloud_image" {
   source   = "../../modules/cloud-image"
-  for_each = toset([for vm in var.vms : "${vm.node_name}-${vm.os}"])
+  for_each = local.cloud_images
 
   providers = {
     proxmox = proxmox
