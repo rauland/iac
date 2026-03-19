@@ -1,0 +1,50 @@
+name: S3 Bootstrap for Terraform
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bootstrap-s3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-2
+
+      - name: Create S3 bucket
+        run: |
+          aws s3api create-bucket \
+            --bucket my-bootstrap-bucket \
+            --region ap-southeast-2 \
+            --create-bucket-configuration LocationConstraint=ap-southeast-2 || echo "Bucket may already exist"
+
+      - name: Enable versioning
+        run: |
+          aws s3api put-bucket-versioning \
+            --bucket my-bootstrap-bucket \
+            --versioning-configuration Status=Enabled
+
+      - name: Enable server-side encryption
+        run: |
+          aws s3api put-bucket-encryption \
+            --bucket my-bootstrap-bucket \
+            --server-side-encryption-configuration '{
+              "Rules":[
+                {
+                  "ApplyServerSideEncryptionByDefault":{
+                    "SSEAlgorithm":"AES256"
+                  }
+                }
+              ]
+            }'
+
+    #   - name: Upload initial Terraform state (optional)
+    #     run: |
+    #       mkdir -p terraform
+    #       echo '{}' > terraform/terraform.tfstate
+    #       aws s3 cp terraform/terraform.tfstate s3://my-bootstrap-bucket/terraform.tfstate
