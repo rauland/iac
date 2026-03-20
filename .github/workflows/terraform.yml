@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/workflows/actions/wireguard
+      - uses: ./.github/actions/wireguard
         with:
           WIREGUARD_PRIVATE_KEY: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
           RUNNER_IP: ${{ secrets.RUNNER_IP }}
