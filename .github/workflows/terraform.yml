@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  wireguard_example:
+  terraform_plan:
     runs-on: ubuntu-latest
     steps:
       - uses: ./.github/workflows/actions/wireguard.yml
