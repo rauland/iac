@@ -4,7 +4,7 @@ Infrastructure as Code for a Proxmox homelab or self-hosted virtual environment.
 
 This project demonstrates reproducible infrastructure by leveraging IaC and automation. It can be dropped into any existing Proxmox environment and customised as required.
 
-To get started, clone this repo. Included is workflows that can bootstrap your state file.
+To get started, fork this repo. Included is workflows that can bootstrap your state file.
 
 Also included is:
 - Ansible for Configuration Management
