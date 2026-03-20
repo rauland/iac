@@ -9,6 +9,6 @@ jobs:
     steps:
       - uses: ./.github/workflows/actions/wireguard.yml
       - run: terraform init
-        working-directory: terraform/infrastructure/compute
+        working-directory: ./terraform/infrastructure/compute
       - run: terraform plan --input=false -var-file=../../environments/compute/homelab.tfvars
-        working-directory: terraform/infrastructure/compute
+        working-directory: ./terraform/infrastructure/compute
