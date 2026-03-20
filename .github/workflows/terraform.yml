@@ -8,6 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ./.github/workflows/actions/wireguard.yml
+        with:
+          WIREGUARD_PRIVATE_KEY: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
+          RUNNER_IP: ${{ secrets.RUNNER_IP }}
+          PEER_IP: ${{ secrets.PEER_IP }}
+          WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
+          WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
       - run: terraform init
         working-directory: ./terraform/infrastructure/compute
       - run: terraform plan --input=false -var-file=../../environments/compute/homelab.tfvars

@@ -1,0 +1,42 @@
+name: Setup WireGuard
+description: Reusable WireGuard setup action for GitHub workflows
+runs:
+  using: "composite"
+  steps:
+    - run: sudo apt install wireguard
+      shell: bash
+
+    - run: echo "${{ inputs.WIREGUARD_PRIVATE_KEY }}" > privatekey
+      shell: bash
+
+    - run: sudo ip link add dev wg0 type wireguard
+      shell: bash
+
+    - run: sudo ip address add dev wg0 "${{ inputs.RUNNER_IP }}" peer "${{ inputs.PEER_IP }}"
+      shell: bash
+
+    - run: sudo wg set wg0 listen-port 48123 private-key privatekey peer "${{ inputs.WIREGUARD_PEER_PUBLIC_KEY }}" allowed-ips 0.0.0.0/0 endpoint "${{ inputs.WIREGUARD_ENDPOINT }}"
+      shell: bash
+
+    - run: sudo ip link set up dev wg0
+      shell: bash
+
+    - run: curl -vvv http://"${{ inputs.PEER_IP }}"
+      shell: bash
+
+inputs:
+  WIREGUARD_PRIVATE_KEY:
+    description: "WireGuard private key"
+    required: true
+  RUNNER_IP:
+    description: "IP address for the GitHub runner"
+    required: true
+  PEER_IP:
+    description: "IP address of the WireGuard peer"
+    required: true
+  WIREGUARD_PEER_PUBLIC_KEY:
+    description: "WireGuard peer public key"
+    required: true
+  WIREGUARD_ENDPOINT:
+    description: "WireGuard peer endpoint (IP:port)"
+    required: true
