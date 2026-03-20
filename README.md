@@ -26,23 +26,26 @@ By the empherical nature of deployments, destroys and scaling. Your infrastructu
         - Patching
         - Apply Roles
     - Dynamic Inventory
+        - Tag-based
 - Infrastructure Provisioning
-    - Remote State Backend on AWS S3\
-    - Compute Node Deployments
+    - State Backend on AWS S3
+    - Compute Nodes
         - Ubuntu
         - Debian
-    - Talos K8s POC
+    - Talos K8s Cluster POC
 - CI/CD
-    - Wireguard Runner POC
-    - AWS S3 State Bootstrap
+    - AWS S3 Bucket Bootstrap
+    - Terraform Apply
+    - Wireguard VPN
 
 ## Planned Features
 - Configuration Management
     - Ansible Controller (LXC or Pipeline)
-    - Ubuntu k3s/k8s Nodes
+    - K3s Roles
     - SSH Certs
 - CI/CD
     - Secrets Management
+        - SOPS or Ansible-Vault
 - K8s (May be in private repo)
     - GitOps
-    - Backup container persistent data to AWS s3/glacier
+    - Backup persistent container data to cloud
