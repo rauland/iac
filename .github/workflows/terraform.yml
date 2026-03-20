@@ -1,0 +1,14 @@
+name: Terraform plan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  wireguard_example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/workflows/actions/wireguard.yml
+      - run: terraform init
+        working-directory: terraform/infrastructure/compute
+      - run: terraform plan --input=false -var-file=../../environments/compute/homelab.tfvars
+        working-directory: terraform/infrastructure/compute
