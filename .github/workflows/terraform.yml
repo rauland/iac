@@ -14,6 +14,10 @@ jobs:
       PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
       PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
       PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
+      TF_VAR_virtual_environment_endpoint: ${{ secrets.VIRTUAL_ENVIRONMENT_ENDPOINT }}
+      TF_VAR_virtual_environment_ssh_username: ${{ secrets.VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
+      TF_VAR_virtual_environment_api_token: ${{ secrets.VIRTUAL_ENVIRONMENT_API_TOKEN }}
+
     steps:
       - uses: actions/checkout@v3
 
