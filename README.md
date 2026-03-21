@@ -1,4 +1,4 @@
-# Enterprise IaC and pipelines adapted for self-hosted virtualisation.
+# IaC and pipelines adapted for self-hosted virtualisation.
 
 This project demonstrates reproducible infrastructure by leveraging IaC and automation. It can be dropped into any existing Proxmox environment and customised as required.
 
