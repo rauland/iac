@@ -1,10 +1,10 @@
 # IaC for Proxmox Virtual Environment
 
-Infrastructure as Code for a Proxmox homelab or self-hosted virtual environment.
+Enterprise-style IaC pipeline adapted for self-hosted virtualisation.
 
 This project demonstrates reproducible infrastructure by leveraging IaC and automation. It can be dropped into any existing Proxmox environment and customised as required.
 
-To get started, fork this repo. Included is workflows that can bootstrap your state file.
+To get started, fork this repo. Included are workflows that can bootstrap your state file.
 
 Also included is:
 - Ansible for Configuration Management
@@ -18,21 +18,20 @@ Also included is:
 Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they will automatically be patched.
 
 ## Limitations
-By the empherical nature of deployments, destroys and scaling. Your infrastructure must support DHCP and Auto DNS registration.
+By the ephemeral nature of deployments, destroys and scaling. The assumption is that your infrastructure supports DHCP and dynamic DNS.
 
 ## Current Features
 - Configuration Management
     - Ansible Playbooks
-        - Patching
         - Apply Roles
+        - Node Patching
     - Dynamic Inventory
         - Tag-based
 - Infrastructure Provisioning
-    - State Backend on AWS S3
+    - Remote state locking backend on AWS S3
     - Compute Nodes
         - Ubuntu
         - Debian
-    - Talos K8s Cluster POC
 - CI/CD
     - AWS S3 Bucket Bootstrap
     - Terraform Apply
@@ -49,3 +48,6 @@ By the empherical nature of deployments, destroys and scaling. Your infrastructu
 - K8s (May be in private repo)
     - GitOps
     - Backup persistent container data to cloud
+ 
+## Future Features
+- Static IPAM integration
