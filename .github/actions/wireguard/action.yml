@@ -17,8 +17,7 @@ runs:
       shell: bash
 
     - run: |
-        sudo apt install resolvconf
-        sudo resolveconf dns wg0 "${{ inputs.PEER_IP }}"
+        sudo resolvectl dns wg0 "${{ inputs.PEER_IP }}"
         sudo resolvectl domain wg0 ~.
       shell: bash
     - run: |
