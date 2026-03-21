@@ -9,7 +9,8 @@ runs:
         chmod 600 ~/.ssh/id_ed25519
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/id_ed25519
-        ssh-keyscan -H ${{ inputs.PVE_HOST }} >> ~/.ssh/known_hosts
+        # ssh-keyscan -H ${{ inputs.PVE_HOST }} >> ~/.ssh/known_hosts
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ${{ inputs.PVE_HOST }} 'echo SSH Connection Works'
       shell: bash
 inputs:
   RUNNER_SSH_KEY:
