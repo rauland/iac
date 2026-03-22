@@ -1,5 +1,5 @@
 {
-  "title": "Untitled Diagram",
+  "title": "IaC Pipeline",
   "icons": [
     {
       "id": "block",
@@ -295,24 +295,26 @@
     {
       "id": "271acacd-8e12-4246-b3a1-af4877c5af63",
       "name": "AWS S3 Bucket",
-      "icon": "cloud",
-      "description": "<p>Remote State Backend</p>"
+      "icon": "storage",
+      "description": "<p>Remote&nbsp;State&nbsp;Backend</p>"
     },
     {
       "id": "dcfb58e5-4011-4202-8cec-b25f007b4b69",
       "name": "Github Actions",
-      "icon": "function-module"
+      "icon": "function-module",
+      "description": "<p>Terraform</p>"
     },
     {
       "id": "82e22573-0d73-49a3-a477-5bad4efb496c",
       "name": "PVE Nodes",
       "icon": "server",
-      "description": "<p>Proxmox API</p>"
+      "description": "<p>Proxmox&nbsp;API</p><ul><li>Provisioning</li><li>Inventory</li></ul>"
     },
     {
       "id": "9671ee3a-5c8a-4a1d-8596-5441d0c2e7de",
-      "name": "K8 Nodes",
-      "icon": "vm"
+      "name": "K8s Nodes",
+      "icon": "vm",
+      "description": "<p>Containers</p>"
     },
     {
       "id": "15bfeb1a-b7a0-42b2-a4c2-3947e0a56356",
@@ -322,7 +324,8 @@
     {
       "id": "fe106d20-a89d-40ab-b729-6d1762162430",
       "name": "Ansible Controller",
-      "icon": "cronjob"
+      "icon": "cronjob",
+      "description": "<p>Configures&nbsp;using&nbsp;PVE&nbsp;Inventory</p>"
     },
     {
       "id": "76900a70-3239-423e-b55b-cc5d600bf634",
@@ -383,7 +386,7 @@
           }
         },
         {
-          "labelHeight": 80,
+          "labelHeight": 100,
           "id": "271acacd-8e12-4246-b3a1-af4877c5af63",
           "tile": {
             "x": 1,
@@ -392,6 +395,54 @@
         }
       ],
       "connectors": [
+        {
+          "id": "a37e1d5e-a135-4e73-88bd-a89a8164df15",
+          "color": "blue",
+          "anchors": [
+            {
+              "id": "5f46d71e-9c1f-48af-8526-615149d11a57",
+              "ref": {
+                "tile": {
+                  "x": 0,
+                  "y": 1
+                }
+              }
+            },
+            {
+              "id": "5c595776-4fce-459e-b509-296019cc0381",
+              "ref": {
+                "tile": {
+                  "x": 0,
+                  "y": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "eff22512-cba3-4673-bfc2-88670e9cf155",
+          "color": "blue",
+          "anchors": [
+            {
+              "id": "0303b771-2e5a-4719-8d59-5992aae6b715",
+              "ref": {
+                "tile": {
+                  "x": 1,
+                  "y": 2
+                }
+              }
+            },
+            {
+              "id": "86e67e3a-6c83-42d4-b615-f8613005388a",
+              "ref": {
+                "tile": {
+                  "x": 1,
+                  "y": 2
+                }
+              }
+            }
+          ]
+        },
         {
           "id": "ae79eac3-106f-43ad-bf00-8670c4707b56",
           "color": "blue",
@@ -409,15 +460,7 @@
               }
             }
           ],
-          "labels": [
-            {
-              "id": "0f7d8f12-b25e-45eb-8d60-15d38c92733a",
-              "text": "Inventory",
-              "position": 25,
-              "height": 0,
-              "line": "1"
-            }
-          ]
+          "labels": []
         },
         {
           "id": "c6cac8ef-1e9c-4a3a-a1a3-aae06d3e66e6",
@@ -521,15 +564,7 @@
               }
             }
           ],
-          "labels": [
-            {
-              "id": "8feabf7b-4e1e-44fd-b142-6ef70f5b5785",
-              "text": "Playbooks",
-              "position": 25,
-              "height": 0,
-              "line": "1"
-            }
-          ]
+          "labels": []
         },
         {
           "id": "6a369a79-101a-48ce-bfc3-d1aa11530a3a",
@@ -590,15 +625,7 @@
               }
             }
           ],
-          "labels": [
-            {
-              "id": "a1ab7ab2-3b9c-4f23-8a7f-c1eaf7bb0138",
-              "text": "Node Creation",
-              "position": 25,
-              "height": 0,
-              "line": "1"
-            }
-          ]
+          "labels": []
         },
         {
           "id": "618aaf79-42e0-472b-98a4-0afb578e00ce",
@@ -641,7 +668,7 @@
       "rectangles": [],
       "textBoxes": [],
       "id": "56c3a3ea-c037-43d9-89d9-c741153007b4",
-      "lastUpdated": "2026-03-22T08:11:06.233Z"
+      "lastUpdated": "2026-03-22T08:33:41.304Z"
     }
   ],
   "fitToScreen": true
