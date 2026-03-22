@@ -20,5 +20,8 @@ jobs:
         with:
           terraform_version: latest
 
+      - run: terraform init
+        working-directory: ./terraform/infrastructure/compute
+
       - run: terraform force-unlock -force "${{ inputs.LOCK_ID }}"
         working-directory: ./terraform/infrastructure/compute
