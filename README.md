@@ -10,7 +10,7 @@ Also included is:
 - Terraform for Infrastructure Provisioning
 
 ## Overview
-<img width="2502" height="1545" alt="fossflow-export-2026-03-19T22_14_02 787Z" src="https://github.com/user-attachments/assets/74c1d70a-53e8-4cfb-947d-088b5f4c8fe3" />
+<img width="2040" height="1560" alt="fossflow-export-2026-03-22T08_35_25 035Z" src="https://github.com/user-attachments/assets/ddda8bb0-25df-464d-a298-db219ccc5e71" />
 
 ### Ansible Roles and Tags
 Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they will automatically be patched.
