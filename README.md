@@ -5,9 +5,9 @@ This project demonstrates reproducible infrastructure by leveraging IaC and auto
 To get started, fork this repo. Included are workflows that can bootstrap your state file.
 
 Also included is:
-- Ansible roles and playbooks for Configuration Management
-- GitHub Actions workflows for Continuous Integration
-- Terraform modules for Infrastructure Provisioning
+- Ansible roles and playbooks for Configuration Management.
+- GitHub Actions workflows for Continuous Integration.
+- Terraform modules for Infrastructure Provisioning.
 
 ## Overview
 <img width="2040" height="1560" alt="fossflow-export-2026-03-22T08_35_25 035Z" src="https://github.com/user-attachments/assets/ddda8bb0-25df-464d-a298-db219ccc5e71" />
