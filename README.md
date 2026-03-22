@@ -35,8 +35,8 @@ By the ephemeral nature of deployments, destroys and scaling. The assumption is 
         - Debian
     - Cloud-int
     - Nodes
-        - Configuration
-        - Tagging
+        - Provision
+        - Tags
 
 ### CI/CD
 - AWS S3 Bucket Bootstrap
