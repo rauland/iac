@@ -19,41 +19,45 @@ Roles are applied based on tags provided by Terraform. If a node has the `manage
 By the ephemeral nature of deployments, destroys and scaling. The assumption is that your infrastructure supports DHCP and dynamic DNS.
 
 ## Current Features
-- Configuration Management
-    - Ansible Playbooks
-        - Apply Roles
-        - Node Patching
-    - Dynamic Inventory
-        - Tag-based
-- Infrastructure Provisioning
-    - Remote state backend on AWS S3
-    - State locking
-    - Modules
-        - Cloud-image
-            - Ubuntu
-            - Debian
-        - Cloud-int
-        - Nodes
-            - Configuration
-            - Tagging
-- CI/CD
-    - AWS S3 Bucket Bootstrap
-    - Terraform Plan
-    - Wireguard VPN
-    - Unlock State
+Configuration Management
+- Ansible Playbooks
+    - Apply Roles
+    - Node Patching
+- Dynamic Inventory
+    - Tag-based
+
+Infrastructure Provisioning
+- Remote state backend on AWS S3
+- State locking
+- Modules
+    - Cloud-image
+        - Ubuntu
+        - Debian
+    - Cloud-int
+    - Nodes
+        - Configuration
+        - Tagging
+
+CI/CD
+- AWS S3 Bucket Bootstrap
+- Terraform Plan
+- Wireguard VPN
+- Unlock State
 
 ## Planned Features
-- Configuration Management
-    - Ansible Controller (LXC or Pipeline)
-    - K3s Roles
-    - SSH Certs
-    - Secrets Management
-        - SOPS or Ansible-Vault
-- CI/CD
-    - Terraform Apply, Destroy
-- K8s (May be in private repo)
-    - GitOps
-    - Backup persistent container data to cloud
+Configuration Management
+- Ansible Controller (LXC or Pipeline)
+- K3s Roles
+- SSH Certs
+- Secrets Management
+    - SOPS or Ansible-Vault
+
+CI/CD
+- Terraform Apply, Destroy
+
+K8s (May be in private repo)
+- GitOps
+- Backup persistent container data to cloud
  
 ## Future Features
 - Static IPAM integration
