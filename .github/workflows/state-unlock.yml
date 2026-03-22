@@ -1,0 +1,22 @@
+name: State Unlock
+
+on:
+  workflow_dispatch:
+    inputs:
+      LOCK_ID:
+        description: "Terraform state lock ID to unlock"
+        required: true
+jobs:
+  state_unlock:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+    steps:
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: latest
+
+      - run: terraform unlock -force "${{ inputs.LOCK_ID }}"
+        working-directory: ./terraform/infrastructure/compute

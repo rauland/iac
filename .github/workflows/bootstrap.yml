@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       bucket_name:
-        description: 'S3 bucket name'
+        description: "S3 bucket name"
         required: true
-        default: 'rauland-iac-homelab'
+        default: "rauland-iac-homelab"
       region:
-        description: 'AWS region'
+        description: "AWS region"
         required: true
-        default: 'ap-southeast-2'
+        default: "ap-southeast-2"
 
 jobs:
   bootstrap-s3:
