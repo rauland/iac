@@ -5,9 +5,9 @@ This project demonstrates reproducible infrastructure by leveraging IaC and auto
 To get started, fork this repo. Included are workflows that can bootstrap your state file.
 
 Also included is:
-- Ansible for Configuration Management
-- GitHub Actions for Continuous Integration
-- Terraform for Infrastructure Provisioning
+- Ansible roles and playbooks for Configuration Management
+- GitHub Actions workflows for Continuous Integration
+- Terraform modules for Infrastructure Provisioning
 
 ## Overview
 <img width="2040" height="1560" alt="fossflow-export-2026-03-22T08_35_25 035Z" src="https://github.com/user-attachments/assets/ddda8bb0-25df-464d-a298-db219ccc5e71" />
@@ -26,23 +26,31 @@ By the ephemeral nature of deployments, destroys and scaling. The assumption is 
     - Dynamic Inventory
         - Tag-based
 - Infrastructure Provisioning
-    - Remote state locking backend on AWS S3
-    - Compute Nodes
-        - Ubuntu
-        - Debian
+    - Remote state backend on AWS S3
+    - State locking
+    - Modules
+        - Cloud-image
+            - Ubuntu
+            - Debian
+        - Cloud-int
+        - Nodes
+            - Configuration
+            - Tagging
 - CI/CD
     - AWS S3 Bucket Bootstrap
-    - Terraform Apply
+    - Terraform Plan
     - Wireguard VPN
+    - Unlock State
 
 ## Planned Features
 - Configuration Management
     - Ansible Controller (LXC or Pipeline)
     - K3s Roles
     - SSH Certs
-- CI/CD
     - Secrets Management
         - SOPS or Ansible-Vault
+- CI/CD
+    - Terraform Apply, Destroy
 - K8s (May be in private repo)
     - GitOps
     - Backup persistent container data to cloud
