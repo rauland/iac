@@ -21,10 +21,10 @@ runs:
         sudo resolvectl dns wg0 "${{ inputs.PEER_IP }}"
         sudo resolvectl domain wg0 ~.
       shell: bash
-    - run: |
-        ping -c 4 "${{ inputs.PEER_IP }}"
-        ping -c 4 "${{ inputs.PVE_HOST }}"
-      shell: bash
+    # - run: |
+    #     ping -c 4 "${{ inputs.PEER_IP }}"
+    #     ping -c 4 "${{ inputs.PVE_HOST }}"
+    #   shell: bash
 
 inputs:
   WIREGUARD_PRIVATE_KEY:
