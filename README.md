@@ -12,7 +12,13 @@ Also included is:
 ## Overview
 <img width="2040" height="1560" alt="fossflow-export-2026-03-22T08_35_25 035Z" src="https://github.com/user-attachments/assets/ddda8bb0-25df-464d-a298-db219ccc5e71" />
 
-### Ansible Roles and Tags
+### Actions Pipeline
+Workflows bootstrap and call Terraform modules with infrastructure being declared in `Environments`.
+
+### Wireguard VPN
+Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
+
+### Ansible Controller
 Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they will automatically be patched.
 
 ## Limitations
