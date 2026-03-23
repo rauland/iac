@@ -105,8 +105,9 @@ jobs:
           RUNNER_SSH_KEY: ${{ secrets.RUNNER_SSH_KEY }}
           PVE_HOST: ${{ secrets.PVE_HOST }}
 
-      - name: Terraform Init
-        run: terraform init
+      - run: terraform init
+        working-directory: ./terraform/infrastructure/compute
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve --input=false -var-file=../../environments/compute/homelab.tfvars
+        working-directory: ./terraform/infrastructure/compute
