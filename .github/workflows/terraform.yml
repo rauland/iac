@@ -20,9 +20,9 @@ jobs:
       PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
       PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
       PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
-      TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT: ${{ secrets.VIRTUAL_ENVIRONMENT_ENDPOINT }}
-      TF_VAR_VIRTUAL_ENVIRONMENT_SSH_USERNAME: ${{ secrets.VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
-      TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN: ${{ secrets.VIRTUAL_ENVIRONMENT_API_TOKEN }}
+      TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT }}
+      TF_VAR_VIRTUAL_ENVIRONMENT_SSH_USERNAME: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
+      TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -83,9 +83,9 @@ jobs:
       PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
       PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
       PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
-      TF_VAR_virtual_environment_endpoint: ${{ secrets.VIRTUAL_ENVIRONMENT_ENDPOINT }}
-      TF_VAR_virtual_environment_ssh_username: ${{ secrets.VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
-      TF_VAR_virtual_environment_api_token: ${{ secrets.VIRTUAL_ENVIRONMENT_API_TOKEN }}
+      TF_VAR_virtual_environment_endpoint: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT }}
+      TF_VAR_virtual_environment_ssh_username: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
+      TF_VAR_virtual_environment_api_token: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
