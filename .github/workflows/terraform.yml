@@ -1,27 +1,17 @@
 name: Terraform plan
 
 on:
-  workflow_dispatch:
+  pull_request:
+    branches: [main]
 
 jobs:
   plan:
     runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-      PROXMOX_USER: ${{ secrets.PROXMOX_USER }}
-      PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
-      PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
-      PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
-      TF_VAR_virtual_environment_endpoint: ${{ secrets.VIRTUAL_ENVIRONMENT_ENDPOINT }}
-      TF_VAR_virtual_environment_ssh_username: ${{ secrets.VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
-      TF_VAR_virtual_environment_api_token: ${{ secrets.VIRTUAL_ENVIRONMENT_API_TOKEN }}
-
+    environment: proxmox-ro
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: hashicorp/setup-terraform@v1
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: latest
 
@@ -42,39 +32,36 @@ jobs:
       - run: terraform init
         working-directory: ./terraform/infrastructure/compute
 
-      - run: terraform plan --input=false -var-file=../../environments/compute/homelab.tfvars -out=tfplan
+      - run: terraform plan --input=false -var-file=../../environments/compute/homelab.tfvars
+        id: plan
         working-directory: ./terraform/infrastructure/compute
 
-      - run: terraform show -no-color tfplan
-        working-directory: ./terraform/infrastructure/compute
-
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
+      - name: Update PR Comment
+        uses: actions/github-script@v7
         with:
-          name: tfplan
-          path: ./terraform/infrastructure/compute/tfplan
+          script: |
+            const output = `#### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
+            <details><summary>Show Plan</summary>
 
-  apply: 
+            \`\`\`terraform
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+
+            </details>`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+  apply:
+    name: "Terraform Apply"
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-      PROXMOX_USER: ${{ secrets.PROXMOX_USER }}
-      PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
-      PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
-      PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
-      TF_VAR_virtual_environment_endpoint: ${{ secrets.VIRTUAL_ENVIRONMENT_ENDPOINT }}
-      TF_VAR_virtual_environment_ssh_username: ${{ secrets.VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
-      TF_VAR_virtual_environment_api_token: ${{ secrets.VIRTUAL_ENVIRONMENT_API_TOKEN }}
-    environment:
-      name: proxmox
+    environment: proxmox-rw
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: latest
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
 
       - uses: ./.github/actions/wireguard
         with:
@@ -90,14 +77,8 @@ jobs:
           RUNNER_SSH_KEY: ${{ secrets.RUNNER_SSH_KEY }}
           PVE_HOST: ${{ secrets.PVE_HOST }}
 
-      - name: Download plan artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: ./terraform/infrastructure/compute
+      - name: Terraform Init
+        run: terraform init
 
-      - run: terraform init
-        working-directory: ./terraform/infrastructure/compute
-
-      - run: terraform show tfplan
-        working-directory: ./terraform/infrastructure/compute
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
