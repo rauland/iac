@@ -10,6 +10,17 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     environment: proxmox-ro
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
+      PROXMOX_USER: ${{ secrets.PROXMOX_USER }}
+      PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
+      PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
+      PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
+      TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT: ${{ secrets.VIRTUAL_ENVIRONMENT_ENDPOINT }}
+      TF_VAR_VIRTUAL_ENVIRONMENT_SSH_USERNAME: ${{ secrets.VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
+      TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN: ${{ secrets.VIRTUAL_ENVIRONMENT_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +72,17 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: proxmox-rw
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
+      PROXMOX_USER: ${{ secrets.PROXMOX_USER }}
+      PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
+      PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
+      PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
+      TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT: ${{ secrets.VIRTUAL_ENVIRONMENT_ENDPOINT }}
+      TF_VAR_VIRTUAL_ENVIRONMENT_SSH_USERNAME: ${{ secrets.VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
+      TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN: ${{ secrets.VIRTUAL_ENVIRONMENT_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
