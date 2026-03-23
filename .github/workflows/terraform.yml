@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  terraform_plan:
+  plan:
     runs-on: ubuntu-latest
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -42,5 +42,58 @@ jobs:
       - run: terraform init
         working-directory: ./terraform/infrastructure/compute
 
-      - run: terraform plan --input=false -var-file=../../environments/compute/homelab.tfvars
+      - run: terraform plan --input=false -var-file=../../environments/compute/homelab.tfvars -out=tfplan
+        working-directory: ./terraform/infrastructure/compute
+
+      - run: terraform show -no-color tfplan
+        working-directory: ./terraform/infrastructure/compute
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: ./terraform/infrastructure/compute/tfplan
+
+  apply: 
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      PROXMOX_USER: ${{ secrets.PROXMOX_USER }}
+      PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
+      PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
+      PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
+      TF_VAR_virtual_environment_endpoint: ${{ secrets.VIRTUAL_ENVIRONMENT_ENDPOINT }}
+      TF_VAR_virtual_environment_ssh_username: ${{ secrets.VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
+      TF_VAR_virtual_environment_api_token: ${{ secrets.VIRTUAL_ENVIRONMENT_API_TOKEN }}
+    environment:
+      name: proxmox
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: latest
+
+      - uses: ./.github/actions/wireguard
+        with:
+          WIREGUARD_PRIVATE_KEY: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
+          RUNNER_IP: ${{ secrets.RUNNER_IP }}
+          PEER_IP: ${{ secrets.PEER_IP }}
+          WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
+          WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
+          PVE_HOST: ${{ secrets.PVE_HOST }}
+
+      - uses: ./.github/actions/ssh
+        with:
+          RUNNER_SSH_KEY: ${{ secrets.RUNNER_SSH_KEY }}
+          PVE_HOST: ${{ secrets.PVE_HOST }}
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ./terraform/infrastructure/compute
+      - run: terraform show tfplan
         working-directory: ./terraform/infrastructure/compute
