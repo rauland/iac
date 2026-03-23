@@ -95,5 +95,9 @@ jobs:
         with:
           name: tfplan
           path: ./terraform/infrastructure/compute
+
+      - run: terraform init
+        working-directory: ./terraform/infrastructure/compute
+
       - run: terraform show tfplan
         working-directory: ./terraform/infrastructure/compute
