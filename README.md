@@ -5,47 +5,65 @@ This project demonstrates reproducible infrastructure by leveraging IaC and auto
 To get started, fork this repo. Included are workflows that can bootstrap your state file.
 
 Also included is:
-- Ansible for Configuration Management
-- GitHub Actions for Continuous Integration
-- Terraform for Infrastructure Provisioning
+- Ansible roles and playbooks for Configuration Management.
+- GitHub Actions workflows for Continuous Integration.
+- Terraform modules for Infrastructure Provisioning.
 
 ## Overview
-<img width="2502" height="1545" alt="fossflow-export-2026-03-19T22_14_02 787Z" src="https://github.com/user-attachments/assets/74c1d70a-53e8-4cfb-947d-088b5f4c8fe3" />
+<img width="2040" height="1560" alt="fossflow-export-2026-03-22T08_35_25 035Z" src="https://github.com/user-attachments/assets/ddda8bb0-25df-464d-a298-db219ccc5e71" />
 
-### Ansible Roles and Tags
+### Actions Pipeline
+Workflows bootstrap and call Terraform modules with infrastructure being declared in `Environments`.
+
+### Wireguard VPN
+Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
+
+### Ansible Controller
 Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they will automatically be patched.
 
 ## Limitations
 By the ephemeral nature of deployments, destroys and scaling. The assumption is that your infrastructure supports DHCP and dynamic DNS.
 
 ## Current Features
-- Configuration Management
-    - Ansible Playbooks
-        - Apply Roles
-        - Node Patching
-    - Dynamic Inventory
-        - Tag-based
-- Infrastructure Provisioning
-    - Remote state locking backend on AWS S3
-    - Compute Nodes
+### Configuration Management
+- Ansible Playbooks
+    - Apply Roles
+    - Node Patching
+- Dynamic Inventory
+    - Tag-based
+
+### Infrastructure Provisioning
+- Remote state backend on AWS S3
+- State locking
+- Modules
+    - Cloud-image
         - Ubuntu
         - Debian
-- CI/CD
-    - AWS S3 Bucket Bootstrap
-    - Terraform Apply
-    - Wireguard VPN
+    - Cloud-int
+    - Nodes
+        - Provision
+        - Tags
+
+### CI/CD
+- AWS S3 Bucket Bootstrap
+- Terraform Plan
+- Wireguard VPN
+- Unlock State
 
 ## Planned Features
-- Configuration Management
-    - Ansible Controller (LXC or Pipeline)
-    - K3s Roles
-    - SSH Certs
-- CI/CD
-    - Secrets Management
-        - SOPS or Ansible-Vault
-- K8s (May be in private repo)
-    - GitOps
-    - Backup persistent container data to cloud
+### Configuration Management
+- Ansible Controller (LXC or Pipeline)
+- K3s Roles
+- SSH Certs
+- Secrets Management
+    - SOPS or Ansible-Vault
+
+### CI/CD
+- Terraform Apply, Destroy
+
+### K8s (May be in private repo)
+- GitOps
+- Backup persistent container data to cloud
  
 ## Future Features
 - Static IPAM integration
