@@ -46,7 +46,7 @@ By the ephemeral nature of deployments, destroys and scaling. The assumption is 
 
 ### CI/CD
 - AWS S3 Bucket Bootstrap
-- Terraform Plan
+- Terraform Plan, Apply
 - Wireguard VPN
 - Unlock State
 
@@ -59,7 +59,9 @@ By the ephemeral nature of deployments, destroys and scaling. The assumption is 
     - SOPS or Ansible-Vault
 
 ### CI/CD
-- Terraform Apply, Destroy
+- Terraform Destroy
+- Tests
+    - Terraform Fmt
 
 ### K8s (May be in private repo)
 - GitOps
