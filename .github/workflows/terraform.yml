@@ -1,4 +1,4 @@
-name: Terraform plan
+name: Terraform Deploy
 
 on:
   pull_request:
@@ -8,11 +8,12 @@ on:
 
 jobs:
   plan:
+    name: "Terraform Plan"
     runs-on: ubuntu-latest
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
-    env:
+    env: &common-env
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
@@ -31,7 +32,7 @@ jobs:
           terraform_version: latest
 
       - uses: ./.github/actions/wireguard
-        with:
+        with: &wireguard-env
           WIREGUARD_PRIVATE_KEY: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
           RUNNER_IP: ${{ secrets.RUNNER_IP }}
           PEER_IP: ${{ secrets.PEER_IP }}
@@ -47,58 +48,24 @@ jobs:
       - run: terraform init
         working-directory: ./terraform/infrastructure/compute
 
-      - run: terraform plan --input=false -var-file=../../environments/compute/homelab.tfvars
+      - name: Plan
+        run: terraform plan -lock=false --input=false -var-file=../../environments/compute/homelab.tfvars
         id: plan
         working-directory: ./terraform/infrastructure/compute
 
-      # - name: Update PR Comment
-      #   if: github.event_name == 'pull_request'
-      #   uses: actions/github-script@v7
-      #   with:
-      #     script: |
-      #       const output = `#### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
-      #       <details><summary>Show Plan</summary>
-
-      #       \`\`\`terraform
-      #       ${{ steps.plan.outputs.stdout }}
-      #       \`\`\`
-
-      #       </details>`;
-      #       github.rest.issues.createComment({
-      #         issue_number: context.issue.number,
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         body: output
-      #       })
   apply:
     name: "Terraform Apply"
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: plan
     runs-on: ubuntu-latest
     environment: proxmox-rw
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
-      PROXMOX_USER: ${{ secrets.PROXMOX_USER }}
-      PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
-      PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
-      PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
-      TF_VAR_virtual_environment_endpoint: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT }}
-      TF_VAR_virtual_environment_ssh_username: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_SSH_USERNAME }}
-      TF_VAR_virtual_environment_api_token: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN }}
+    env: *common-env
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
 
       - uses: ./.github/actions/wireguard
-        with:
-          WIREGUARD_PRIVATE_KEY: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
-          RUNNER_IP: ${{ secrets.RUNNER_IP }}
-          PEER_IP: ${{ secrets.PEER_IP }}
-          WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
-          WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
-          PVE_HOST: ${{ secrets.PVE_HOST }}
+        with: *wireguard-env
 
       - uses: ./.github/actions/ssh
         with:
@@ -108,6 +75,6 @@ jobs:
       - run: terraform init
         working-directory: ./terraform/infrastructure/compute
 
-      - name: Terraform Apply
+      - name: Apply
         run: terraform apply -auto-approve --input=false -var-file=../../environments/compute/homelab.tfvars
         working-directory: ./terraform/infrastructure/compute
