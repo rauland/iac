@@ -1,0 +1,24 @@
+name: anchor test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test1:
+    runs-on: ubuntu-latest
+    environment: test1
+    env: &test-env
+      TEST: ${{ vars.TEST }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run tests
+        run: echo ${{ vars.TEST }}
+
+  test2:
+    runs-on: ubuntu-latest
+    environment: test2
+    env: *test-env
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run tests
+        run: echo ${{ vars.TEST }}
