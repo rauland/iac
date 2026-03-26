@@ -48,10 +48,6 @@ jobs:
           WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
 
-      # - uses: ./.github/actions/ssh
-      #   with:
-      #     RUNNER_SSH_KEY: ${{ secrets.RUNNER_SSH_KEY }}
-
       - run: terraform init
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
 
@@ -77,11 +73,6 @@ jobs:
 
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
-
-      # - uses: ./.github/actions/ssh
-      #   with:
-      #     RUNNER_SSH_KEY: ${{ secrets.RUNNER_SSH_KEY }}
-      #     PVE_HOST: ${{ secrets.PVE_HOST }}
 
       - run: terraform init
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
