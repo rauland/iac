@@ -1,12 +1,6 @@
 name: Terraform Deploy
 
 on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Target environment for Terraform deployment"
-        required: true
-        default: "compute"
   pull_request:
     branches: [main]
     paths: 
