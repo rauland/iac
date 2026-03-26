@@ -5,7 +5,7 @@ provider "proxmox" {
   tmp_dir = "/var/tmp"
 
   ssh {
-    agent    = true
+    agent    = false
     username = var.virtual_environment_ssh_username
   }
 }

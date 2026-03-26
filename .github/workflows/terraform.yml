@@ -1,6 +1,20 @@
 name: Terraform Deploy
 
 on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment to deploy (e.g., compute, talos)"
+        required: true
+        type: choice
+        options:
+          - compute
+          - talos
+      destroy:
+        description: "Destroy resources"
+        required: true
+        default: false
+        type: boolean
   pull_request:
     branches: [main]
     paths: &paths
@@ -81,4 +95,11 @@ jobs:
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
         run: terraform apply -auto-approve --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
+        working-directory: ./terraform/infrastructure/${{ matrix.environments }}
+
+      - name: Destroy (if requested)
+        if: github.event.inputs.destroy == true && github.event_name == 'workflow_dispatch'
+        env: 
+          PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
+        run: terraform destroy -auto-approve --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
