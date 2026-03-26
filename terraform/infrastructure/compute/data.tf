@@ -7,5 +7,5 @@ data "terraform_remote_state" "images" {
   }
 }
 
-# data.terraform_remote_state.images.cloud_images.outputs.ids
+# data.terraform_remote_state.images.module.cloud_images.ids
 
