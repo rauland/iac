@@ -7,13 +7,16 @@ on:
       - 'terraform/modules/**'
       - 'terraform/infrastructure/**'
       - 'terraform/environments/**'
+      - '.github/actions/**'
+      - '.github/workflows/terraform.yml'
   push:
     branches: [main]
     paths: 
       - 'terraform/modules/**'
       - 'terraform/infrastructure/**'
       - 'terraform/environments/**'
-
+      - '.github/actions/**'
+      - '.github/workflows/terraform.yml'
 jobs:
   plan:
     name: "Terraform Plan"
