@@ -1,3 +1,3 @@
-output "cloud_image_ids" {
-  value = module.cloud_image.ids
+output "cloud_image" {
+  value = module.cloud_image
 }
