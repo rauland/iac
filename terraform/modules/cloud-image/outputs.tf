@@ -1,4 +1,4 @@
-output "id" {
-  description = "ID of the downloaded cloud image"
-  value       = proxmox_virtual_environment_download_file.cloud_image.id
+output "ids" {
+  description = "IDs of the downloaded cloud images"
+  value = { for k, v in proxmox_virtual_environment_download_file.cloud_image : k => v.id }
 }
