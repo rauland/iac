@@ -3,13 +3,24 @@ name: Terraform Deploy
 on:
   pull_request:
     branches: [main]
+    paths: 
+      - 'terraform/modules/**'
+      - 'terraform/infrastructure/**'
+      - 'terraform/environments/**'
   push:
     branches: [main]
+    paths: 
+      - 'terraform/modules/**'
+      - 'terraform/infrastructure/**'
+      - 'terraform/environments/**'
 
 jobs:
   plan:
     name: "Terraform Plan"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environments: [compute]
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
@@ -46,18 +57,28 @@ jobs:
           PVE_HOST: ${{ secrets.PVE_HOST }}
 
       - run: terraform init
-        working-directory: ./terraform/infrastructure/compute
+        working-directory: ./terraform/infrastructure/images
 
       - name: Plan
-        run: terraform plan -lock=false --input=false -var-file=../../environments/compute/homelab.tfvars
+        run: terraform plan -lock=false --input=false -var-file=../../environments/images/homelab.tfvars
+        working-directory: ./terraform/infrastructure/images      
+
+      - run: terraform init
+        working-directory: ./terraform/infrastructure/${{ matrix.environments }}
+
+      - name: Plan
+        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
         id: plan
-        working-directory: ./terraform/infrastructure/compute
+        working-directory: ./terraform/infrastructure/${{ matrix.environments }}
 
   apply:
     name: "Terraform Apply"
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: plan
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environments: [compute]
     environment: proxmox-rw
     env: *common-env
     steps:
@@ -73,8 +94,15 @@ jobs:
           PVE_HOST: ${{ secrets.PVE_HOST }}
 
       - run: terraform init
-        working-directory: ./terraform/infrastructure/compute
+        working-directory: ./terraform/infrastructure/images
 
       - name: Apply
-        run: terraform apply -auto-approve --input=false -var-file=../../environments/compute/homelab.tfvars
-        working-directory: ./terraform/infrastructure/compute
+        run: terraform apply -auto-approve --input=false -var-file=../../environments/images/homelab.tfvars
+        working-directory: ./terraform/infrastructure/images
+
+      - run: terraform init
+        working-directory: ./terraform/infrastructure/${{ matrix.environments }}
+
+      - name: Apply
+        run: terraform apply -auto-approve --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
+        working-directory: ./terraform/infrastructure/${{ matrix.environments }}
