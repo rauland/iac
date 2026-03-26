@@ -113,8 +113,3 @@ variable "network_device_bridge" {
   type        = string
   default     = "vmbr0"
 }
-
-variable "user_data_file_id" {
-  description = "ID of the user data cloud config"
-  type        = string
-}

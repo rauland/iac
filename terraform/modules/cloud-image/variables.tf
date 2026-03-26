@@ -1,9 +1,4 @@
-variable "node_name" {
-  description = "Name of PVE node where the ISO image will be downloaded"
-  type        = string
-}
-
-variable "os" {
-  description = "Operating system for the cloud image"
-  default     = "ubuntu"
+variable "os_url" {
+  description = "URL of the cloud image to download"
+  default     = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
 }
