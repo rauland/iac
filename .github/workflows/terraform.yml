@@ -70,6 +70,7 @@ jobs:
         environments: [compute]
     environment: proxmox-rw
     env: *common-env
+    
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
@@ -86,5 +87,7 @@ jobs:
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
 
       - name: Apply
+        env: 
+          PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
         run: terraform apply -auto-approve --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
