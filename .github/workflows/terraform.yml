@@ -54,14 +54,7 @@ jobs:
       - uses: ./.github/actions/ssh
         with:
           RUNNER_SSH_KEY: ${{ secrets.RUNNER_SSH_KEY }}
-          PVE_HOST: ${{ secrets.PVE_HOST }}
-
-      - run: terraform init
-        working-directory: ./terraform/infrastructure/images
-
-      - name: Plan
-        run: terraform plan -lock=false --input=false -var-file=../../environments/images/homelab.tfvars
-        working-directory: ./terraform/infrastructure/images      
+          PVE_HOST: ${{ secrets.PVE_HOST }} 
 
       - run: terraform init
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
@@ -92,13 +85,6 @@ jobs:
         with:
           RUNNER_SSH_KEY: ${{ secrets.RUNNER_SSH_KEY }}
           PVE_HOST: ${{ secrets.PVE_HOST }}
-
-      - run: terraform init
-        working-directory: ./terraform/infrastructure/images
-
-      - name: Apply
-        run: terraform apply -auto-approve --input=false -var-file=../../environments/images/homelab.tfvars
-        working-directory: ./terraform/infrastructure/images
 
       - run: terraform init
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
