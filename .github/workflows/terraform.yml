@@ -1,4 +1,4 @@
-name: Terraform Deploy
+name: Terraform Actions
 
 on:
   workflow_dispatch:
@@ -66,7 +66,12 @@ jobs:
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
 
       - name: Plan
-        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
+        run: |
+          if [ "${{ github.event.inputs.destroy }}" = "false" ]; then
+            terraform plan -lock=false --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
+          elif [ "${{ github.event.inputs.destroy }}" = "true" ]; then
+            terraform plan -destroy -lock=false --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
+          fi
         id: plan
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
 
