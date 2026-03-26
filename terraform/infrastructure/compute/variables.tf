@@ -20,3 +20,9 @@ variable "vms" {
     memory    = optional(number)
   }))
 }
+
+variable "cloud_images" {
+  type = map(object({
+    url = string
+  }))
+}
