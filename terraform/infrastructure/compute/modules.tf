@@ -11,5 +11,5 @@ module "vm" {
   cpu_cores         = each.value.cpu
   memory_dedicated  = each.value.memory
   tags              = each.value.tags
-  cloud_image_id    = data.terraform_remote_state.images.outputs.cloud_image_ids[each.value.os]
+  cloud_image_id    = try(data.terraform_remote_state.images.outputs.cloud_image[each.value.os].ids[each.value.node_name], null)
 }
