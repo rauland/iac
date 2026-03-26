@@ -15,7 +15,7 @@ variable "vms" {
   type = map(object({
     node_name = string
     tags      = list(string)
-    os        = optional(string, "ubuntu")
+    os        = optional(string, "ubuntu-jammy")
     cpu       = optional(number)
     memory    = optional(number)
   }))
