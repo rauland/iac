@@ -50,7 +50,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
       }
     }
 
-    user_data_file_id = var.user_data_file_id
+    user_data_file_id = module.cloud_init.user_data_cloud_config_id
   }
 
   network_device {
