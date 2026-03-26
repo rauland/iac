@@ -16,6 +16,6 @@ inputs:
   RUNNER_SSH_KEY:
     description: "SSH private key for the GitHub runner"
     required: true
-  PVE_HOST:
-    description: "Hostname or IP address of the Proxmox VE host"
-    required: true
+  # PVE_HOST:
+  #   description: "Hostname or IP address of the Proxmox VE host"
+  #   required: true

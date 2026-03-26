@@ -49,12 +49,10 @@ jobs:
           PEER_IP: ${{ secrets.PEER_IP }}
           WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
-          PVE_HOST: ${{ secrets.PVE_HOST }}
 
       - uses: ./.github/actions/ssh
         with:
           RUNNER_SSH_KEY: ${{ secrets.RUNNER_SSH_KEY }}
-          PVE_HOST: ${{ secrets.PVE_HOST }} 
 
       - run: terraform init
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
