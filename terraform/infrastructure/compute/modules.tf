@@ -22,5 +22,5 @@ module "vm" {
   cpu_cores         = each.value.cpu
   memory_dedicated  = each.value.memory
   tags              = each.value.tags
-  cloud_image_id    = module.cloud_image[each.value.os]
+  cloud_image_id    = module.cloud_image[each.value.os].id
 }
