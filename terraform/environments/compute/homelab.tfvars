@@ -15,7 +15,7 @@ vms = {
     node_name = "pvenas"
     tags      = ["managed", "k3s"]
     cpu       = 2
-    memory    = 2048
+    memory    = 4096
   }
 }
 
