@@ -3,7 +3,7 @@ name: Terraform Actions
 on:
   workflow_dispatch:
     inputs:
-      environment:
+      infrastructure:
         description: "Target environment to deploy (e.g., compute, talos)"
         required: true
         type: choice
@@ -32,8 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environments: 
-          - ${{ inputs.environment || 'compute' }}
+        infrastructure: &infrastructure
+          - ${{ inputs.infrastructure || 'compute' }}
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
@@ -64,13 +64,13 @@ jobs:
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
 
       - run: terraform init
-        working-directory: ./terraform/infrastructure/${{ matrix.environments }}
+        working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
 
       - name: Plan
-        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
+        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ matrix.infrastructure }}/homelab.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
 
         id: plan
-        working-directory: ./terraform/infrastructure/${{ matrix.environments }}
+        working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
 
   apply:
     name: "Terraform Apply"
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environments: [compute]
+        infrastructure: *infrastructure
     environment: proxmox-rw
     env: *common-env
     
@@ -91,10 +91,10 @@ jobs:
         with: *wireguard-env
 
       - run: terraform init
-        working-directory: ./terraform/infrastructure/${{ matrix.environments }}
+        working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
 
       - name: ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
-        run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
-        working-directory: ./terraform/infrastructure/${{ matrix.environments }}
+        run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ matrix.infrastructure }}/homelab.tfvars
+        working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
