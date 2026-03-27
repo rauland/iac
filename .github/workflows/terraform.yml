@@ -73,7 +73,7 @@ jobs:
         working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
 
   apply:
-    name: "Terraform Apply"
+    name: "Terraform ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}"
     if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     needs: plan
     runs-on: ubuntu-latest
