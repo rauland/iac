@@ -6,6 +6,13 @@ on:
       LOCK_ID:
         description: "Terraform state lock ID to unlock"
         required: true
+      infrastructure:
+        description: "Target environment to deploy (e.g., compute, talos)"
+        required: true
+        type: choice
+        options:
+          - compute
+          - talos
 jobs:
   state_unlock:
     runs-on: ubuntu-latest
@@ -22,7 +29,7 @@ jobs:
           terraform_version: latest
 
       - run: terraform init
-        working-directory: ./terraform/infrastructure/compute
+        working-directory: ./terraform/infrastructure/${{ inputs.infrastructure }}
 
       - run: terraform force-unlock -force "${{ inputs.LOCK_ID }}"
-        working-directory: ./terraform/infrastructure/compute
+        working-directory: ./terraform/infrastructure/${{ inputs.infrastructure }}
