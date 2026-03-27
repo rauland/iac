@@ -14,6 +14,7 @@ Also included is:
 
 ### Actions Pipeline
 Workflows bootstrap and call Terraform modules with infrastructure being declared in `Environments`.
+Plans use tokens that have read only access. Applys and Destroys require pipeline approval for write access.
 
 ### Wireguard VPN
 Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
@@ -38,7 +39,6 @@ By the ephemeral nature of deployments, destroys and scaling. The assumption is 
 - Modules
     - Cloud-image
         - Ubuntu
-        - Debian
     - Cloud-int
     - Nodes
         - Provision
@@ -46,7 +46,8 @@ By the ephemeral nature of deployments, destroys and scaling. The assumption is 
 
 ### CI/CD
 - AWS S3 Bucket Bootstrap
-- Terraform Plan, Apply
+- Terraform Plan, Apply, Destroy
+- Plan on PR
 - Wireguard VPN
 - Unlock State
 
@@ -59,9 +60,8 @@ By the ephemeral nature of deployments, destroys and scaling. The assumption is 
     - SOPS or Ansible-Vault
 
 ### CI/CD
-- Terraform Destroy
-- Tests
-    - Terraform Fmt
+- Linting
+    - Terraform fmt
 
 ### K8s (May be in private repo)
 - GitOps
