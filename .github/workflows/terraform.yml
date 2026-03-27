@@ -32,7 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environments: ${{ inputs.environment || 'compute' }}
+        environments: 
+          - ${{ inputs.environment || 'compute' }}
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
