@@ -92,15 +92,8 @@ jobs:
       - run: terraform init
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
 
-      - name: Apply
+      - name: ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
-        run: terraform apply -auto-approve --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
-        working-directory: ./terraform/infrastructure/${{ matrix.environments }}
-
-      - name: Destroy (if requested)
-        if: github.event.inputs.destroy == true && github.event_name == 'workflow_dispatch'
-        env: 
-          PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
-        run: terraform destroy -auto-approve --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
+        run: terraform ${{ inputs.destroy == true && '-destroy' || '' }} -auto-approve --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
