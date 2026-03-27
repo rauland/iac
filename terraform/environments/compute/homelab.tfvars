@@ -20,9 +20,6 @@ vms = {
 }
 
 cloud_images = {
-  "ubuntu-jammy" = {
-    url = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-  }
   "noble-numbat" = {
     url = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
   }
