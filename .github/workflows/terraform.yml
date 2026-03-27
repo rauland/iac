@@ -92,8 +92,8 @@ jobs:
       - run: terraform init
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
 
-      - name: ${{ inputs.destroy == true && 'destroy' || 'apply' }}
+      - name: ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
-        run: terraform ${{ inputs.destroy == true && '-destroy' || '' }} -auto-approve --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
+        run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ matrix.environments }}/homelab.tfvars
         working-directory: ./terraform/infrastructure/${{ matrix.environments }}
