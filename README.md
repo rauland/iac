@@ -14,7 +14,8 @@ Also included is:
 
 ### Actions Pipeline
 Workflows bootstrap and call Terraform modules with infrastructure being declared in `Environments`.
-Plans use tokens that have read only access. Applys and Destroys require pipeline approval for write access.
+
+Terraform plan has read only access. Terraform apply and destroy require pipeline approval for write access.
 
 ### Wireguard VPN
 Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
