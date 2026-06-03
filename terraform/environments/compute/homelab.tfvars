@@ -3,19 +3,19 @@ vms = {
     node_name = "pve"
     tags      = ["managed", "k3s"]
     cpu       = 2
-    memory    = 2048
+    memory    = 4096
   }
   k3s-02 = {
-    node_name = "pve3"
+    node_name = "pve"
     tags      = ["managed", "k3s"]
     cpu       = 2
-    memory    = 2048
+    memory    = 4096
   }
   k3s-03 = {
-    node_name = "pvenas"
+    node_name = "pve"
     tags      = ["managed", "k3s"]
     cpu       = 2
-    memory    = 2048
+    memory    = 4096
   }
 }
 

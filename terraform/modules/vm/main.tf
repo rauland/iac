@@ -1,4 +1,4 @@
-resource "proxmox_virtual_environment_vm" "ubuntu_vm" {
+resource "proxmox_virtual_environment_vm" "vm" {
   name      = var.vm_name
   tags      = var.tags
   node_name = var.node_name
