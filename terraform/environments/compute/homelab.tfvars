@@ -20,7 +20,7 @@ vms = {
 }
 
 cloud_images = {
-  "noble-numbat" = {
-    url = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+  "resolute-raccoon" = {
+    url = "https://cloud-images.ubuntu.com/resolute/current/resolute-server-cloudimg-amd64.img"
   }
 }
