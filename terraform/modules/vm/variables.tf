@@ -105,7 +105,7 @@ variable "user_account_username" {
 variable "user_account_keys_file" {
   description = "Path to the file containing SSH public keys for the user account"
   type        = string
-  default     = "../../ssh/ansible_id_rsa.pub"
+  default     = "../../ssh/id_ed25519.pub"
 }
 
 variable "network_device_bridge" {
