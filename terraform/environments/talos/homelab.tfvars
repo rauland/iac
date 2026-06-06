@@ -1,4 +1,4 @@
-pve_nodes = ["pve", "pve3"]
+pve_nodes = ["pve"]
 
 talos_nodes = {
   controlplane-01 = {
@@ -17,7 +17,7 @@ talos_nodes = {
   worker-02 = {
     node_name    = "worker-02"
     node_type    = "worker"
-    pve_node     = "pve3"
+    pve_node     = "pve"
     ipv4_address = "dhcp"
   }
 }
