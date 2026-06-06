@@ -1,4 +1,4 @@
-resource "proxmox_virtual_environment_download_file" "talos-nocloud-amd64" {
+resource "proxmox_download_file" "talos-nocloud-amd64" {
   for_each = toset(var.pve_nodes)
 
   content_type = "iso"
@@ -31,7 +31,7 @@ resource "proxmox_virtual_environment_vm" "talos_vm" {
 
   disk {
     datastore_id = "local-lvm"
-    file_id      = proxmox_virtual_environment_download_file.talos-nocloud-amd64[each.value.pve_node].id
+    file_id      = proxmox_download_file.talos-nocloud-amd64[each.value.pve_node].id
     interface    = "scsi0"
     discard      = "on"
     size         = 10
