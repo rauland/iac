@@ -1,5 +1,5 @@
 ---
-# tasks file for manage_ansible_user
+# tasks file for ansible_user
 - name: Ensure ansible user exists
   ansible.builtin.user:
     name: "{{ ansible_user_name }}"
@@ -23,11 +23,11 @@
     key: "{{ ansible_user_ssh_key }}"
     state: present
 
-- name: Ensure sudo privileges for ansible user (optional)
-  ansible.builtin.copy:
-    dest: "/etc/sudoers.d/{{ ansible_user_name }}"
-    content: "{{ ansible_user_name }} ALL=(ALL) NOPASSWD:ALL\n"
-    owner: root
-    group: root
-    mode: '0440'
-  when: ansible_user_sudo
+# - name: Ensure sudo privileges for ansible user
+#   ansible.builtin.copy:
+#     dest: "/etc/sudoers.d/{{ ansible_user_name }}"
+#     content: "{{ ansible_user_name }} ALL=(ALL) NOPASSWD:ALL\n"
+#     owner: root
+#     group: root
+#     mode: '0440'
+#   when: ansible_user_sudo

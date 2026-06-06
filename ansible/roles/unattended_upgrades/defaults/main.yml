@@ -1,0 +1,11 @@
+---
+# defaults file for unattended_upgrades
+unattended_update_package_lists: 1
+unattended_upgrade_enabled: 1
+unattended_autoclean_interval: 7
+
+unattended_auto_reboot: false
+unattended_auto_reboot_time: "02:00"
+
+unattended_origins:
+  - "${distro_id}:${distro_codename}-security"

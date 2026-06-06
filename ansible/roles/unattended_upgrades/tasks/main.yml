@@ -1,0 +1,35 @@
+---
+# tasks file for unattended_upgrades
+- name: Install unattended-upgrades
+  ansible.builtin.apt:
+    name:
+      - unattended-upgrades
+    state: present
+    update_cache: true
+
+- name: Configure automatic upgrades
+  ansible.builtin.template:
+    src: 20auto-upgrades.j2
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart unattended-upgrades
+
+- name: Configure unattended-upgrades
+  ansible.builtin.template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart unattended-upgrades
+
+- name: Ensure apt timers are enabled
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - apt-daily.timer
+    - apt-daily-upgrade.timer

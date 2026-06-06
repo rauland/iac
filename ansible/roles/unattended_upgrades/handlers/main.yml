@@ -1,0 +1,5 @@
+---
+# handlers file for unattended_upgrades
+- name: restart unattended-upgrades
+  ansible.builtin.systemd:
+    daemon_reload: true

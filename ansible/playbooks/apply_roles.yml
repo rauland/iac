@@ -7,5 +7,6 @@
   #     ansible_ssh_extra_args: "-o StrictHostKeyChecking=accept-new"
   roles:
     - set_timezone
-    - manage_ansible_user
+    - ansible_user
     - install_packages
+    - unattended_upgrades

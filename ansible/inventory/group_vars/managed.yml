@@ -1,2 +1,3 @@
 base_packages:
 - qemu-guest-agent
+unattended_auto_reboot: true
