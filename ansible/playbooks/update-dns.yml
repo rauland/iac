@@ -1,7 +1,0 @@
----
-- name: Update coredns file
-  hosts: docker-hosts
-  remote_user: root
-
-  roles:
-    - coredns

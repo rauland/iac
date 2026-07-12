@@ -1,3 +1,0 @@
-hosts_config: |
-  10.0.10.11 host1.example.com host1
-  10.0.10.12 host2.example.com host2

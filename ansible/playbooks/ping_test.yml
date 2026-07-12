@@ -1,4 +1,5 @@
-- name: Manage VMs
+---
+- name: Ping Test
   hosts: all
   gather_facts: false
   tasks:

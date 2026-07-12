@@ -1,4 +1,4 @@
-Unattended-Upgrade::Origins-Pattern {
+Unattended-Upgrade::Allowed-Origins {
 {% for origin in unattended_origins %}
         "origin={{ origin }}";
 {% endfor %}
@@ -6,6 +6,3 @@ Unattended-Upgrade::Origins-Pattern {
 
 Unattended-Upgrade::Automatic-Reboot "{{ unattended_auto_reboot | lower }}";
 Unattended-Upgrade::Automatic-Reboot-Time "{{ unattended_auto_reboot_time }}";
-
-Unattended-Upgrade::Remove-Unused-Dependencies "true";
-Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
