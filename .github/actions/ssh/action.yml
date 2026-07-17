@@ -1,0 +1,15 @@
+name: Setup SSH
+description: Reusable SSH setup action for GitHub workflows
+runs:
+  using: "composite"
+  steps:
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ inputs.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+      shell: bash
+inputs:
+  SSH_PRIVATE_KEY_ANSIBLE:
+    description: "SSH private key for Ansible"
+    required: true

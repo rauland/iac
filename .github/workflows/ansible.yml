@@ -1,0 +1,40 @@
+name: Ansible run
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ansible/**"
+jobs:
+  run:
+    name: Ansible run
+    runs-on: ubuntu-latest
+    environment: proxmox-rw
+    env:
+      PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
+      PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
+      PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
+      PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: ./github/actions/ssh
+        with:
+          SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
+
+      - uses: ./.github/actions/wireguard
+        with:
+          WIREGUARD_PRIVATE_KEY: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
+          RUNNER_IP: ${{ secrets.RUNNER_IP }}
+          PEER_IP: ${{ secrets.PEER_IP }}
+          WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
+          WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
+
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+
+      - name: Run Ansible playbook
+        run: ansible-playbook ./ansible/playbooks/apply_roles.yml -i ./ansible/inventory/hosts.yml -l 'managed'
