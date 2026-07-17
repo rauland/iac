@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: ./github/actions/ssh
+      - uses: ./.github/actions/ssh
         with:
           SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
 
