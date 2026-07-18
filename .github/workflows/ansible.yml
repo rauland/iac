@@ -35,14 +35,21 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y ansible
-      
+
+      - name: Create virtual environment
+        run: |
+          python -m venv .venv
+
+      - name: Add venv to PATH
+        run: echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+          
       - name: Install Ansible collections
         run: ansible-galaxy collection install -r ./ansible/requirements.yml
 
       - name: pip install requirements
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "proxmoxer>=2.0" requests
+          pip install "proxmoxer>=2.0" requests
 
       - name: Run Ansible playbook
         working-directory: ./ansible
