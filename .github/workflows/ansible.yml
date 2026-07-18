@@ -37,18 +37,13 @@ jobs:
           sudo apt install -y ansible
 
       - name: Create virtual environment
-        run: |
-          python -m venv .venv
-          . .venv/bin/activate
-          pip install "proxmoxer>=2.0" requests
+        run: | 
+          pip install "proxmoxer>=2.0" 
+          pip install requests
           
       - name: Install Ansible collections
-        run: |
-          . .venv/bin/activate
-          ansible-galaxy collection install -r ./ansible/requirements.yml
+        run: ansible-galaxy collection install -r ./ansible/requirements.yml
 
       - name: Run Ansible playbook
         working-directory: ./ansible
-        run: |
-          . .venv/bin/activate
-          ansible-playbook ./playbooks/apply_roles.yml -l 'managed'
+        run: ansible-playbook ./playbooks/apply_roles.yml -l 'managed'
