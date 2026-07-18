@@ -35,6 +35,12 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y ansible
+      
+      - name: Install Ansible collections
+        run: ansible-galaxy collection install -r ./ansible/requirements.yml
+
+      - name: pip install requirements
+        run: pip install proxmoxer>=2.0 requests
 
       - name: Run Ansible playbook
         run: ansible-playbook ./ansible/playbooks/apply_roles.yml -i ./ansible/inventory/hosts.yml -l 'managed'
