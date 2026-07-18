@@ -9,13 +9,4 @@ keyed_groups:
   - key: proxmox_tags_parsed
     separator: ""
 compose:
-  ansible_host: >
-    proxmox_agent_interfaces 
-    | default([]) 
-    | selectattr('name', 'in', ['eth0', 'ens18']) 
-    | map(attribute='ip-addresses') 
-    | flatten 
-    | first 
-
-    | default(proxmox_ipconfig0.ip | default(proxmox_net0.ip | default(inventory_hostname))) 
-    | ansible.utils.ipaddr('address')
+  ansible_host: proxmox_agent_interfaces[1].ip_address[0]
