@@ -8,14 +8,14 @@ want_proxmox_nodes: true
 keyed_groups:
   - key: proxmox_tags_parsed
     separator: ""
-compose:
-  ansible_host: >-
-    (proxmox_agent_interfaces 
-    | default([]) 
-    | rejectattr('name', 'equalto', 'lo') 
-    | map(attribute='ip-addresses') 
-    | flatten 
-    | ansible.utils.ipv4 
-    | first 
-    | default(inventory_hostname)).split('/') 
-    | first
+# compose:
+#   ansible_host: >-
+#     (proxmox_agent_interfaces 
+#     | default([]) 
+#     | rejectattr('name', 'equalto', 'lo') 
+#     | map(attribute='ip-addresses') 
+#     | flatten 
+#     | ansible.utils.ipv4 
+#     | first 
+#     | default(inventory_hostname)).split('/') 
+#     | first
