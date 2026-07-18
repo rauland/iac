@@ -9,4 +9,4 @@ keyed_groups:
   - key: proxmox_tags_parsed
     separator: ""
 compose:
-  ansible_host: proxmox_agent_interfaces[1].ip_address[0]
+  ansible_host: proxmox_agent_interfaces[1]['ip-addresses'][0] | default(inventory_hostname)
