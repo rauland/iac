@@ -31,15 +31,19 @@ jobs:
           WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
 
-      - name: Install Ansible
-        run: |
-          sudo apt update
-          sudo apt install -y ansible
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Create virtual environment
+      # - name: Install Ansible
+      #   run: |
+      #     sudo apt update
+      #     sudo apt install -y ansible
+
+      - name: Install Ansible & Requirements
         run: | 
-          pip install "proxmoxer>=2.0" 
-          pip install requests
+          pip install "proxmoxer>=2.0" requests ansible
           
       - name: Install Ansible collections
         run: ansible-galaxy collection install -r ./ansible/requirements.yml
