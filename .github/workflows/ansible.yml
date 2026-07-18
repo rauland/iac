@@ -36,12 +36,12 @@ jobs:
           sudo apt update
           sudo apt install -y ansible
 
-      - name: Create virtual environment
-        run: |
-          python -m venv .venv
+      # - name: Create virtual environment
+      #   run: |
+      #     python -m venv .venv
 
-      - name: Add venv to PATH
-        run: echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+      # - name: Add venv to PATH
+      #   run: echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
           
       - name: Install Ansible collections
         run: ansible-galaxy collection install -r ./ansible/requirements.yml
