@@ -40,7 +40,7 @@ jobs:
         run: ansible-galaxy collection install -r ./ansible/requirements.yml
 
       - name: pip install requirements
-        run: pip install proxmoxer>=2.0 requests
+        run: pip install "proxmoxer>=2.0" requests
 
       - name: Run Ansible playbook
         working-directory: ./ansible
