@@ -47,6 +47,6 @@ jobs:
         working-directory: ./ansible
         run: ansible-playbook ./playbooks/managed.yml -l 'managed'
 
-      - name: Run Ansible playbook for docker host
+      - name: Run Ansible playbook for k3s hosts
         working-directory: ./ansible
-        run: ansible-playbook ./playbooks/managed.yml -i ./inventory/k3s.inventory.yml -l 'k3s'
+        run: ansible-playbook k3s.orchestration.site -i ./inventory/k3s.inventory.yml
