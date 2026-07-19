@@ -3,8 +3,6 @@
   hosts: all
   remote_user: ansible
   become: true
-  # vars:
-  #     ansible_ssh_extra_args: "-o StrictHostKeyChecking=accept-new"
   roles:
     - set_timezone
     - ansible_user

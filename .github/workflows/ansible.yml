@@ -45,4 +45,8 @@ jobs:
 
       - name: Run Ansible playbook
         working-directory: ./ansible
-        run: ansible-playbook ./playbooks/apply_roles.yml -l 'managed'
+        run: ansible-playbook ./playbooks/managed.yml -l 'managed'
+
+      - name: Run Ansible playbook for docker host
+        working-directory: ./ansible
+        run: ansible-playbook ./playbooks/managed.yml -i ./inventory/k3s.inventory.yml -l 'k3s'
