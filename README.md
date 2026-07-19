@@ -9,7 +9,7 @@ It is designed to be dropped into any existing Proxmox environment and customise
 If you want to use this as a starting point for your own IaC project, fork this repo. Included are bootstrap workflows.
 
 ## Overview
-<img width="2040" height="1560" alt="fossflow-export-2026-03-22T08_35_25 035Z" src="https://github.com/user-attachments/assets/ddda8bb0-25df-464d-a298-db219ccc5e71" />
+<img width="2214" height="1635" alt="fossflow-export-2026-07-19T04_32_28 064Z" src="https://github.com/user-attachments/assets/ffaff495-a6a5-414d-98df-8cd14c4137cc" />
 
 ### Ansible Controller
 Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they have the managed ansible roles applied.
