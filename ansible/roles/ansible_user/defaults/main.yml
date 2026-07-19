@@ -5,5 +5,5 @@ ansible_user_shell: /bin/bash
 ansible_user_home: "/home/{{ ansible_user_name }}"
 ansible_user_groups: []
 # ansible_user_ssh_key: "{{ lookup('file', ansible_env.HOME + '/.ssh/id_ed25519.pub') }}"
-ansible_user_ssh_key: "{{ lookup('file', './ssh/id_ed25519.pub') }}"
+ansible_user_ssh_key: "{{ lookup('file', '../../../ssh/id_ed25519.pub') }}"
 ansible_user_sudo: true
