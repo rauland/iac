@@ -9,4 +9,4 @@ keyed_groups:
   - key: proxmox_tags_parsed
     separator: ""
 compose:
-  ansible_host: ansible_host
+  ansible_host: proxmox_agent_interfaces[1]["ip-addresses"][0] | ansible.utils.ipaddr('address') }}
