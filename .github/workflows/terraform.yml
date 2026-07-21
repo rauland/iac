@@ -98,3 +98,28 @@ jobs:
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
         run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ matrix.infrastructure }}/homelab.tfvars
         working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
+    
+  ansible: 
+    name: Ansible run
+    needs: apply
+    runs-on: ubuntu-latest
+    environment: proxmox-rw
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: ./.github/actions/ssh
+        with:
+          SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
+
+      - uses: ./.github/actions/wireguard
+        with: *wireguard-env
+      
+      - uses: ./.github/actions/ansible
+        env:
+          PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
+          PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
+          PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
+          PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
+        with:
+          working-directory: ansible
