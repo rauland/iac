@@ -1,0 +1,37 @@
+name: Ansible run
+description: Reusable Ansible action for GitHub workflows
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Ansible & proxmox requirements
+      run: |
+        pip install ansible "proxmoxer>=2.0" requests netaddr
+      shell: bash
+
+    - name: Install Ansible collections
+      run: ansible-galaxy collection install -r ./ansible/requirements.yml
+      shell: bash
+
+    - name: Run Ansible playbook
+      working-directory: ./ansible
+      run: ansible-playbook ./playbooks/managed.yml -l 'managed'
+      shell: bash
+
+inputs:
+  PROXMOX_USER:
+    description: "Proxmox user for Ansible"
+    required: true
+  PROXMOX_TOKEN_ID:
+    description: "Proxmox token ID for Ansible"
+    required: true
+  PROXMOX_TOKEN_SECRET:
+    description: "Proxmox token secret for Ansible"
+    required: true
+  PROXMOX_URL:
+    description: "Proxmox URL for Ansible"
+    required: true

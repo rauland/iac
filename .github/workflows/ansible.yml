@@ -6,16 +6,20 @@ on:
     branches: [main]
     paths:
       - "ansible/**"
+  # workflow_run:
+  #   workflows: ["Terraform Actions"]
+  #   types:
+  #     - completed
 jobs:
   run:
     name: Ansible run
     runs-on: ubuntu-latest
     environment: proxmox-rw
-    env:
-      PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
-      PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
-      PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
-      PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
+    # env:
+    #   PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
+    #   PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
+    #   PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
+    #   PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
     steps:
       - uses: actions/checkout@v4
       
@@ -30,22 +34,29 @@ jobs:
           PEER_IP: ${{ secrets.PEER_IP }}
           WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      
+      - uses: ./.github/actions/ansible
         with:
-          python-version: '3.11'
+          PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
+          PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
+          PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
+          PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
 
-      - name: Install Ansible & proxmox requirements
-        run: | 
-          pip install ansible "proxmoxer>=2.0" requests netaddr
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.11'
+
+      # - name: Install Ansible & proxmox requirements
+      #   run: | 
+      #     pip install ansible "proxmoxer>=2.0" requests netaddr
           
-      - name: Install Ansible collections
-        run: ansible-galaxy collection install -r ./ansible/requirements.yml
+      # - name: Install Ansible collections
+      #   run: ansible-galaxy collection install -r ./ansible/requirements.yml
 
-      - name: Run Ansible playbook
-        working-directory: ./ansible
-        run: ansible-playbook ./playbooks/managed.yml -l 'managed'
+      # - name: Run Ansible playbook
+      #   working-directory: ./ansible
+      #   run: ansible-playbook ./playbooks/managed.yml -l 'managed'
 
       # - name: Run Ansible playbook for k3s hosts
       #   working-directory: ./ansible
