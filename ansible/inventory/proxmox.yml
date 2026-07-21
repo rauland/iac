@@ -10,3 +10,7 @@ keyed_groups:
     separator: ""
 compose:
   ansible_host: proxmox_agent_interfaces[1]["ip-addresses"][0] | ansible.utils.ipaddr('address')
+groups:
+  server: "'k3s-server' in proxmox_tags_parsed"
+  agent: "'k3s-agent' in proxmox_tags_parsed"
+  k3s_cluster: "'k3s' in proxmox_tags_parsed or 'k3s-server' in proxmox_tags_parsed or 'k3s-agent' in proxmox_tags_parsed"
