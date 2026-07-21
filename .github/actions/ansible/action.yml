@@ -23,18 +23,6 @@ runs:
       shell: bash
 
 inputs:
-  PROXMOX_USER:
-    description: "Proxmox user for Ansible"
-    required: true
-  PROXMOX_TOKEN_ID:
-    description: "Proxmox token ID for Ansible"
-    required: true
-  PROXMOX_TOKEN_SECRET:
-    description: "Proxmox token secret for Ansible"
-    required: true
-  PROXMOX_URL:
-    description: "Proxmox URL for Ansible"
-    required: true
   working-directory:
     description: "Working directory for Ansible playbook"
     required: true

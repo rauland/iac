@@ -8,5 +8,5 @@ want_proxmox_nodes: true
 keyed_groups:
   - key: proxmox_tags_parsed
     separator: ""
-compose:
-  ansible_host: proxmox_agent_interfaces[1]["ip-addresses"][0] | ansible.utils.ipaddr('address')
+# compose:
+  # ansible_host: proxmox_agent_interfaces[1]["ip-addresses"][0] | ansible.utils.ipaddr('address')
