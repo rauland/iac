@@ -41,6 +41,7 @@ jobs:
           PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
           PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
           PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
+          working-directory: ansible
 
       # - name: Set up Python
       #   uses: actions/setup-python@v5
