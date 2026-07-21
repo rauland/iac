@@ -21,7 +21,7 @@ on:
       - 'terraform/modules/**'
       - 'terraform/infrastructure/**'
       - 'terraform/environments/**'
-      - '.github/actions/**'
+      # - '.github/actions/**'
       - '.github/workflows/terraform.yml'
   push:
     branches: [main]
