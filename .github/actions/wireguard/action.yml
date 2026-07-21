@@ -26,6 +26,7 @@ inputs:
   WIREGUARD_PRIVATE_KEY:
     description: "WireGuard private key"
     required: true
+    secret: true
   RUNNER_IP:
     description: "IP address for the GitHub runner"
     required: true

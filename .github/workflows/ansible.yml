@@ -15,17 +15,8 @@ jobs:
     name: Ansible run
     runs-on: ubuntu-latest
     environment: proxmox-rw
-    # env:
-    #   PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
-    #   PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
-    #   PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
-    #   PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: ./.github/actions/ssh
-        with:
-          SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
 
       - uses: ./.github/actions/wireguard
         with:
@@ -43,22 +34,7 @@ jobs:
           PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
         with:
           working-directory: ansible
-
-      # - name: Set up Python
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: '3.11'
-
-      # - name: Install Ansible & proxmox requirements
-      #   run: | 
-      #     pip install ansible "proxmoxer>=2.0" requests netaddr
-          
-      # - name: Install Ansible collections
-      #   run: ansible-galaxy collection install -r ./ansible/requirements.yml
-
-      # - name: Run Ansible playbook
-      #   working-directory: ./ansible
-      #   run: ansible-playbook ./playbooks/managed.yml -l 'managed'
+          SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
 
       # - name: Run Ansible playbook for k3s hosts
       #   working-directory: ./ansible

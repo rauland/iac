@@ -13,3 +13,4 @@ inputs:
   SSH_PRIVATE_KEY_ANSIBLE:
     description: "SSH private key for Ansible"
     required: true
+    secret: true

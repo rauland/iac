@@ -3,6 +3,10 @@ description: Reusable Ansible action for GitHub workflows
 runs:
   using: "composite"
   steps:
+    - uses: ./.github/actions/ssh
+      with:
+        SSH_PRIVATE_KEY_ANSIBLE: ${{ inputs.SSH_PRIVATE_KEY_ANSIBLE }}    
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -26,3 +30,7 @@ inputs:
   working-directory:
     description: "Working directory for Ansible playbook"
     required: true
+  SSH_PRIVATE_KEY_ANSIBLE:
+    description: "SSH private key for Ansible"
+    required: true
+    secret: true

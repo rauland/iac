@@ -107,10 +107,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: ./.github/actions/ssh
-        with:
-          SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
 
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
@@ -123,3 +119,4 @@ jobs:
           PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
         with:
           working-directory: ansible
+          SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
