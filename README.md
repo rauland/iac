@@ -1,5 +1,6 @@
 # IaC and pipelines for self-hosted virtualisation.
-Infrastructure as Code setup used to manage my Proxmox Virtual Environment. It is composed of:
+Infrastructure as Code project for managing a Proxmox Virtual Environment. It provides a automation foundation comprising of:
+
 - Ansible roles and playbooks for configuration management.
 - GitHub Actions workflows for continuous integration and deployment.
 - Terraform modules for infrastructure provisioning.
