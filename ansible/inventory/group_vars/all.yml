@@ -1,4 +1,5 @@
 system_timezone: "Australia/Melbourne"
 unattended_origins:
+  - "${distro_id}:${distro_codename}"
   - "${distro_id}:${distro_codename}-security"
   - "${distro_id}:${distro_codename}-updates"
