@@ -9,8 +9,8 @@ module "cloud_image" {
   os_url = each.value.url
 }
 
-module "vm" {
-  source   = "../../modules/vm"
+module "virtual_machine" {
+  source   = "../../modules/virtual-machine"
   for_each = var.vms
 
   providers = {

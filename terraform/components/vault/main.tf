@@ -10,8 +10,8 @@ module "cloud_image" {
   file_name = each.value.file_name
 }
 
-module "vm" {
-  source   = "../../modules/vm"
+module "virtual_machine" {
+  source   = "../../modules/virtual-machine"
   for_each = var.vms
 
   providers = {
