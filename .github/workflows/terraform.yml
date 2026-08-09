@@ -10,8 +10,8 @@ on:
         options:
           - production
           - development
-      infrastructure:
-        description: "Target infrastructure to deploy (e.g., k3s, talos)"
+      component:
+        description: "Target component to deploy (e.g., k3s, talos)"
         required: true
         type: choice
         options:
@@ -26,7 +26,7 @@ on:
     branches: [main]
     paths: &paths
       - 'terraform/modules/**'
-      - 'terraform/infrastructure/**'
+      - 'terraform/components/**'
       - 'terraform/environments/**'
       # - '.github/actions/**'
       - '.github/workflows/terraform.yml'
@@ -39,8 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        infrastructure: &infrastructure
-          - ${{ inputs.infrastructure }}
+        component: &component
+          - ${{ inputs.component }}
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
@@ -71,13 +71,13 @@ jobs:
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
 
       - run: terraform init
-        working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
+        working-directory: ./terraform/components/${{ matrix.component }}
 
       - name: Plan
-        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ inputs.environment }}/${{ matrix.infrastructure }}.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
+        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ inputs.environment }}/${{ matrix.component }}.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
 
         id: plan
-        working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
+        working-directory: ./terraform/components/${{ matrix.component }}
 
   apply:
     name: Terraform ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        infrastructure: *infrastructure
+        component: *component
     environment: proxmox-rw
     env: *common-env
     
@@ -97,14 +97,14 @@ jobs:
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
 
-      - run: terraform init
-        working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
+      - run: terraform init -backend-config="key=terraform/${{ inputs.environment }}/${{ matrix.component }}.tfstate"
+        working-directory: ./terraform/components/${{ matrix.component }}
 
       - name: ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
-        run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ inputs.environment }}/${{ matrix.infrastructure }}.tfvars
-        working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
+        run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ inputs.environment }}/${{ matrix.component }}.tfvars
+        working-directory: ./terraform/components/${{ matrix.component }}
     
   ansible: 
     name: Ansible run
