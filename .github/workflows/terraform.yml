@@ -3,12 +3,19 @@ name: Terraform Actions
 on:
   workflow_dispatch:
     inputs:
-      infrastructure:
-        description: "Target environment to deploy (e.g., compute, talos)"
+      environment:
+        description: "Target environment to deploy (e.g., production, development)"
         required: true
         type: choice
         options:
-          - compute
+          - production
+          - development
+      infrastructure:
+        description: "Target infrastructure to deploy (e.g., k3s, talos)"
+        required: true
+        type: choice
+        options:
+          - k3s
           - talos
       destroy:
         description: "Destroy resources"
@@ -33,7 +40,7 @@ jobs:
     strategy:
       matrix:
         infrastructure: &infrastructure
-          - ${{ inputs.infrastructure || 'compute' }}
+          - ${{ inputs.infrastructure }}
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
@@ -67,7 +74,7 @@ jobs:
         working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
 
       - name: Plan
-        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ matrix.infrastructure }}/homelab.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
+        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ inputs.environment }}/${{ matrix.infrastructure }}.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
 
         id: plan
         working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
@@ -96,7 +103,7 @@ jobs:
       - name: ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
-        run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ matrix.infrastructure }}/homelab.tfvars
+        run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ inputs.environment }}/${{ matrix.infrastructure }}.tfvars
         working-directory: ./terraform/infrastructure/${{ matrix.infrastructure }}
     
   ansible: 
