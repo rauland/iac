@@ -1,6 +1,7 @@
 resource "proxmox_download_file" "cloud_image" {
   for_each = toset(data.proxmox_virtual_environment_nodes.nodes.names)
 
+  file_name      = var.file_name
   content_type   = "iso"
   datastore_id   = "local"
   node_name      = each.key
