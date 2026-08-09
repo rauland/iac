@@ -70,7 +70,7 @@ jobs:
           WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
 
-      - run: terraform init
+      - run: terraform init -backend-config="key=terraform/${{ inputs.environment }}/${{ matrix.component }}.tfstate"
         working-directory: ./terraform/components/${{ matrix.component }}
 
       - name: Plan
