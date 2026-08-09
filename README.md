@@ -24,7 +24,7 @@ Terraform plan has read only access. Terraform apply and destroy require pipelin
 Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
 
 ## Environment Example
-[./terraform/environments/compute/homelab.tfvars](https://github.com/rauland/iac/blob/main/terraform/environments/compute/homelab.tfvars)
+[./terraform/environments/development/k3s.tfvars](https://github.com/rauland/iac/blob/main/terraform/environments/development/k3s.tfvars)
 ```
 vms = {                              # 1 or more VMs can be defined
   k3s-01 = {                         # name of guest
