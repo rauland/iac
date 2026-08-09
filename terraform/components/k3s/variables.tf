@@ -26,11 +26,3 @@ variable "cloud_images" {
     url = string
   }))
 }
-
-variable "environment" {
-  type = string
-}
-
-variable "component" {
-  type = string
-}
