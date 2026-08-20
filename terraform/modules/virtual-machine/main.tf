@@ -1,5 +1,5 @@
 module "cloud_init" {
-  source = "../cloud-init"
+  source = "./modules/cloud-init"
 
   providers = {
     proxmox = proxmox
