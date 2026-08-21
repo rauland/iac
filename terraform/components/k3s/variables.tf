@@ -13,16 +13,11 @@ variable "virtual_environment_api_token" {
 
 variable "vms" {
   type = map(object({
-    node_name = string
-    tags      = list(string)
-    os        = optional(string, "resolute-raccoon")
-    cpu       = optional(number)
-    memory    = optional(number)
-  }))
-}
-
-variable "cloud_images" {
-  type = map(object({
-    url = string
+    node_name        = string
+    tags             = list(string)
+    cpu              = optional(number)
+    memory           = optional(number)
+    iso_datastore_id = optional(string, "local")
+    iso_file_name    = optional(string, "resolute-server-cloudimg-amd64.img")
   }))
 }

@@ -1,7 +1,7 @@
-variable "cloud_image_id" {
-  description = "ID of the downloaded cloud image"
-  type        = string
-}
+# variable "cloud_image_id" {
+#   description = "ID of the downloaded cloud image"
+#   type        = string
+# }
 
 variable "vm_name" {
   description = "Name of the VM"
@@ -11,6 +11,18 @@ variable "vm_name" {
 variable "node_name" {
   description = "Name of PVE node where the VM will be created"
   type        = string
+}
+
+variable "iso_datastore_id" {
+  description = "Datastore ID where the cloud image is stored"
+  type        = string
+  default     = "local"
+}
+
+variable "iso_file_name" {
+  description = "Name of the cloud image file"
+  type        = string
+  default     = "resolute-server-cloudimg-amd64.img"
 }
 
 variable "agent_enabled" {

@@ -18,9 +18,3 @@ vms = {
     memory    = 4096
   }
 }
-
-cloud_images = {
-  "resolute-raccoon" = {
-    url = "https://cloud-images.ubuntu.com/resolute/current/resolute-server-cloudimg-amd64.img"
-  }
-}

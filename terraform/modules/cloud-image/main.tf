@@ -1,10 +1,10 @@
-resource "proxmox_download_file" "cloud_image" {
-  for_each = toset(data.proxmox_virtual_environment_nodes.nodes.names)
-
+resource "proxmox_download_file" "node" {
+  for_each = toset(var.node_names)
+  
   file_name      = var.file_name
-  content_type   = "iso"
-  datastore_id   = "local"
+  content_type   = var.content_type
+  datastore_id   = var.datastore_id
   node_name      = each.key
-  url            = var.os_url
-  upload_timeout = 1200
+  url            = var.url
+  upload_timeout = var.upload_timeout
 }

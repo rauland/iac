@@ -9,6 +9,13 @@ module "cloud_init" {
   vm_name   = var.vm_name
 }
 
+data "proxmox_file" "iso" {
+  node_name    = var.node_name
+  datastore_id = var.iso_datastore_id
+  content_type = "iso"
+  file_name    = var.iso_file_name
+}
+
 resource "proxmox_virtual_environment_vm" "node" {
   name      = var.vm_name
   tags      = var.tags
@@ -47,7 +54,7 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   disk {
     datastore_id = var.disk_datastore_id
-    file_id      = var.cloud_image_id
+    file_id      = data.proxmox_file.iso.id
     interface    = var.disk_interface
     iothread     = true
     discard      = "on"
