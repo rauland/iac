@@ -8,4 +8,5 @@ module "cloud_image" {
 
   url        = each.value.url
   node_names = each.value.node_names
+  file_name  = each.key
 }

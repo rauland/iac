@@ -1,8 +1,3 @@
-# variable "cloud_image_id" {
-#   description = "ID of the downloaded cloud image"
-#   type        = string
-# }
-
 variable "vm_name" {
   description = "Name of the VM"
   type        = string
