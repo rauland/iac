@@ -1,13 +1,9 @@
 # IaC and pipelines for self-hosted virtualisation.
-Infrastructure as Code project for managing a Proxmox Virtual Environment. It provides a automation foundation comprising of:
+This Infrastructure as Code project provides a platform powered by automation tools within Proxmox, this includes:
 
-- Ansible roles and playbooks for configuration management.
+- Ansible roles and playbooks for configuration management of platform components.
 - GitHub Actions workflows for continuous integration and deployment.
-- Terraform modules for infrastructure provisioning.
-
-It is designed to be dropped into any existing Proxmox environment and customised as required.
-
-If you want to use this as a starting point for your own IaC project, fork this repo. Included are bootstrap workflows.
+- Terraform modules for infrastructure provisioning of platform components.
 
 ## Overview
 <img width="2214" height="1635" alt="fossflow-export-2026-07-19T04_32_28 064Z" src="https://github.com/user-attachments/assets/ffaff495-a6a5-414d-98df-8cd14c4137cc" />
@@ -40,12 +36,6 @@ vms = {                              # 1 or more VMs can be defined
     memory    = 4096
   }
 }
-
-cloud_images = {
-  "resolute-raccoon" = {            # default OS image
-    url = "https://cloud-images.ubuntu.com/resolute/current/resolute-server-cloudimg-amd64.img"
-  }
-}
 ```
 
 ## Limitations
@@ -59,15 +49,13 @@ By the ephemeral nature of deployments, destroys and scaling. The assumption is 
     - Tag-based
 
 ### Infrastructure Provisioning
-- Remote state backend on AWS S3
-- State locking
+- Remote state locking backend on AWS S3
 - Modules
-    - Cloud-image
-        - Ubuntu
-    - Cloud-int
-    - Nodes
-        - Provision
-        - Tags
+  - cloud-image
+  - virtual-machine
+- Platform
+  - vault
+  - k3s
 
 ### CI/CD
 - Ansible Controller

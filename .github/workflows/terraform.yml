@@ -11,12 +11,15 @@ on:
           - production
           - development
       component:
-        description: "Target component to deploy (e.g., k3s, talos)"
+        description: "Target platform component to deploy (e.g., images, vault)"
         required: true
         type: choice
         options:
+          - images
           - k3s
           - talos
+          - vault
+          
       destroy:
         description: "Destroy resources"
         required: true
@@ -26,7 +29,7 @@ on:
     branches: [main]
     paths: &paths
       - 'terraform/modules/**'
-      - 'terraform/components/**'
+      - 'terraform/platform/**'
       - 'terraform/environments/**'
       # - '.github/actions/**'
       - '.github/workflows/terraform.yml'
@@ -71,13 +74,13 @@ jobs:
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
 
       - run: terraform init -backend-config="key=terraform/${{ inputs.environment }}/${{ matrix.component }}.tfstate"
-        working-directory: ./terraform/components/${{ matrix.component }}
+        working-directory: ./terraform/platform/${{ matrix.component }}
 
       - name: Plan
         run: terraform plan -lock=false --input=false -var-file=../../environments/${{ inputs.environment }}/${{ matrix.component }}.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
 
         id: plan
-        working-directory: ./terraform/components/${{ matrix.component }}
+        working-directory: ./terraform/platform/${{ matrix.component }}
 
   apply:
     name: Terraform ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
@@ -98,13 +101,13 @@ jobs:
         with: *wireguard-env
 
       - run: terraform init -backend-config="key=terraform/${{ inputs.environment }}/${{ matrix.component }}.tfstate"
-        working-directory: ./terraform/components/${{ matrix.component }}
+        working-directory: ./terraform/platform/${{ matrix.component }}
 
       - name: ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
         run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ inputs.environment }}/${{ matrix.component }}.tfvars
-        working-directory: ./terraform/components/${{ matrix.component }}
+        working-directory: ./terraform/platform/${{ matrix.component }}
     
   ansible: 
     name: Ansible run
