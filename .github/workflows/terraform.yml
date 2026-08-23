@@ -42,8 +42,9 @@ jobs:
     name: Terraform Plan
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 1
       matrix:
-        environment:
+        environment: &environment
           - ${{ inputs.environment || 'prod' }}
         component: &component
           - ${{ inputs.component || fromJSON('["images", "k3s", "talos", "vault"]') }}
@@ -76,11 +77,11 @@ jobs:
           WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
 
-      - run: terraform init -backend-config="key=terraform/${{ inputs.environment }}/${{ matrix.component }}.tfstate"
+      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.component }}.tfstate"
         working-directory: ./terraform/platform/${{ matrix.component }}
 
       - name: Plan
-        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ inputs.environment }}/${{ matrix.component }}.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
+        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
 
         id: plan
         working-directory: ./terraform/platform/${{ matrix.component }}
@@ -92,6 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        environment: *environment
         component: *component
     environment: proxmox-rw
     env: *common-env
@@ -103,13 +105,13 @@ jobs:
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
 
-      - run: terraform init -backend-config="key=terraform/${{ inputs.environment }}/${{ matrix.component }}.tfstate"
+      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.component }}.tfstate"
         working-directory: ./terraform/platform/${{ matrix.component }}
 
       - name: ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
-        run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ inputs.environment }}/${{ matrix.component }}.tfvars
+        run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars
         working-directory: ./terraform/platform/${{ matrix.component }}
     
   ansible: 
