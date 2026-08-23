@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment to deploy (e.g., production, development)"
+        description: "Target environment to deploy (e.g., dev, prod)"
         required: true
         type: choice
         options:
-          - production
-          - development
+          - dev
+          - prod
       component:
         description: "Target platform component to deploy (e.g., images, vault)"
         required: true
@@ -33,6 +33,7 @@ on:
       - 'terraform/environments/**'
       # - '.github/actions/**'
       - '.github/workflows/terraform.yml'
+    
   push:
     branches: [main]
     paths: *paths
@@ -42,8 +43,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        environment:
+          - ${{ inputs.environment || 'prod' }}
         component: &component
-          - ${{ inputs.component }}
+          - ${{ inputs.component || fromJSON('["images", "k3s", "talos", "vault"]') }}
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
