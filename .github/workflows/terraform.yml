@@ -87,8 +87,8 @@ jobs:
         working-directory: ./terraform/platform/${{ matrix.component }}
 
   apply:
-    name: Terraform ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    name: Terraform Apply
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.destroy == false
     needs: plan
     runs-on: ubuntu-latest
     strategy:
@@ -108,10 +108,38 @@ jobs:
       - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.component }}.tfstate"
         working-directory: ./terraform/platform/${{ matrix.component }}
 
-      - name: ${{ inputs.destroy == true && 'Destroy' || 'Apply' }}
+      - name: Apply
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
-        run: terraform ${{ inputs.destroy == true && 'destroy' || 'apply' }} -auto-approve --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars
+        run: terraform apply -auto-approve --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars
+        working-directory: ./terraform/platform/${{ matrix.component }}
+
+  destroy:
+    name: Terraform Destroy
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.destroy == true
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: *environment
+        component: *component
+    environment: proxmox-rw
+    env: *common-env
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+
+      - uses: ./.github/actions/wireguard
+        with: *wireguard-env
+
+      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.component }}.tfstate"
+        working-directory: ./terraform/platform/${{ matrix.component }}
+
+      - name: Destroy
+        env: 
+          PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
+        run: terraform destroy -auto-approve --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars
         working-directory: ./terraform/platform/${{ matrix.component }}
     
   ansible: 
