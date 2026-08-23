@@ -47,7 +47,7 @@ jobs:
         environment: &environment
           - ${{ inputs.environment || 'prod' }}
         component: &component
-          - ${{ inputs.component || fromJSON('["images", "k3s", "talos", "vault"]') }}
+          - ${{ inputs.component || fromJSON('["images", "talos"]') }}
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
