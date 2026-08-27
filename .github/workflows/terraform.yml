@@ -169,4 +169,4 @@ jobs:
         with:
           working-directory: ansible
           SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
-          subset: ${{ matrix.component }}
+          limit: ${{ matrix.component }}

@@ -23,7 +23,7 @@ runs:
 
     - name: Run Ansible playbook
       working-directory: "${{ inputs.working-directory}}"
-      run: ansible-playbook ./playbooks/managed.yml --limit ${{ inputs.subset }}
+      run: ansible-playbook ./playbooks/managed.yml --limit ${{ inputs.limit }}
       shell: bash
 
 inputs:
@@ -34,6 +34,6 @@ inputs:
     description: "SSH private key for Ansible"
     required: true
     secret: true
-  subset:
+  limit:
     description: "Subset of hosts to target"
     required: true
