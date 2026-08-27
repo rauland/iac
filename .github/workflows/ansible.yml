@@ -6,10 +6,6 @@ on:
     branches: [main]
     paths:
       - "ansible/**"
-  # workflow_run:
-  #   workflows: ["Terraform Actions"]
-  #   types:
-  #     - completed
 jobs:
   run:
     name: Ansible run
@@ -35,6 +31,7 @@ jobs:
         with:
           working-directory: ansible
           SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
+          limit: managed
 
       # - name: Run Ansible playbook for k3s hosts
       #   working-directory: ./ansible
