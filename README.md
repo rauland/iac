@@ -1,6 +1,7 @@
 # Self-hosted Platform
 This Infrastructure as Code project defines and automates the infrastructure and services that make up a self-hosted platform running on Proxmox. It provides the underlying compute, shared services and automation capabilities required to operate the platform and support workloads running on it.
 
+### Technologies used
 - Ansible roles and playbooks for configuration management of platform components.
 - GitHub Actions workflows for continuous integration and deployment.
 - Terraform modules for infrastructure provisioning of platform components.
