@@ -1,5 +1,5 @@
 module "virtual_machine" {
-  source   = "../../modules/virtual-machine"
+  source   = "../../../modules/virtual-machine"
   for_each = var.vms
 
   providers = {

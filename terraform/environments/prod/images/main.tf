@@ -1,5 +1,5 @@
 module "cloud_image" {
-  source   = "../../modules/cloud-image"
+  source   = "../../../modules/cloud-image"
   for_each = var.cloud_images
 
   providers = {

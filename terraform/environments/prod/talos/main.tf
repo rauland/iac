@@ -1,5 +1,5 @@
 module "talos_cluster" {
-  source = "../../modules/talos-cluster"
+  source = "../../../modules/talos-cluster"
   providers = {
     talos = talos
     proxmox = proxmox
