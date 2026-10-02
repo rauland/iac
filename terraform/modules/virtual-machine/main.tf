@@ -5,31 +5,31 @@ module "cloud_init" {
     proxmox = proxmox
   }
 
-  node_name = var.node_name
-  vm_name   = var.vm_name
+  node_name = var.vm_config.node_name
+  vm_name   = var.vm_config.vm_name
 }
 
 data "proxmox_file" "iso" {
-  node_name    = var.node_name
-  datastore_id = var.iso_datastore_id
+  node_name    = var.vm_config.node_name
+  datastore_id = var.vm_config.iso_datastore_id
   content_type = "iso"
-  file_name    = var.iso_file_name
+  file_name    = var.vm_config.iso_file_name
 }
 
 resource "proxmox_virtual_environment_vm" "node" {
-  name      = var.vm_name
-  tags      = var.tags
-  node_name = var.node_name
+  name      = var.vm_config.vm_name
+  tags      = var.vm_config.tags
+  node_name = var.vm_config.node_name
 
   agent {
-    enabled = var.agent_enabled
+    enabled = var.vm_config.agent_enabled
   }
   migrate     = true
-  description = var.description
-  machine     = var.machine
-  bios        = var.bios
+  description = var.vm_config.description
+  machine     = var.vm_config.machine
+  bios        = var.vm_config.bios
 
-  stop_on_destroy = var.stop_on_destroy
+  stop_on_destroy = var.vm_config.stop_on_destroy
 
   lifecycle {
     ignore_changes = [
@@ -40,32 +40,32 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   cpu {
-    cores = var.cpu_cores
-    type = "host"
+    cores = var.vm_config.cpu_cores
+    type  = "host"
   }
 
   memory {
-    dedicated = var.memory_dedicated
+    dedicated = var.vm_config.memory_dedicated
   }
 
   efi_disk {
-    datastore_id = var.efi_disk_datastore_id
-    type         = var.efi_disk_type
+    datastore_id = var.vm_config.efi_disk_datastore_id
+    type         = var.vm_config.efi_disk_type
   }
 
   disk {
-    datastore_id = var.disk_datastore_id
+    datastore_id = var.vm_config.disk_datastore_id
     file_id      = data.proxmox_file.iso.id
-    interface    = var.disk_interface
+    interface    = var.vm_config.disk_interface
     iothread     = true
     discard      = "on"
-    size         = var.disk_size
+    size         = var.vm_config.disk_size
   }
 
   initialization {
     ip_config {
       ipv4 {
-        address = var.ip_config_ipv4_address
+        address = var.vm_config.ip_config_ipv4_address
       }
     }
 
@@ -73,6 +73,6 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   network_device {
-    bridge = var.network_device_bridge
+    bridge = var.vm_config.network_device_bridge
   }
 }

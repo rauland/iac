@@ -1,122 +1,55 @@
-variable "vm_name" {
-  description = "Name of the VM"
-  type        = string
-}
+variable "vm_config" {
+  description = <<-EOT
+    Configuration for the virtual machine.
 
-variable "node_name" {
-  description = "Name of PVE node where the VM will be created"
-  type        = string
-}
+      vm_name                - Name of the virtual machine.
+      node_name              - Proxmox node on which the VM will run.
+      cpu                    - Number of CPU cores allocated to the VM.
+      memory                 - Amount of memory allocated to the VM in MB.
+      tags                   - Tags assigned to the VM.
+      iso_datastore_id       - Datastore containing the installation ISO.
+      iso_file_name          - Installation ISO filename.
+      agent_enabled          - Whether the QEMU agent is enabled for the VM.
+      description            - Description of the VM.
+      machine                - Machine type for the VM.
+      bios                   - BIOS type for the VM.
+      stop_on_destroy        - Whether to stop the VM on destroy.
+      cpu_cores              - Number of CPU cores for the VM.
+      memory_dedicated       - Amount of dedicated memory (in MB) for the VM.
+      efi_disk_datastore_id  - Datastore ID for the EFI disk.
+      efi_disk_type          - Type of the EFI disk.
+      disk_datastore_id      - Datastore ID for the main disk.
+      disk_interface         - Interface for the main disk.
+      disk_size              - Size of the main disk (in GB).
+      ip_config_ipv4_address - IPv4 address for the VM.
+      user_account_username  - Username for the user account.
+      user_account_keys_file - Path to the public SSH key file for the user account.
+      network_device_bridge  - Bridge for the network device.
+  EOT
 
-variable "iso_datastore_id" {
-  description = "Datastore ID where the cloud image is stored"
-  type        = string
-  default     = "local"
-}
-
-variable "iso_file_name" {
-  description = "Name of the cloud image file"
-  type        = string
-  default     = "resolute-server-cloudimg-amd64.img"
-}
-
-variable "agent_enabled" {
-  description = "Whether to enable the QEMU agent"
-  type        = bool
-  default     = true
-}
-
-variable "tags" {
-  description = "List of tags for the VM"
-  type        = list(string)
-}
-
-variable "description" {
-  description = "Description of the VM"
-  type        = string
-  default     = "Created by Terraform"
-}
-
-variable "machine" {
-  description = "Machine type for the VM"
-  type        = string
-  default     = "q35"
-}
-
-variable "bios" {
-  description = "BIOS type for the VM"
-  type        = string
-  default     = "ovmf"
-}
-
-variable "stop_on_destroy" {
-  description = "Whether to stop the VM on destroy"
-  type        = bool
-  default     = true
-}
-
-variable "cpu_cores" {
-  description = "Number of CPU cores for the VM"
-  type        = number
-  default     = 1
-}
-
-variable "memory_dedicated" {
-  description = "Amount of dedicated memory (in MB) for the VM"
-  type        = number
-  default     = 1024
-}
-
-variable "efi_disk_datastore_id" {
-  description = "Datastore ID for the EFI disk"
-  type        = string
-  default     = "local-lvm"
-}
-
-variable "efi_disk_type" {
-  description = "Type of the EFI disk"
-  type        = string
-  default     = "4m"
-}
-
-variable "disk_datastore_id" {
-  description = "Datastore ID for the main disk"
-  type        = string
-  default     = "local-lvm"
-}
-
-variable "disk_interface" {
-  description = "Interface for the main disk"
-  type        = string
-  default     = "virtio0"
-}
-
-variable "disk_size" {
-  description = "Size of the main disk (in GB)"
-  type        = number
-  default     = 20
-}
-
-variable "ip_config_ipv4_address" {
-  description = "IPv4 address for the VM"
-  type        = string
-  default     = "dhcp"
-}
-
-variable "user_account_username" {
-  description = "Username for the user account"
-  type        = string
-  default     = "ansible"
-}
-
-variable "user_account_keys_file" {
-  description = "Path to the file containing SSH public keys for the user account"
-  type        = string
-  default     = "../../../ssh/id_ed25519.pub"
-}
-
-variable "network_device_bridge" {
-  description = "Bridge for the network device"
-  type        = string
-  default     = "vmbr0"
+  type = object({
+    vm_name                = string
+    node_name              = string
+    cpu                    = number
+    memory                 = number
+    tags                   = optional(list(string), [])
+    iso_datastore_id       = optional(string)
+    iso_file_name          = optional(string)
+    agent_enabled          = optional(bool, true)
+    description            = optional(string, "Created by Terraform")
+    machine                = optional(string, "q35")
+    bios                   = optional(string, "ovmf")
+    stop_on_destroy        = optional(bool, true)
+    cpu_cores              = optional(number, 1)
+    memory_dedicated       = optional(number, 1024)
+    efi_disk_datastore_id  = optional(string, "local-lvm")
+    efi_disk_type          = optional(string, "4m")
+    disk_datastore_id      = optional(string, "local-lvm")
+    disk_interface         = optional(string, "virtio0")
+    disk_size              = optional(number, 20)
+    ip_config_ipv4_address = optional(string, "dhcp")
+    user_account_username  = optional(string, "ansible")
+    user_account_keys_file = optional(string, "../../../ssh/id_ed25519.pub")
+    network_device_bridge  = optional(string, "vmbr0")
+  })
 }

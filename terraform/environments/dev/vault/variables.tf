@@ -13,6 +13,7 @@ variable "virtual_environment_api_token" {
 
 variable "vms" {
   type = map(object({
+    vm_name          = string
     node_name        = string
     tags             = list(string)
     cpu              = optional(number)

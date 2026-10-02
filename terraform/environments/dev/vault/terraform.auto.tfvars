@@ -1,5 +1,6 @@
 vms = {
   vault = {
+    vm_name       = "vault"
     node_name     = "pve"
     tags          = ["managed", "vault"]
     cpu           = 2
