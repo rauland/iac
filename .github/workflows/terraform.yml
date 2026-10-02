@@ -30,7 +30,6 @@ on:
     paths: &paths
       - 'terraform/modules/**'
       - 'terraform/environments/**'
-      # - '.github/actions/**'
       - '.github/workflows/terraform.yml'
     
   push:
@@ -80,7 +79,7 @@ jobs:
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
 
       - name: Plan
-        run: terraform plan -lock=false --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
+        run: terraform plan -lock=false --input=false ${{ inputs.destroy == true && '-destroy' || '' }}
 
         id: plan
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
@@ -111,7 +110,7 @@ jobs:
       - name: Apply
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
-        run: terraform apply -auto-approve --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars
+        run: terraform apply -auto-approve --input=false
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
 
   destroy:
@@ -140,7 +139,7 @@ jobs:
       - name: Destroy
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
-        run: terraform destroy -auto-approve --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars
+        run: terraform destroy -auto-approve --input=false
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
     
   ansible: 
