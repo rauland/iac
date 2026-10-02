@@ -11,7 +11,7 @@ on:
           - dev
           - prod
       component:
-        description: "Target platform component to deploy (e.g., images, vault)"
+        description: "Target component to deploy (e.g., images, vault)"
         required: true
         type: choice
         options:
@@ -29,7 +29,6 @@ on:
     branches: [main]
     paths: &paths
       - 'terraform/modules/**'
-      - 'terraform/platform/**'
       - 'terraform/environments/**'
       # - '.github/actions/**'
       - '.github/workflows/terraform.yml'
@@ -78,13 +77,13 @@ jobs:
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
 
       - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.component }}.tfstate"
-        working-directory: ./terraform/platform/${{ matrix.component }}
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
 
       - name: Plan
         run: terraform plan -lock=false --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars ${{ inputs.destroy == true && '-destroy' || '' }}
 
         id: plan
-        working-directory: ./terraform/platform/${{ matrix.component }}
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
 
   apply:
     name: Terraform Apply
@@ -107,13 +106,13 @@ jobs:
         with: *wireguard-env
 
       - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.component }}.tfstate"
-        working-directory: ./terraform/platform/${{ matrix.component }}
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
 
       - name: Apply
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
         run: terraform apply -auto-approve --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars
-        working-directory: ./terraform/platform/${{ matrix.component }}
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
 
   destroy:
     name: Terraform Destroy
@@ -136,13 +135,13 @@ jobs:
         with: *wireguard-env
 
       - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.component }}.tfstate"
-        working-directory: ./terraform/platform/${{ matrix.component }}
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
 
       - name: Destroy
         env: 
           PROXMOX_VE_SSH_PRIVATE_KEY: ${{ secrets.PROXMOX_VE_SSH_PRIVATE_KEY }}
         run: terraform destroy -auto-approve --input=false -var-file=../../environments/${{ matrix.environment }}/${{ matrix.component }}.tfvars
-        working-directory: ./terraform/platform/${{ matrix.component }}
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
     
   ansible: 
     name: Ansible run
