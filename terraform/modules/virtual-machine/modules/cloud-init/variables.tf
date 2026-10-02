@@ -10,5 +10,5 @@ variable "vm_name" {
 variable "user_account_keys_file" {
   description = "Path to the file containing SSH public keys for the user account"
   type        = string
-  default     = "../../ssh/id_ed25519.pub"
+  default     = "../../../ssh/id_ed25519.pub"
 }
