@@ -1,10 +1,3 @@
-data "proxmox_file" "iso" {
-  node_name    = var.vm_config.node_name
-  datastore_id = var.vm_config.iso_datastore_id
-  content_type = "iso"
-  file_name    = var.vm_config.iso_file_name
-}
-
 resource "proxmox_virtual_environment_vm" "node" {
   name      = var.vm_config.vm_name
   tags      = var.vm_config.tags
@@ -44,7 +37,7 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   disk {
     datastore_id = var.vm_config.disk_datastore_id
-    file_id      = data.proxmox_file.iso.id
+    import_from  = data.proxmox_file.iso.id
     interface    = var.vm_config.disk_interface
     iothread     = true
     discard      = "on"

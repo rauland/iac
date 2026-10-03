@@ -10,7 +10,7 @@ variable "file_name" {
 
 variable "content_type" {
   description = "Content type of the file to download"
-  default     = "iso"
+  default     = "import"
 }
 
 variable "datastore_id" {
