@@ -1,14 +1,3 @@
-module "cloud_init" {
-  source = "./modules/cloud-init"
-
-  providers = {
-    proxmox = proxmox
-  }
-
-  node_name = var.vm_config.node_name
-  vm_name   = var.vm_config.vm_name
-}
-
 data "proxmox_file" "iso" {
   node_name    = var.vm_config.node_name
   datastore_id = var.vm_config.iso_datastore_id
@@ -40,12 +29,12 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   cpu {
-    cores = var.vm_config.cpu_cores
+    cores = var.vm_config.cpu
     type  = "host"
   }
 
   memory {
-    dedicated = var.vm_config.memory_dedicated
+    dedicated = var.vm_config.memory
   }
 
   efi_disk {
@@ -69,7 +58,10 @@ resource "proxmox_virtual_environment_vm" "node" {
       }
     }
 
-    user_data_file_id = module.cloud_init.user_data_cloud_config_id
+    user_account {
+      username = var.vm_config.user_account_username
+      keys = [data.local_file.ssh_public_key.content]
+    }
   }
 
   network_device {
