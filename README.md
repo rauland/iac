@@ -1,5 +1,5 @@
 # Self-hosted Platform
-This Infrastructure as Code project enables self-hosted platform automation on Proxmox. 
+This Infrastructure as Code project enables platform automation on Proxmox. 
 
 It provides the underlying services and automation capabilities required to bootstrap, automate the platform and operate workloads running on it.
 
@@ -64,8 +64,8 @@ The CI/CD invokes Terraform to provision infrastructure which is declared in `En
 If required, Ansible is then called to manage the configuration of the infrastructure.
 
 Additionally workflows provided
-- AWS S3 Bootstrap
-- Unlock State
+- Bootstrap AWS S3 storage
+- Unlock Terraform State in S3
 
 ### Infrastructure Provisioning
 **Terraform**<br>
@@ -79,19 +79,27 @@ Modules
   - cloud-image
   - virtual-machine
 
+### Virtualisation Platform
+**Proxmox VE**<br>
+This hypervisor provides APIs which are consumed by Terraform and Ansible to create and run Virtual Machines.
+
 ### Configuration Management 
 **Ansible**<br>
 Inventory is dynamically pulled from the Proxmox API. Roles are applied based on tags. If a node has the `managed` tag, they will have the managed ansible roles applied.
 
+Ansible remotes to Virtual Machines with SSHs keys.
+
+### Virtual Machines 
+The virtual machines will host services and workloads, any flavour of Linux could work but currently AlmaLinux10 and Ubuntu configuration is supported.
+
+Services<br>
+  - vault
+Workloads<br>
+  - k3s
+
 ### VPN
 **Wireguard**<br>
 Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
-
-### Platform
-Services
-  - vault
-Workloads
-  - k3s
 
 ## Environment Example
 [./terraform/environments/dev/k3s.tfvars](https://github.com/rauland/iac/blob/main/terraform/environments/dev/k3s.tfvars)
@@ -113,7 +121,7 @@ vms = {                              # 1 or more VMs can be defined
 ```
 
 ## Limitations
-By the ephemeral nature of deployments, destroys and scaling. The assumption is that your infrastructure supports DHCP and dynamic DNS.
+By the ephemeral nature of deployments, destroys and scaling. The assumption is that your infrastructure supports DHCP and dynamic DNS or that you're able to set static IPs.
 
 ## Planned Features
 ### Configuration Management
@@ -126,7 +134,7 @@ By the ephemeral nature of deployments, destroys and scaling. The assumption is 
 - Linting
     - Terraform fmt
 
-### K8s (May be in private repo)
+### K8s
 - GitOps
 - Backup persistent container data to cloud
  
