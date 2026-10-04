@@ -24,7 +24,6 @@ This Infrastructure as Code project defines and automates the infrastructure and
     "curve": "basis",
     "nodeSpacing": 45,
     "rankSpacing": 60,
-    "padding": 12
   }
 }}%%
 
