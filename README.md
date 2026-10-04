@@ -13,13 +13,7 @@ config:
   layout: elk
   theme: classic
   themeVariables:
-    background: #0B1120
     fontFamily: Inter, Arial, sans-serif
-    fontSize: 14px
-    lineColor: #64748B
-    textColor: #E2E8F0
-    clusterBkg: #111827
-    clusterBorder: #334155
   look: Neo
   flowchart:
     curve: basis
