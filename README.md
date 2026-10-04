@@ -11,11 +11,23 @@ This Infrastructure as Code project defines and automates the infrastructure and
 ---
 config:
   layout: elk
+  theme: classic
+  themeVariables:
+    background: #0B1120
+    fontFamily: Inter, Arial, sans-serif
+    fontSize: 14px
+    lineColor: #64748B
+    textColor: #E2E8F0
+    clusterBkg: #111827
+    clusterBorder: #334155
   look: Neo
   flowchart:
-    curve: basic
+    curve: basis
+    htmlLabels: true
+    nodeSpacing: 45
+    rankSpacing: 60
+    padding: 12
 ---
-
 graph TD
     repo("<b>IaC Repository")
     actions("GitHub Actions<br/>CI/CD Automation")
@@ -34,22 +46,21 @@ graph TD
     pve -->|Inventory| ansible
     ansible -->|Configuration Management| vms
 
-    classDef source fill:#1E293B,stroke:#94A3B8,color:#F8FAFC,stroke-width:2px
+    classDef cloud fill:#1E293B,stroke:#94A3B8,color:#F8FAFC,stroke-width:2px
     classDef cicd fill:#172554,stroke:#60A5FA,color:#DBEAFE,stroke-width:2px
     classDef terraform fill:#3B1D66,stroke:#A78BFA,color:#F3E8FF,stroke-width:2px
     classDef ansible fill:#5F1212,stroke:#EF4444,color:#FEE2E2,stroke-width:2px
     classDef infra fill:#5C2E0B,stroke:#F97316,color:#FFEDD5,stroke-width:2px
-    classDef compute fill:#1F2937,stroke:#64748B,color:#F8FAFC,stroke-width:2px
 
-    class repo source
+    class repo cloud
     class actions cicd
     class tf terraform
     class ansible ansible
     class pve infra
-    class s3 infra
+    class s3 cloud
     class vms infra
 
-    linkStyle 0 stroke:#60A5FA,stroke-width:2.5px
+    linkStyle 0 stroke:#60A5FA,stroke-width:2px,stroke-dasharray:5 5
     linkStyle 1 stroke:#60A5FA,stroke-width:2.5px
     linkStyle 2 stroke:#60A5FA,stroke-width:2.5px
     linkStyle 3 stroke:#A78BFA,stroke-width:2px,stroke-dasharray:5 5
