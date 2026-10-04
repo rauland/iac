@@ -8,15 +8,67 @@ This Infrastructure as Code project defines and automates the infrastructure and
 
 ## Overview
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#0B1120",
+    "fontFamily": "Inter, Arial, sans-serif",
+    "fontSize": "14px",
+    "lineColor": "#64748B",
+    "textColor": "#080c11",
+    "clusterBkg": "#111827",
+    "clusterBorder": "#334155"
+  },
+  "flowchart": {
+    "htmlLabels": true,
+    "curve": "basis",
+    "nodeSpacing": 45,
+    "rankSpacing": 60,
+    "padding": 12
+  }
+}}%%
+
 graph TD
-    1A[<b>IaC Repo</b>] --> 2A[<b>GitHub Actions</b>\n CI/CD Automation]
-    2A --> 3A[<b>Terraform</b>\n Plan/Apply]
-    2A --> 3B[<b>Ansible</b>\n Apply Roles]
-    2B[AWS S3] --> |Remote State Backend|3A
-    3A -->|Infrastructure Provisioning| 4A[<b>Proxmox VE</b>\n Virtualisation Platform]
-    4A --> 5A[<b>VMs</b>]
-    4A -->|Inventory| 3B
-    3B -->|Configuration Management| 5A
+    repo("<b>IaC Repository")
+    actions("GitHub Actions<br/>CI/CD Automation")
+    tf("Terraform<br/>Plan / Apply")
+    s3[("AWS S3")]
+    pve("Proxmox VE<br/>Virtualisation Platform")
+    ansible("Ansible<br/>Apply Roles")
+    vms("Virtual Machines")
+
+    repo --> actions
+    actions --> tf
+    actions --> ansible
+    s3 -->|Remote State Backend| tf
+    tf -->|Infrastructure Provisioning| pve
+    pve --> vms
+    pve -->|Inventory| ansible
+    ansible -->|Configuration Management| vms
+
+    classDef source fill:#1E293B,stroke:#94A3B8,color:#F8FAFC,stroke-width:2px
+    classDef cicd fill:#172554,stroke:#60A5FA,color:#DBEAFE,stroke-width:2px
+    classDef terraform fill:#3B1D66,stroke:#A78BFA,color:#F3E8FF,stroke-width:2px
+    classDef ansible fill:#5F1212,stroke:#EF4444,color:#FEE2E2,stroke-width:2px
+    classDef infra fill:#5C2E0B,stroke:#F97316,color:#FFEDD5,stroke-width:2px
+    classDef compute fill:#1F2937,stroke:#64748B,color:#F8FAFC,stroke-width:2px
+
+    class repo source
+    class actions cicd
+    class tf terraform
+    class ansible ansible
+    class pve infra
+    class s3 infra
+    class vms infra
+
+    linkStyle 0 stroke:#60A5FA,stroke-width:2.5px
+    linkStyle 1 stroke:#60A5FA,stroke-width:2.5px
+    linkStyle 2 stroke:#60A5FA,stroke-width:2.5px
+    linkStyle 3 stroke:#A78BFA,stroke-width:2px,stroke-dasharray:5 5
+    linkStyle 4 stroke:#A78BFA,stroke-width:2.5px
+    linkStyle 5 stroke:#F97316,stroke-width:2.5px
+    linkStyle 6 stroke:#EF4444,stroke-width:2px,stroke-dasharray:5 5
+    linkStyle 7 stroke:#EF4444,stroke-width:2.5px
 
 ```
 
