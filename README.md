@@ -11,10 +11,6 @@ This Infrastructure as Code project defines and automates the infrastructure and
 ---
 config:
   layout: elk
-  theme: classic
-  themeVariables:
-    fontFamily: Inter, Arial, sans-serif
-  look: Neo
   flowchart:
     curve: basis
     htmlLabels: true
