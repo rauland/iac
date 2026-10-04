@@ -57,19 +57,41 @@ graph TD
 
 ### Continuous Integration and Delivery
 **GitHub Actions**<br>
-Workflows bootstrap and call Terraform modules with infrastructure being declared in `Environments`.
+It's used to gate and automate infrastructure changes. It's source is driven from the repository. 
+
+The CI/CD invokes Terraform to provision infrastructure which is declared in `Environments`.
+
+If required, Ansible is then called to manage the configuration of the infrastructure.
+
+Additionally workflows provided
+- AWS S3 Bootstrap
+- Unlock State
 
 ### Infrastructure Provisioning
 **Terraform**<br>
-Terraform plan has read only access. Terraform apply and destroy require pipeline approval for write access.
+Terraform plan safetly maps what's it's going to create, modify or destroy, in CI/CD this stage has read only access. 
+
+Once the plan has been approved, the Terraform apply/destroy stage is provided write access.
+
+For the backend, object storage such as AWS S3 is recommended. It has state locking support.
+
+Modules
+  - cloud-image
+  - virtual-machine
 
 ### Configuration Management 
 **Ansible**<br>
-Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they have the managed ansible roles applied.
+Inventory is dynamically pulled from the Proxmox API. Roles are applied based on tags. If a node has the `managed` tag, they will have the managed ansible roles applied.
 
 ### VPN
 **Wireguard**<br>
 Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
+
+### Platform
+Services
+  - vault
+Workloads
+  - k3s
 
 ## Environment Example
 [./terraform/environments/dev/k3s.tfvars](https://github.com/rauland/iac/blob/main/terraform/environments/dev/k3s.tfvars)
@@ -92,30 +114,6 @@ vms = {                              # 1 or more VMs can be defined
 
 ## Limitations
 By the ephemeral nature of deployments, destroys and scaling. The assumption is that your infrastructure supports DHCP and dynamic DNS.
-
-## Current Features
-### Configuration Management
-- Ansible Playbooks
-    - Apply managed baseline
-- Dynamic Inventory
-    - Tag-based
-
-### Infrastructure Provisioning
-- Remote state locking backend on AWS S3
-- Modules
-  - cloud-image
-  - virtual-machine
-- Platform
-  - vault
-  - k3s
-
-### CI/CD
-- Ansible Controller
-- Terraform Plan, Apply, Destroy
-- Plan on PR
-- Wireguard VPN
-- AWS S3 Bucket Bootstrap
-- Unlock State
 
 ## Planned Features
 ### Configuration Management
