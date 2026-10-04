@@ -56,19 +56,19 @@ graph TD
 ```
 
 ### Continuous Integration and Delivery
-**GitHub Actions**
+**GitHub Actions**<br>
 Workflows bootstrap and call Terraform modules with infrastructure being declared in `Environments`.
 
 ### Infrastructure Provisioning
-**Terraform**
+**Terraform**<br>
 Terraform plan has read only access. Terraform apply and destroy require pipeline approval for write access.
 
 ### Configuration Management 
-**Ansible**
+**Ansible**<br>
 Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they have the managed ansible roles applied.
 
 ### VPN
-**Wireguard**
+**Wireguard**<br>
 Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
 
 ## Environment Example
