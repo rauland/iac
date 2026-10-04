@@ -11,7 +11,7 @@ This Infrastructure as Code project defines and automates the infrastructure and
 ---
 config:
   layout: elk
-  look: handDrawn
+  look: Neo
   flowchart:
     curve: basic
 ---
