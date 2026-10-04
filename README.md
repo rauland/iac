@@ -92,10 +92,10 @@ Ansible remotes to Virtual Machines with SSHs keys.
 ### Virtual Machines 
 The virtual machines will host services and workloads, any flavour of Linux could work but currently AlmaLinux10 and Ubuntu configuration is supported.
 
-Services<br>
-  - vault
-Workloads<br>
-  - k3s
+- Services
+    - vault
+- Workloads
+    - k3s
 
 ### VPN
 **Wireguard**<br>
