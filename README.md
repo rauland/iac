@@ -27,7 +27,7 @@ This Infrastructure as Code project defines and automates the infrastructure and
   }
 }}%%
 
-graph TD
+graph LR
     repo("<b>IaC Repository")
     actions("GitHub Actions<br/>CI/CD Automation")
     tf("Terraform<br/>Plan / Apply")
