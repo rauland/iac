@@ -8,26 +8,15 @@ This Infrastructure as Code project defines and automates the infrastructure and
 
 ## Overview
 ```mermaid
-%%{init: {
-  "theme": "base",
-  "themeVariables": {
-    "background": "#0B1120",
-    "fontFamily": "Inter, Arial, sans-serif",
-    "fontSize": "14px",
-    "lineColor": "#64748B",
-    "textColor": "#080c11",
-    "clusterBkg": "#111827",
-    "clusterBorder": "#334155"
-  },
-  "flowchart": {
-    "htmlLabels": true,
-    "curve": "basis",
-    "nodeSpacing": 45,
-    "rankSpacing": 60,
-  }
-}}%%
+---
+config:
+  layout: elk
+  look: handDrawn
+  flowchart:
+    curve: basic
+---
 
-graph LR
+graph TD
     repo("<b>IaC Repository")
     actions("GitHub Actions<br/>CI/CD Automation")
     tf("Terraform<br/>Plan / Apply")
