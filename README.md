@@ -24,9 +24,6 @@ config:
   flowchart:
     curve: basis
     htmlLabels: true
-    nodeSpacing: 45
-    rankSpacing: 60
-    padding: 12
 ---
 graph TD
     repo("<b>IaC Repository")
