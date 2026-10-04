@@ -18,20 +18,20 @@ config:
 graph TD
     repo("<b>IaC Repository")
     actions("GitHub Actions<br/>CI/CD Automation")
-    tf("Terraform<br/>Plan / Apply")
+    tf("Terraform<br/>Infrastructure Provisioning")
     s3[("AWS S3")]
     pve("Proxmox VE<br/>Virtualisation Platform")
-    ansible("Ansible<br/>Apply Roles")
+    ansible("Ansible<br/>Configuration Management")
     vms("Virtual Machines")
 
     repo --> actions
     actions --> tf
     actions --> ansible
     s3 -->|Remote State Backend| tf
-    tf -->|Infrastructure Provisioning| pve
+    tf -->|Plan / Apply| pve
     pve --> vms
     pve -->|Inventory| ansible
-    ansible -->|Configuration Management| vms
+    ansible -->|Apply Roles| vms
 
     classDef cloud fill:#1E293B,stroke:#94A3B8,color:#F8FAFC,stroke-width:2px
     classDef cicd fill:#172554,stroke:#60A5FA,color:#DBEAFE,stroke-width:2px
