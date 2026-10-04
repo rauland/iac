@@ -1,10 +1,7 @@
 # Self-hosted Platform
-This Infrastructure as Code project defines and automates the infrastructure and services that make up a self-hosted platform running on Proxmox. It provides the underlying compute, shared services and automation capabilities required to operate the platform and support workloads running on it.
+This Infrastructure as Code project enables self-hosted platform automation on Proxmox. 
 
-### Technologies used
-- Ansible roles and playbooks for configuration management of platform components.
-- GitHub Actions workflows for continuous integration and deployment.
-- Terraform modules for infrastructure provisioning of platform components.
+It provides the underlying services and automation capabilities required to bootstrap, automate the platform and operate workloads running on it.
 
 ## Overview
 ```mermaid
@@ -58,15 +55,20 @@ graph TD
 
 ```
 
-### Ansible Controller
-Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they have the managed ansible roles applied.
-
-### Actions Pipeline
+## Continuous Integration and Delivery
+### GitHub Actions
 Workflows bootstrap and call Terraform modules with infrastructure being declared in `Environments`.
 
+## Infrastructure Provisioning
+### Terraform
 Terraform plan has read only access. Terraform apply and destroy require pipeline approval for write access.
 
-### Wireguard VPN
+## Configuration Management 
+### Ansible
+Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they have the managed ansible roles applied.
+
+### VPN
+## Wireguard
 Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
 
 ## Environment Example
