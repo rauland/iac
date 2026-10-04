@@ -7,7 +7,18 @@ This Infrastructure as Code project defines and automates the infrastructure and
 - Terraform modules for infrastructure provisioning of platform components.
 
 ## Overview
-<img width="2214" height="1635" alt="fossflow-export-2026-07-19T04_32_28 064Z" src="https://github.com/user-attachments/assets/ffaff495-a6a5-414d-98df-8cd14c4137cc" />
+```mermaid
+graph TD
+    1A[<b>IaC Repo</b>] --> 2A[<b>GitHub Actions</b>\n CI/CD Automation]
+    2A --> 3A[<b>Terraform</b>\n Plan/Apply]
+    2A --> 3B[<b>Ansible</b>\n Apply Roles]
+    2B[AWS S3] --> |Remote State Backend|3A
+    3A -->|Infrastructure Provisioning| 4A[<b>Proxmox VE</b>\n Virtualisation Platform]
+    4A --> 5A[<b>VMs</b>]
+    4A -->|Inventory| 3B
+    3B -->|Configuration Management| 5A
+
+```
 
 ### Ansible Controller
 Roles are applied based on tags provided by Terraform. If a node has the `managed` tag, they have the managed ansible roles applied.
