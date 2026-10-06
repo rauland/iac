@@ -1,5 +1,5 @@
-# Self-hosted Platform
-This Infrastructure as Code project enables platform automation on Proxmox. 
+# Platform Automation
+This Infrastructure as Code project builds an automation layer on top of Proxmox and is effectively the definition of the desired platform.
 
 It provides the underlying services and automation capabilities required to bootstrap, automate the platform and operate workloads running on it.
 
