@@ -6,13 +6,14 @@ module "virtual_machine" {
   }
 
   vm_config = {
-    vm_name          = "vault"
-    node_name        = "pve"
-    tags             = ["managed", "vault", "dev"]
-    cpu              = 2
-    memory           = 4096
-    iso_file_name    = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
-    agent_enabled    = true
-    iso_datastore_id = "local"
+    vm_name            = "vault"
+    node_name          = "pve"
+    tags               = ["managed", "vault", "dev"]
+    cpu                = 2
+    memory             = 4096
+    image_file_name    = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
+    agent_enabled      = true
+    image_datastore_id = "local"
+    image_content_type = "import"
   }
 }

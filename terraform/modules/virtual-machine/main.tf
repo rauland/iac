@@ -37,7 +37,7 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   disk {
     datastore_id = var.vm_config.disk_datastore_id
-    import_from  = data.proxmox_file.iso.id
+    import_from  = data.proxmox_file.image.id
     interface    = var.vm_config.disk_interface
     iothread     = true
     discard      = "on"

@@ -9,12 +9,13 @@ variable "virtual_environment_api_token" {
 
 variable "vms" {
   type = map(object({
-    vm_name          = string
-    node_name        = string
-    tags             = list(string)
-    cpu              = optional(number)
-    memory           = optional(number)
-    iso_datastore_id = optional(string, "local")
-    iso_file_name    = optional(string, "resolute-server-cloudimg-amd64.img")
+    vm_name            = string
+    node_name          = string
+    tags               = list(string)
+    cpu                = optional(number)
+    memory             = optional(number)
+    image_datastore_id = optional(string, "local")
+    image_file_name    = optional(string, "resolute-server-cloudimg-amd64.img")
+    image_content_type = optional(string, "iso")
   }))
 }
