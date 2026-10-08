@@ -8,4 +8,6 @@ unattended_auto_reboot: false
 unattended_auto_reboot_time: "02:00"
 
 unattended_origins:
+  - "${distro_id}:${distro_codename}"
   - "${distro_id}:${distro_codename}-security"
+  - "${distro_id}:${distro_codename}-updates"

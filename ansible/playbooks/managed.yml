@@ -10,5 +10,3 @@
       when: ansible_facts['distribution'] == 'Ubuntu' 
     - role: unattended_upgrades
       when: ansible_facts['distribution'] == 'Ubuntu'
-- name: Import kube cluster playbook
-  ansible.builtin.import_playbook: k3s.orchestration.site

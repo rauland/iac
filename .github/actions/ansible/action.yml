@@ -23,17 +23,19 @@ runs:
 
     - name: Run Ansible playbook
       working-directory: "${{ inputs.working-directory}}"
-      run: ansible-playbook ./playbooks/managed.yml --limit ${{ inputs.limit }}
+      run: ansible-playbook ./playbooks/{{ inputs.playbook }}.yml --limit "{{ inputs.environment }}"
       shell: bash
 
 inputs:
   working-directory:
     description: "Working directory for Ansible playbook"
+  playbook:
+    description: "Name of the playbook to run"
     required: true
   SSH_PRIVATE_KEY_ANSIBLE:
     description: "SSH private key for Ansible"
     required: true
     secret: true
-  limit:
-    description: "Subset of hosts to target"
+  environment:
+    description: "Environment to target"
     required: true

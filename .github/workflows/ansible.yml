@@ -2,10 +2,26 @@ name: Ansible run
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "ansible/**"
+    inputs:
+      environment:
+        description: "Target environment to deploy (e.g., dev, prod)"
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      playbook:
+        description: "Target playbook to run (e.g., managed, k3s, vault)"
+        required: true
+        type: choice
+        options:
+          - managed
+          - k3s
+          - vault
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - "ansible/**"
 jobs:
   run:
     name: Ansible run
@@ -31,7 +47,8 @@ jobs:
         with:
           working-directory: ansible
           SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
-          limit: managed
+          playbook: ${{ inputs.playbook }}
+          environment: ${{ inputs.environment }}
 
       # - name: Run Ansible playbook for k3s hosts
       #   working-directory: ./ansible

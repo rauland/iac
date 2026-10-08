@@ -1,0 +1,8 @@
+---
+- name: Import managed infrastructure
+  ansible.builtin.import_playbook: managed.yml
+  tags: 
+    - managed
+
+- name: Import K3s cluster
+  ansible.builtin.import_playbook: k3s.orchestration.site
