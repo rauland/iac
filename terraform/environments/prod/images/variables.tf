@@ -11,6 +11,7 @@ variable "cloud_images" {
   type = map(object({
     url          = string
     node_names   = list(string)
-    content_type = string
+    content_type = optional(string, "import")
+    datastore_id = optional(string, "local-lvm")
   }))
 }

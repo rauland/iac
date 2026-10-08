@@ -36,7 +36,7 @@ variable "vm_config" {
     tags                   = optional(list(string), [])
     image_datastore_id     = string
     image_file_name        = string
-    image_content_type     = string
+    image_content_type     = optional(string, "import")
     agent_enabled          = optional(bool, false)
     description            = optional(string, "Created by Terraform")
     machine                = optional(string, "q35")

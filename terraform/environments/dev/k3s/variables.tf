@@ -15,7 +15,6 @@ variable "vms" {
     cpu                = optional(number)
     memory             = optional(number)
     image_datastore_id = optional(string, "local")
-    image_file_name    = optional(string, "resolute-server-cloudimg-amd64.img")
-    image_content_type = optional(string, "iso")
+    image_file_name    = optional(string, "resolute-server-cloudimg-amd64.qcow2")
   }))
 }

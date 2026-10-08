@@ -16,7 +16,7 @@ variable "vms" {
     memory             = optional(number)
     image_datastore_id = optional(string, "local")
     image_file_name    = string
-    image_content_type = string
+    image_content_type = optional(string, "import")
     agent_enabled      = optional(bool, false)
   }))
 }

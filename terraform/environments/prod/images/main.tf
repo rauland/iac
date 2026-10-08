@@ -10,4 +10,5 @@ module "cloud_image" {
   node_names   = each.value.node_names
   file_name    = each.key
   content_type = each.value.content_type
+  datastore_id = each.value.datastore_id
 }

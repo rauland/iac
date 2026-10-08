@@ -11,9 +11,8 @@ module "virtual_machine" {
     tags               = ["managed", "vault", "dev"]
     cpu                = 2
     memory             = 4096
+    image_datastore_id = "local"
     image_file_name    = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
     agent_enabled      = true
-    image_datastore_id = "local"
-    image_content_type = "import"
   }
 }
