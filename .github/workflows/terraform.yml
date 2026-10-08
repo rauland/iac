@@ -1,5 +1,9 @@
 name: Terraform Actions
 
+env:
+  ENVIRONMENT: dev
+  ANSIBLE_PLAYBOOK: playbooks/k3s.yml
+
 on:
   workflow_dispatch:
     inputs:
@@ -19,22 +23,23 @@ on:
           - k3s
           - talos
           - vault
-          
       destroy:
         description: "Destroy resources"
         required: true
         default: false
         type: boolean
+
   pull_request:
     branches: [main]
     paths: &paths
-      - 'terraform/modules/**'
-      - 'terraform/environments/**'
-      - '.github/workflows/terraform.yml'
-    
+      - "terraform/modules/**"
+      - "terraform/environments/**"
+      - ".github/workflows/terraform.yml"
+
   push:
     branches: [main]
     paths: *paths
+
 jobs:
   plan:
     name: Terraform Plan
@@ -95,7 +100,7 @@ jobs:
         component: *component
     environment: proxmox-rw
     env: *common-env
-    
+
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
@@ -122,7 +127,7 @@ jobs:
         component: *component
     environment: proxmox-rw
     env: *common-env
-    
+
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
@@ -136,8 +141,8 @@ jobs:
       - name: Destroy
         run: terraform destroy -auto-approve --input=false
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
-    
-  ansible: 
+
+  ansible:
     name: Ansible run
     needs: apply
     runs-on: ubuntu-latest
@@ -152,7 +157,7 @@ jobs:
 
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
-      
+
       - uses: ./.github/actions/ansible
         env:
           PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
