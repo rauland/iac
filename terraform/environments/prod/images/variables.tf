@@ -9,7 +9,8 @@ variable "virtual_environment_api_token" {
 
 variable "cloud_images" {
   type = map(object({
-    url        = string
-    node_names = list(string)
+    url          = string
+    node_names   = list(string)
+    content_type = string
   }))
 }

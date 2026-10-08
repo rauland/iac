@@ -6,7 +6,8 @@ module "cloud_image" {
     proxmox = proxmox
   }
 
-  url        = each.value.url
-  node_names = each.value.node_names
-  file_name  = each.key
+  url          = each.value.url
+  node_names   = each.value.node_names
+  file_name    = each.key
+  content_type = each.value.content_type
 }
