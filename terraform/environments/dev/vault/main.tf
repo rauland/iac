@@ -1,10 +1,19 @@
 module "virtual_machine" {
   source   = "../../../modules/virtual-machine"
-  for_each = var.vms
 
   providers = {
     proxmox = proxmox
   }
-  
-  vm_config = each.value
+
+  vm_config = {
+    vault = {
+      vm_name       = "vault"
+      node_name     = "pve"
+      tags          = ["managed", "vault", "dev"]
+      cpu           = 2
+      memory        = 4096
+      iso_file_name = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
+      agent_enabled = true
+    }
+  }
 }
