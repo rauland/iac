@@ -1,10 +1,5 @@
 name: Terraform Actions
 
-env:
-  ENVIRONMENT: ${{ fromJSON('["prod"]') }}
-  COMPONENT: ${{ fromJSON('["images"]') }}
-  ANSIBLE_PLAYBOOK: managed.yml
-
 on:
   workflow_dispatch:
     inputs:
@@ -49,9 +44,9 @@ jobs:
       max-parallel: 1
       matrix:
         environment: &environment
-          - ${{ inputs.environment || inputs.ENVIRONMENT }}
+          - ${{ inputs.environment || fromJSON('["prod"]') }}
         component: &component
-          - ${{ inputs.component || inputs.COMPONENT }}
+          - ${{ inputs.component || fromJSON('["images"]') }}
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
