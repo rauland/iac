@@ -15,6 +15,7 @@ variable "vms" {
     cpu                = optional(number)
     memory             = optional(number)
     image_datastore_id = optional(string, "local")
-    image_file_name    = optional(string, "resolute-server-cloudimg-amd64.qcow2")
+    image_file_name    = optional(string, "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2")
+    
   }))
 }
