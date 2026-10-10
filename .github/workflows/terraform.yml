@@ -111,6 +111,18 @@ jobs:
         run: terraform apply -auto-approve --input=false
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
+      - uses: ./.github/actions/ansible
+        env:
+          PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
+          PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
+          PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
+          PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
+        with:
+          working-directory: ansible
+          SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
+          target: ${{ matrix.target }}
+          environment: ${{ inputs.environment }}
+
   destroy:
     name: Terraform Destroy
     if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.destroy == true
@@ -137,18 +149,6 @@ jobs:
       - name: Destroy
         run: terraform destroy -auto-approve --input=false
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
-
-      - uses: ./.github/actions/ansible
-        env:
-          PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
-          PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
-          PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
-          PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
-        with:
-          working-directory: ansible
-          SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
-          target: ${{ matrix.target }}
-          environment: ${{ inputs.environment }}
 
   # ansible:
   #   name: Ansible run
