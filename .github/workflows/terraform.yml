@@ -58,9 +58,9 @@ jobs:
       - name: Discover deployment targets
         id: roots
         env:
-          MODE: ${{ inputs.deployment_mode || 'single' }}
-          SELECTED_ENV: ${{ inputs.environment || 'prod' }}
-          SELECTED_TARGET: ${{ inputs.target || 'images' }}
+          MODE: ${{ inputs.deployment_mode || 'all' }}
+          SELECTED_ENV: ${{ inputs.environment }}
+          SELECTED_TARGET: ${{ inputs.target }}
         shell: bash
         run: |
           set -euo pipefail
