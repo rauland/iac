@@ -25,6 +25,7 @@ on:
         options:
           - images
           - k3s
+          - sandbox
           - talos
           - vault
       destroy:
@@ -226,19 +227,3 @@ jobs:
       - name: Destroy
         run: terraform destroy -auto-approve --input=false
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
-
-  # ansible:
-  #   name: Ansible run
-  #   needs: apply
-  #   runs-on: ubuntu-latest
-  #   environment: proxmox-rw
-  #   strategy:
-  #     max-parallel: 1
-  #     matrix:
-  #       target: *target
-
-  #   steps:
-  #     - uses: actions/checkout@v4
-
-  #     - uses: ./.github/actions/wireguard
-  #       with: *wireguard-env
