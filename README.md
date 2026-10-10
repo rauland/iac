@@ -102,7 +102,7 @@ The virtual machines will host services and workloads, any flavour of Linux coul
 Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
 
 ## Environment Example
-[./terraform/environments/dev/k3s.tfvars](https://github.com/rauland/iac/blob/main/terraform/environments/dev/k3s.tfvars)
+[./terraform/environments/dev/k3s/terraform.auto.tfvars](https://github.com/rauland/iac/blob/main/terraform/environments/dev/k3s/terraform.auto.tfvars)
 ```
 vms = {                              # 1 or more VMs can be defined
   k3s-01 = {                         # name of guest
