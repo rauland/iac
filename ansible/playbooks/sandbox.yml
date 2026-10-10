@@ -1,6 +1,0 @@
----
-- name: Import managed infrastructure
-  ansible.builtin.import_playbook: managed.yml
-  tags: 
-    - managed
-
