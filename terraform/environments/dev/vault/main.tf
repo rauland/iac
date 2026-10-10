@@ -13,6 +13,5 @@ module "virtual_machine" {
     memory             = 4096
     image_datastore_id = "local"
     image_file_name    = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
-    agent_enabled      = true
   }
 }

@@ -9,14 +9,12 @@ variable "virtual_environment_api_token" {
 
 variable "vms" {
   type = map(object({
-    vm_name            = string
-    node_name          = string
-    tags               = list(string)
-    cpu                = optional(number)
-    memory             = optional(number)
-    image_datastore_id = optional(string, "local")
-    image_file_name    = string
-    image_content_type = optional(string, "import")
-    agent_enabled      = optional(bool, false)
+    vm_name                = string
+    node_name              = string
+    tags                   = list(string)
+    cpu                    = optional(number)
+    memory                 = optional(number)
+    image_datastore_id     = optional(string, "local")
+    image_file_name        = string
   }))
 }

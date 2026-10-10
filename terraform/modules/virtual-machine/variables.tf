@@ -22,7 +22,9 @@ variable "vm_config" {
     disk_datastore_id      | Datastore ID for the main disk.
     disk_interface         | Interface for the main disk.
     disk_size              | Size of the main disk (in GB).
-    ip_config_ipv4_address | IPv4 address for the VM.
+    ip_config_ipv4_address | IPv4 address for the VM. (DHCP is used if omitted.)
+    ip_config_ipv4_gateway | The IPv4 gateway (must be omitted when dhcp is used as the address).
+    wait_for_ipv4_address  | Whether to wait for the VM to acquire an IP address before proceeding.
     user_account_username  | Username for the user account.
     user_account_keys_file | Path to the public SSH key file for the user account.
     network_device_bridge  | Bridge for the network device.
@@ -37,7 +39,7 @@ variable "vm_config" {
     image_datastore_id     = string
     image_file_name        = string
     image_content_type     = optional(string, "import")
-    agent_enabled          = optional(bool, false)
+    agent_enabled          = optional(bool, true)
     description            = optional(string, "Created by Terraform")
     machine                = optional(string, "q35")
     bios                   = optional(string, "ovmf")
@@ -50,6 +52,8 @@ variable "vm_config" {
     disk_interface         = optional(string, "virtio0")
     disk_size              = optional(number, 20)
     ip_config_ipv4_address = optional(string, "dhcp")
+    ip_config_ipv4_gateway = optional(string, null)
+    wait_for_ipv4_address  = optional(bool, true)
     user_account_username  = optional(string, "ansible")
     user_account_keys_file = optional(string, "../../../ssh/id_ed25519.pub")
     network_device_bridge  = optional(string, "vmbr0")
