@@ -1,6 +1,6 @@
 ---
 - name: Apply roles
-  hosts: all
+  hosts: vault
   remote_user: ansible
   become: true
   roles:
