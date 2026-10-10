@@ -1,6 +1,6 @@
 ---
 - name: Apply roles
-  hosts: all
+  hosts: managed
   remote_user: ansible
   become: true
   roles:
