@@ -23,7 +23,7 @@ runs:
 
     - name: Run Ansible playbook
       working-directory: "${{ inputs.working-directory}}"
-      run: ansible-playbook ./playbooks/site.yml --limit "${{ inputs.environment }}:&{{ inputs.target }}"
+      run: ansible-playbook ./playbooks/site.yml --limit "${{ inputs.environment }}:&${{ inputs.target }}"
       shell: bash
 
 inputs:
