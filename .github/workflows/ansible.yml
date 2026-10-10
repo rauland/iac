@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment to deploy (e.g., dev, prod)"
+        description: "Environment to deploy (e.g., dev, prod)"
         required: true
         type: choice
         options:
           - dev
           - prod
-      playbook:
-        description: "Target playbook to run (e.g., managed, k3s, vault)"
+      target:
+        description: "Target to deploy (e.g., managed, k3s, vault)"
         required: true
         type: choice
         options:
@@ -48,7 +48,7 @@ jobs:
         with:
           working-directory: ansible
           SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
-          playbook: ${{ inputs.playbook }}
+          target: ${{ inputs.target }}
           environment: ${{ inputs.environment }}
 
       # - name: Run Ansible playbook for k3s hosts

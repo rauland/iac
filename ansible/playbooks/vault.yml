@@ -1,9 +1,4 @@
 ---
-- name: Import managed infrastructure
-  ansible.builtin.import_playbook: managed.yml
-  tags: 
-    - managed
-  
 - name: Apply roles
   hosts: all
   remote_user: ansible

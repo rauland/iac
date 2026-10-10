@@ -1,8 +1,20 @@
 ---
-- name: Import managed infrastructure
-  ansible.builtin.import_playbook: managed.yml
-  tags: 
-    - managed
+- name: Install K3s Cluster
+  hosts: k3s_cluster
+  become: true
+  pre_tasks:
+    - name: Ensure extra kernel modules are present on EL10
+      ansible.builtin.dnf:
+        name: "kernel-modules-extra-{{ ansible_facts['kernel'] }}"
+        state: present
+      register: reboot_required
+      when: 
+        - ansible_facts['os_family'] == "RedHat"
+        - ansible_facts['distribution_major_version'] == "10"
+
+  handlers:
+    - name: reboot_required
+      ansible.builtin.reboot:
 
 - name: Import K3s cluster
   ansible.builtin.import_playbook: k3s.orchestration.site

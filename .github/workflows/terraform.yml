@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment to deploy (e.g., dev, prod)"
+        description: "Environment to deploy (e.g., dev, prod)"
         required: true
         type: choice
         options:
           - dev
           - prod
-      component:
-        description: "Target component to deploy (e.g., images, vault)"
+      target:
+        description: "Target to deploy (e.g., images, vault)"
         required: true
         type: choice
         options:
@@ -45,8 +45,8 @@ jobs:
       matrix:
         environment: &environment
           - ${{ inputs.environment || fromJSON('["prod"]') }}
-        component: &component
-          - ${{ inputs.component || fromJSON('["images"]') }}
+        target: &target
+          - ${{ inputs.target || fromJSON('["images"]') }}
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
@@ -75,14 +75,14 @@ jobs:
           WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
 
-      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.component }}.tfstate"
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
+      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - name: Plan
         run: terraform plan -lock=false --input=false ${{ inputs.destroy == true && '-destroy' || '' }}
 
         id: plan
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
   apply:
     name: Terraform Apply
@@ -93,7 +93,7 @@ jobs:
       max-parallel: 1
       matrix:
         environment: *environment
-        component: *component
+        target: *target
     environment: proxmox-rw
     env: *common-env
 
@@ -104,12 +104,12 @@ jobs:
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
 
-      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.component }}.tfstate"
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
+      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - name: Apply
         run: terraform apply -auto-approve --input=false
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
   destroy:
     name: Terraform Destroy
@@ -120,7 +120,7 @@ jobs:
       max-parallel: 1
       matrix:
         environment: *environment
-        component: *component
+        target: *target
     environment: proxmox-rw
     env: *common-env
 
@@ -131,28 +131,12 @@ jobs:
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
 
-      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.component }}.tfstate"
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
+      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - name: Destroy
         run: terraform destroy -auto-approve --input=false
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.component }}
-
-  ansible:
-    name: Ansible run
-    needs: apply
-    runs-on: ubuntu-latest
-    environment: proxmox-rw
-    strategy:
-      max-parallel: 1
-      matrix:
-        component: *component
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./.github/actions/wireguard
-        with: *wireguard-env
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - uses: ./.github/actions/ansible
         env:
@@ -163,5 +147,21 @@ jobs:
         with:
           working-directory: ansible
           SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
-          playbook: ${{ matrix.component }}
+          target: ${{ matrix.target }}
           environment: ${{ inputs.environment }}
+
+  # ansible:
+  #   name: Ansible run
+  #   needs: apply
+  #   runs-on: ubuntu-latest
+  #   environment: proxmox-rw
+  #   strategy:
+  #     max-parallel: 1
+  #     matrix:
+  #       target: *target
+
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - uses: ./.github/actions/wireguard
+  #       with: *wireguard-env
