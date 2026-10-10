@@ -3,6 +3,14 @@ name: Terraform Actions
 on:
   workflow_dispatch:
     inputs:
+      deployment_mode:
+        description: "Which Terraform roots to plan and apply"
+        type: choice
+        options:
+          - single
+          - all
+        default: single
+        required: true
       environment:
         description: "Environment to deploy (e.g., dev, prod)"
         required: true
@@ -37,16 +45,72 @@ on:
     paths: *paths
 
 jobs:
+  discover:
+    name: Discover Terraform roots
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.roots.outputs.matrix }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Discover deployment targets
+        id: roots
+        env:
+          MODE: ${{ inputs.deployment_mode || 'single' }}
+          SELECTED_ENV: ${{ inputs.environment || 'prod' }}
+          SELECTED_TARGET: ${{ inputs.target || 'images' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ROOT="terraform/environments"
+          MATRIX='[]'
+
+          if [[ "$MODE" == "all" ]]; then
+            MATRIX=$(
+              find "$ROOT" -mindepth 2 -maxdepth 2 \
+                -type f -name '*.tf' -printf '%h\n' |
+              sort -u |
+              while read -r dir; do
+                env_name=$(basename "$(dirname "$dir")")
+                target=$(basename "$dir")
+                jq -cn \
+                  --arg environment "$env_name" \
+                  --arg target "$target" \
+                  '{environment:$environment,target:$target}'
+              done |
+              jq -sc .
+            )
+          else
+            dir="$ROOT/$SELECTED_ENV/$SELECTED_TARGET"
+
+            if [[ ! -d "$dir" ]] ||
+               ! find "$dir" -maxdepth 1 -type f -name '*.tf' -print -quit | grep -q .; then
+              echo "::error::No Terraform root found at $dir"
+              exit 1
+            fi
+
+            MATRIX=$(jq -cn \
+              --arg environment "$SELECTED_ENV" \
+              --arg target "$SELECTED_TARGET" \
+              '[{environment:$environment,target:$target}]')
+          fi
+
+          if [[ "$MATRIX" == "[]" ]]; then
+            echo "::error::No Terraform roots discovered"
+            exit 1
+          fi
+
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Discovered matrix: $MATRIX"
   plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:
-        environment: &environment
-          - ${{ inputs.environment || fromJSON('["prod"]') }}
-        target: &target
-          - ${{ inputs.target || fromJSON('["images"]') }}
+        include: ${{ fromJSON(needs.discover.outputs.matrix) }}
     outputs:
       plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
@@ -92,8 +156,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        environment: *environment
-        target: *target
+        include: ${{ fromJSON(needs.discover.outputs.matrix) }}
     environment: proxmox-rw
     env: *common-env
 
@@ -131,8 +194,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        environment: *environment
-        target: *target
+        include: ${{ fromJSON(needs.discover.outputs.matrix) }}
     environment: proxmox-rw
     env: *common-env
 
