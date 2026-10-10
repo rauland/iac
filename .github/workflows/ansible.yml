@@ -18,10 +18,10 @@ on:
           - managed
           - k3s
           - vault
-  push:
-    branches: [main]
-    paths:
-      - "ansible/**"
+  # push:
+    # branches: [main]
+    # paths:
+      # - "ansible/**"
 
 jobs:
   run:
