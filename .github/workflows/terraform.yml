@@ -69,43 +69,58 @@ jobs:
 
           if [[ "$MODE" == "all" ]]; then
             MATRIX=$(
-              find "$ROOT" -mindepth 2 -maxdepth 2 \
-                -type f -name '*.tf' -printf '%h\n' |
-              sort -u |
-              while read -r dir; do
-                env_name=$(basename "$(dirname "$dir")")
-                target=$(basename "$dir")
-                jq -cn \
-                  --arg environment "$env_name" \
-                  --arg target "$target" \
-                  '{environment:$environment,target:$target}'
-              done |
-              jq -sc .
+              for env_dir in "$ROOT"/*/; do
+                [[ -d "$env_dir" ]] || continue
+
+                for target_dir in "$env_dir"/*/; do
+                  [[ -d "$target_dir" ]] || continue
+
+                  # Only include directories with Terraform files directly inside.
+                  if find "$target_dir" \
+                    -maxdepth 1 \
+                    -type f \
+                    -name '*.tf' \
+                    -print -quit | grep -q .; then
+
+                    jq -cn \
+                      --arg environment "$(basename "$env_dir")" \
+                      --arg target "$(basename "$target_dir")" \
+                      '{environment: $environment, target: $target}'
+                  fi
+                done
+              done | jq -sc .
             )
           else
             dir="$ROOT/$SELECTED_ENV/$SELECTED_TARGET"
 
             if [[ ! -d "$dir" ]] ||
-               ! find "$dir" -maxdepth 1 -type f -name '*.tf' -print -quit | grep -q .; then
+              ! find "$dir" \
+                -maxdepth 1 \
+                -type f \
+                -name '*.tf' \
+                -print -quit | grep -q .; then
               echo "::error::No Terraform root found at $dir"
               exit 1
             fi
 
-            MATRIX=$(jq -cn \
-              --arg environment "$SELECTED_ENV" \
-              --arg target "$SELECTED_TARGET" \
-              '[{environment:$environment,target:$target}]')
+            MATRIX=$(
+              jq -cn \
+                --arg environment "$SELECTED_ENV" \
+                --arg target "$SELECTED_TARGET" \
+                '[{environment: $environment, target: $target}]'
+            )
           fi
 
           if [[ "$MATRIX" == "[]" ]]; then
-            echo "::error::No Terraform roots discovered"
+            echo "::error::No Terraform roots discovered in $ROOT"
             exit 1
           fi
 
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-          echo "Discovered matrix: $MATRIX"
+          echo "Discovered Terraform roots: $MATRIX"
   plan:
     name: Terraform Plan
+    needs: discover
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
