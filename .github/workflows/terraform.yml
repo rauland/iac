@@ -8,7 +8,6 @@ on:
         type: choice
         options:
           - single
-          - all
         default: single
         required: true
       environment:
