@@ -36,3 +36,7 @@ Author Information
 ------------------
 
 An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+
+TODO
+#export VAULT_ADDR="https://vault.netkuki.com:8200"
+#vault operator init
