@@ -185,8 +185,9 @@ Inventory is dynamically pulled from the Proxmox API. Roles are applied based on
 
 Ansible remotes to Virtual Machines with SSHs keys.
 
-VMs tagged `managed` receive only `managed.yml`. Otherwise, VMs tagged `sandbox`
-or `vault` receive `sandbox.yml` or `vault.yml`, respectively; VMs without a
+VMs tagged `managed` receive the `managed.yml` baseline before their selected
+service playbook. VMs tagged `sandbox` or `vault` receive `sandbox.yml` or
+`vault.yml`, respectively, whether managed or not; VMs without a
 matching tag are skipped. Workflows use the [target runner](ansible/run-playbook.sh).
 See [Ansible deployment targets](ansible/README.md)
 for tag conventions, previews, and offline checks.

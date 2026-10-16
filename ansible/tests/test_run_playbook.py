@@ -1,4 +1,4 @@
-"""Offline checks for target isolation and managed-tag precedence."""
+"""Offline checks for target isolation and optional managed baseline."""
 import json
 import os
 from pathlib import Path
@@ -79,17 +79,17 @@ class HostSelectionTests(unittest.TestCase):
                 command + ['-i', 'tests/inventory.yml', '--list-hosts'],
                 cwd=RUNNER.parent, env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        # Retain each play's host set to detect hosts receiving multiple plays.
+        # Retain each play's host set to check baseline and service selection.
         return [set(re.findall(r'^      (\S+)$', block, re.MULTILINE))
                 for block in result.stdout.split('  play #')[1:]]
 
-    def test_vault_target_preserves_environment_and_managed_precedence(self):
+    def test_vault_target_runs_service_for_managed_and_unmanaged_hosts(self):
         self.assertEqual(self.list_hosts('vault'), [
-            {'dev-vault'}, {'dev-unmanaged-vault'}])
+            {'dev-vault'}, {'dev-vault', 'dev-unmanaged-vault'}])
 
-    def test_sandbox_target_preserves_managed_precedence(self):
+    def test_sandbox_target_runs_service_for_managed_and_unmanaged_hosts(self):
         self.assertEqual(self.list_hosts('sandbox'), [
-            {'dev-sandbox'}, {'dev-unmanaged-sandbox'}])
+            {'dev-sandbox'}, {'dev-sandbox', 'dev-unmanaged-sandbox'}])
 
     def test_managed_target_selects_only_managed_hosts(self):
         self.assertEqual(self.list_hosts('managed'), [

@@ -7,19 +7,20 @@ and `prod`; supported targets are listed below.
 | Target | Managed hosts | Other hosts | Host selection |
 | --- | --- | --- | --- |
 | `managed` | `managed.yml` | None | Environment and `managed` tag |
-| `sandbox` | `managed.yml` | `sandbox.yml` | Environment and `sandbox` tag |
-| `vault` | `managed.yml` | `vault.yml` | Environment and `vault` tag |
+| `sandbox` | `managed.yml`, then `sandbox.yml` | `sandbox.yml` | Environment and `sandbox` tag |
+| `vault` | `managed.yml`, then `vault.yml` | `vault.yml` | Environment and `vault` tag |
 
-The `managed` tag takes priority: those VMs receive only timezone, Ansible-user,
-and package configuration from `managed.yml`. VMs without `managed` receive
-`vault.yml` or `sandbox.yml` when they have the corresponding target tag. VMs
-without any matching tag receive no playbook. `sandbox.yml` currently has no
+The `managed` tag adds timezone, Ansible-user, and package configuration from
+`managed.yml` before the selected service playbook. All VMs with the selected
+target tag receive `vault.yml` or `sandbox.yml`, including managed VMs. VMs
+without `managed` skip the baseline; VMs without any matching tag receive no
+playbook. A baseline failure stops the service playbook. `sandbox.yml` currently has no
 additional tasks. Use the runner to select the environment and target for each run.
 
 Proxmox tags create groups prefixed with `tag_`, such as `tag_managed` and
 `tag_vault`, to avoid collisions with VM names. The `dev` and `prod` groups come
 from their corresponding environment tags. Tag each VM with its environment and
-target; add `managed` when it should receive only managed configuration. The sandbox Terraform
+target; add `managed` when it should also receive the managed baseline. The sandbox Terraform
 configuration includes these tags; an existing VM gets them on its next Terraform
 apply. Group variable files use the same prefixed names.
 

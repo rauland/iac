@@ -22,7 +22,7 @@ esac
 
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 ansible_limit="$ansible_environment:&$ansible_group"
-# Managed hosts receive only managed.yml; the target playbooks exclude them.
+# Apply the baseline to managed hosts in this target before its service playbook.
 if [[ "$ansible_target" != managed ]]; then
   ansible-playbook ./playbooks/managed.yml --limit "$ansible_limit" "$@"
 fi
