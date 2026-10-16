@@ -5,6 +5,6 @@ module "virtual_machine" {
   providers = {
     proxmox = proxmox
   }
-  
+
   vm_config = each.value
 }

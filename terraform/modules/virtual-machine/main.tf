@@ -53,7 +53,7 @@ resource "proxmox_virtual_environment_vm" "node" {
 
     user_account {
       username = var.vm_config.user_account_username
-      keys = [data.local_file.ssh_public_key.content]
+      keys     = [data.local_file.ssh_public_key.content]
     }
   }
 

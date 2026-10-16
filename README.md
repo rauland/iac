@@ -75,11 +75,27 @@ Configure the `proxmox-ro` GitHub environment without required reviewers and the
 `proxmox-rw` environment secrets. These protection rules must be configured in
 GitHub Settings; the workflow's `environment` field alone does not require approval.
 
-For manual runs on `main`, the plan job saves the plan and provider lock file,
+Pull requests run formatting checks, validation, and preview plans for affected
+roots. A push to `main` automatically starts the deployment workflow: it plans
+affected roots and queues apply for environment approval. There is no separate
+manual dispatch needed after merging. Manual runs remain available for a selected
+root, including destruction; destruction is never triggered by a push.
+
+For pushes and manual runs on `main`, the plan job saves the plan and provider lock file,
 encrypts them with a public key, and uploads only the encrypted archive. After
 approval, apply downloads and decrypts that archive and applies the saved plan
-before running Ansible. Destroy follows the same process with a saved destroy
-plan. Push and pull request runs produce preview plans without uploading them.
+before running Ansible for VM targets (images and Talos skip Ansible). Destroy
+follows the same process with a saved destroy plan. Pull request runs produce
+preview plans without uploading them.
+
+Changes under a Terraform root select that root. Shared module, workflow, or
+workflow script changes conservatively select all roots. Deleted roots are not
+automatically destroyed: run an explicit manual destroy before removing their
+configuration. Apply and destroy share a concurrency group per environment and
+target, so their writes cannot overlap and new runs do not cancel an active apply.
+GitHub may replace an older pending job when a newer one enters the same group.
+Plans may become stale while waiting for approval; regenerate them rather than
+applying a newly calculated, unreviewed plan.
 All three jobs use Terraform 1.15.8. The Proxmox API token is ephemeral so each
 job uses its own environment's credentials rather than saving the read-only
 token into the plan.

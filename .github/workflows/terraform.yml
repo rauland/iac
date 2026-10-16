@@ -39,7 +39,7 @@ on:
       - "terraform/modules/**"
       - "terraform/environments/**"
       - ".github/workflows/terraform.yml"
-      - ".github/scripts/terraform-plan-artifact.sh"
+      - ".github/scripts/**"
 
   push:
     branches: [main]
@@ -54,79 +54,30 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.roots.outputs.matrix }}
+      has-changes: ${{ steps.roots.outputs.has-changes }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Discover deployment targets
         id: roots
         env:
-          MODE: ${{ inputs.deployment_mode || 'all' }}
+          EVENT_NAME: ${{ github.event_name }}
           SELECTED_ENV: ${{ inputs.environment }}
           SELECTED_TARGET: ${{ inputs.target }}
-        shell: bash
-        run: |
-          set -euo pipefail
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 .github/scripts/terraform-roots.py
 
-          ROOT="terraform/environments"
-          MATRIX='[]'
-
-          if [[ "$MODE" == "all" ]]; then
-            MATRIX=$(
-              for env_dir in "$ROOT"/*/; do
-                [[ -d "$env_dir" ]] || continue
-
-                for target_dir in "$env_dir"/*/; do
-                  [[ -d "$target_dir" ]] || continue
-
-                  # Only include directories with Terraform files directly inside.
-                  if find "$target_dir" \
-                    -maxdepth 1 \
-                    -type f \
-                    -name '*.tf' \
-                    -print -quit | grep -q .; then
-
-                    jq -cn \
-                      --arg environment "$(basename "$env_dir")" \
-                      --arg target "$(basename "$target_dir")" \
-                      '{environment: $environment, target: $target}'
-                  fi
-                done
-              done | jq -sc .
-            )
-          else
-            dir="$ROOT/$SELECTED_ENV/$SELECTED_TARGET"
-
-            if [[ ! -d "$dir" ]] ||
-              ! find "$dir" \
-                -maxdepth 1 \
-                -type f \
-                -name '*.tf' \
-                -print -quit | grep -q .; then
-              echo "::error::No Terraform root found at $dir"
-              exit 1
-            fi
-
-            MATRIX=$(
-              jq -cn \
-                --arg environment "$SELECTED_ENV" \
-                --arg target "$SELECTED_TARGET" \
-                '[{environment: $environment, target: $target}]'
-            )
-          fi
-
-          if [[ "$MATRIX" == "[]" ]]; then
-            echo "::error::No Terraform roots discovered in $ROOT"
-            exit 1
-          fi
-
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-          echo "Discovered Terraform roots: $MATRIX"
   plan:
     name: Terraform Plan
+    if: needs.discover.outputs.has-changes == 'true'
     needs: discover
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       max-parallel: 1
       matrix:
         include: ${{ fromJSON(needs.discover.outputs.matrix) }}
@@ -164,18 +115,25 @@ jobs:
             -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive terraform
+
+      - name: Validate Terraform configuration
+        run: terraform validate -no-color
+        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
+
       - name: Plan
         run: terraform plan -lock=false -input=false -out=tfplan ${{ inputs.destroy == true && '-destroy' || '' }}
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - name: Encrypt saved plan
-        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         env:
           TF_PLAN_PUBLIC_KEY: ${{ vars.TF_PLAN_PUBLIC_KEY }}
         run: bash .github/scripts/terraform-plan-artifact.sh encrypt "terraform/environments/${{ matrix.environment }}/${{ matrix.target }}" "$RUNNER_TEMP/tfplan.tar.gpg"
 
       - name: Upload encrypted plan
-        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
@@ -185,13 +143,17 @@ jobs:
 
   apply:
     name: Terraform Apply
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.destroy == false
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.destroy == false))
     needs: [discover, plan]
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       max-parallel: 1
       matrix:
         include: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    concurrency:
+      group: terraform-state-${{ matrix.environment }}-${{ matrix.target }}
+      cancel-in-progress: false
     environment: proxmox-rw
     env: *common-env
 
@@ -227,6 +189,7 @@ jobs:
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - uses: ./.github/actions/ansible
+        if: matrix.target != 'images' && matrix.target != 'talos'
         env:
           PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
           PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
@@ -244,9 +207,13 @@ jobs:
     needs: [discover, plan]
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       max-parallel: 1
       matrix:
         include: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    concurrency:
+      group: terraform-state-${{ matrix.environment }}-${{ matrix.target }}
+      cancel-in-progress: false
     environment: proxmox-rw
     env: *common-env
 

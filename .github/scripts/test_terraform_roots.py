@@ -1,0 +1,99 @@
+"""Offline event/diff tests for Terraform root discovery."""
+
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+
+
+SCRIPT = Path(__file__).with_name("terraform-roots.py").resolve()
+
+
+class RootDiscoveryTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.repo = Path(self.temp.name)
+        self.git("init", "-q")
+        self.git("config", "user.email", "test@example.invalid")
+        self.git("config", "user.name", "Test")
+        self.roots = ["dev/sandbox", "dev/vault", "prod/images"]
+        for root in self.roots:
+            self.write(f"terraform/environments/{root}/main.tf", "# root\n")
+        self.base = self.commit()
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def git(self, *args):
+        return subprocess.check_output(["git", *args], cwd=self.repo, text=True).strip()
+
+    def write(self, name, content):
+        path = self.repo / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+
+    def commit(self):
+        self.git("add", ".")
+        self.git("commit", "-qm", "fixture")
+        return self.git("rev-parse", "HEAD")
+
+    def discover(self, event="push", **overrides):
+        import json
+
+        output = self.repo / "outputs"
+        env = dict(os.environ, EVENT_NAME=event, BASE_SHA=self.base,
+                   HEAD_SHA=self.git("rev-parse", "HEAD"), GITHUB_OUTPUT=str(output))
+        env.update(overrides)
+        result = subprocess.run(["python3", str(SCRIPT)], cwd=self.repo,
+                                env=env, text=True, capture_output=True)
+        if result.returncode:
+            return result, None
+        values = dict(line.split("=", 1) for line in output.read_text().splitlines())
+        roots = [f"{r['environment']}/{r['target']}" for r in json.loads(values["matrix"])]
+        self.assertEqual(values["has-changes"], str(bool(roots)).lower())
+        return result, roots
+
+    def test_push_covers_every_commit_in_push(self):
+        for root in self.roots[:2]:
+            self.write(f"terraform/environments/{root}/main.tf", "# changed\n")
+            self.commit()
+        self.assertEqual(self.discover()[1], self.roots[:2])
+
+    def test_pr_excludes_changes_only_on_base_branch(self):
+        self.write("terraform/environments/dev/sandbox/main.tf", "# feature\n")
+        head = self.commit()
+        self.git("checkout", "-q", self.base)
+        self.write("terraform/environments/dev/vault/main.tf", "# base update\n")
+        base = self.commit()
+        self.assertEqual(self.discover("pull_request", BASE_SHA=base, HEAD_SHA=head)[1],
+                         ["dev/sandbox"])
+
+    def test_shared_module_or_automation_change_selects_all(self):
+        for name in ("terraform/modules/example/main.tf", ".github/scripts/helper.py",
+                     ".github/workflows/terraform.yml"):
+            with self.subTest(path=name):
+                base = self.git("rev-parse", "HEAD")
+                self.write(name, "# changed\n")
+                self.commit()
+                self.assertEqual(self.discover(BASE_SHA=base)[1], self.roots)
+
+    def test_unrelated_change_has_empty_matrix(self):
+        self.write("README.md", "documentation\n")
+        self.commit()
+        self.assertEqual(self.discover()[1], [])
+
+    def test_first_push_selects_all(self):
+        self.assertEqual(self.discover(BASE_SHA="0" * 40)[1], self.roots)
+
+    def test_manual_selection_and_invalid_combination(self):
+        self.assertEqual(self.discover("workflow_dispatch", SELECTED_ENV="prod",
+                                       SELECTED_TARGET="images")[1], ["prod/images"])
+        result, _ = self.discover("workflow_dispatch", SELECTED_ENV="prod",
+                                  SELECTED_TARGET="sandbox")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("No Terraform root", result.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()
