@@ -1,33 +1,28 @@
 # Platform Automation
-This Infrastructure as Code project builds an automation layer on top of Proxmox and is effectively the definition of the desired platform.
 
-It provides the underlying services and automation capabilities required to bootstrap, automate the platform and operate workloads running on it.
+Infrastructure as code for a Proxmox platform. Terraform provisions cloud images,
+virtual machines, and a Talos Kubernetes cluster. Ansible configures VM services,
+and GitHub Actions runs deployments over WireGuard.
 
-## Overview
+## Architecture
+
 ```mermaid
 ---
 config:
-  layout: elk
   flowchart:
     curve: basis
-    htmlLabels: true
+    nodeSpacing: 130
+    rankSpacing: 35
 ---
-graph TD
-    repo("<b>IaC Repository")
-    actions("GitHub Actions<br/>CI/CD Automation")
-    tf("Terraform<br/>Infrastructure Provisioning")
-    s3[("AWS S3")]
-    pve("Proxmox VE<br/>Virtualisation Platform")
-    ansible("Ansible<br/>Configuration Management")
-    vms("Virtual Machines")
-
-    repo --> actions
-    actions --> tf
-    actions --> ansible
-    s3 -->|Remote State Backend| tf
-    tf -->|Plan / Apply| pve
-    pve --> vms
-    pve -->|Inventory| ansible
+flowchart TB
+    repo["IaC Repository"] --> actions["GitHub Actions<br/>CI/CD Automation"]
+    actions --> terraform["Terraform<br/>Infrastructure Provisioning"]
+    actions --> ansible["Ansible"]
+    state[("AWS S3")] <-->|Remote State Backend| terraform
+    terraform -->|Plan / Apply| proxmox["Proxmox VE<br/>Virtualisation Platform"]
+    proxmox --> talos["Talos Kubernetes"]
+    proxmox --> vms["Virtual Machines"]
+    proxmox -.->|Inventory| ansible["Ansible<br/>Configuration Management"]
     ansible -->|Apply Roles| vms
 
     classDef cloud fill:#1E293B,stroke:#94A3B8,color:#F8FAFC,stroke-width:2px
@@ -36,71 +31,137 @@ graph TD
     classDef ansible fill:#5F1212,stroke:#EF4444,color:#FEE2E2,stroke-width:2px
     classDef infra fill:#5C2E0B,stroke:#F97316,color:#FFEDD5,stroke-width:2px
 
-    class repo cloud
+    class repo,state cloud
     class actions cicd
-    class tf terraform
+    class terraform terraform
     class ansible ansible
-    class pve infra
-    class s3 cloud
-    class vms infra
+    class proxmox,vms,talos infra
 
     linkStyle 0 stroke:#60A5FA,stroke-width:2px,stroke-dasharray:5 5
-    linkStyle 1 stroke:#60A5FA,stroke-width:2.5px
-    linkStyle 2 stroke:#60A5FA,stroke-width:2.5px
+    linkStyle 1,2 stroke:#60A5FA,stroke-width:2.5px
     linkStyle 3 stroke:#A78BFA,stroke-width:2px,stroke-dasharray:5 5
     linkStyle 4 stroke:#A78BFA,stroke-width:2.5px
-    linkStyle 5 stroke:#F97316,stroke-width:2.5px
-    linkStyle 6 stroke:#EF4444,stroke-width:2px,stroke-dasharray:5 5
-    linkStyle 7 stroke:#EF4444,stroke-width:2.5px
-
+    linkStyle 5,6 stroke:#F97316,stroke-width:2.5px
+    linkStyle 7 stroke:#EF4444,stroke-width:2px,stroke-dasharray:5 5
+    linkStyle 8 stroke:#EF4444,stroke-width:2.5px
 ```
 
-### Continuous Integration and Delivery
-**GitHub Actions**<br>
-It's used to gate and automate infrastructure changes. It's source is driven from the repository. 
+GitHub-hosted runners reach the private network through WireGuard. Service VMs
+use AlmaLinux 10; Kubernetes nodes use Talos Linux and are configured through the
+Talos API.
 
-The CI/CD invokes Terraform to provision infrastructure which is declared in `Environments`.
+## Repository layout
 
-If required, Ansible is then called to manage the configuration of the infrastructure.
+| Path | Purpose |
+| --- | --- |
+| [terraform/environments](terraform/environments) | Terraform roots, each with its own state |
+| [terraform/modules](terraform/modules) | Reusable cloud-image, virtual-machine, and talos-cluster modules |
+| [ansible](ansible/README.md) | Dynamic Proxmox inventory, playbooks, and roles |
+| [.github/workflows](.github/workflows) | Terraform, Ansible, S3 bootstrap, and state unlock workflows |
+| [.github/actions](.github/actions) | Shared WireGuard, SSH, and Ansible actions |
 
-Additionally workflows provided
-- Bootstrap AWS S3 storage
-- Unlock Terraform State in S3
+Enabled roots are `dev/sandbox`, `dev/vault`, and `prod/images`. The `dev/talos`
+root has a `.disabled` marker and is excluded from deployment discovery, including
+manual selection. See the [Talos module guide](terraform/modules/talos-cluster/README.md)
+before enabling it: review DHCP reservations, versions, and existing-state migration.
 
-#### Approval and saved plans
+## Deployments
 
-Configure the `proxmox-ro` GitHub environment without required reviewers and the
-`proxmox-rw` environment with required reviewers and deployments restricted to
-`main`. Keep write credentials and the plan decryption key exclusively in
-`proxmox-rw` environment secrets. These protection rules must be configured in
-GitHub Settings; the workflow's `environment` field alone does not require approval.
+The [Terraform workflow](.github/workflows/terraform.yml) discovers roots from
+changes under `terraform/environments`. Changes to shared modules, workflow
+scripts, or the Terraform workflow select all enabled roots.
 
-Pull requests run formatting checks, validation, and preview plans for affected
-roots. A push to `main` automatically starts the deployment workflow: it plans
-affected roots and queues apply for environment approval. There is no separate
-manual dispatch needed after merging. Manual runs support `single` mode for one
-root or `all` mode for every enabled root in the selected environment. In `all`
-mode the target input is ignored and roots with a `.disabled` marker are skipped.
-Both modes support destruction; destruction is never triggered by a push.
+| Trigger | Behavior |
+| --- | --- |
+| Pull request to `main` | Format, validate, and produce preview plans for affected roots |
+| Push to `main` | Plan affected roots, then queue apply for environment approval |
+| Manual, `single` mode | Plan the selected environment and target |
+| Manual, `all` mode | Plan every enabled root in the selected environment; ignore the target input |
+| Manual, `destroy: true` | Generate a destroy plan, then queue destroy for approval on `main` |
 
-For pushes and manual runs on `main`, the plan job saves the plan and provider lock file,
-encrypts them with a public key, and uploads only the encrypted archive. After
-approval, apply downloads and decrypts that archive and applies the saved plan
-before running Ansible for VM targets (images and Talos skip Ansible). Destroy
-follows the same process with a saved destroy plan. Pull request runs produce
-preview plans without uploading them.
+Manual apply runs also require `main`. Destruction is only triggered manually.
+Before removing a root's configuration, destroy its resources explicitly;
+discovery does not destroy deleted roots.
 
-Changes under a Terraform root select that root. Shared module, workflow, or
-workflow script changes conservatively select all roots. Deleted roots are not
-automatically destroyed: run an explicit manual destroy before removing their
-configuration. Apply and destroy share a concurrency group per environment and
-target, so their writes cannot overlap and new runs do not cancel an active apply.
-GitHub may replace an older pending job when a newer one enters the same group.
-Plans may become stale while waiting for approval; regenerate them rather than
-applying a newly calculated, unreviewed plan.
-All three jobs use Terraform 1.15.8. The Proxmox API token is ephemeral so each
-job uses its own environment's credentials rather than saving the read-only
-token into the plan.
+After applying a VM target, the workflow runs Ansible for that environment and
+target. Images and Talos skip Ansible. The separate [Ansible workflow](.github/workflows/ansible.yml)
+can configure existing VMs without running Terraform.
+
+Offline Talos module and upgrade-order tests run on pushes and pull requests.
+Manual runs include them only when the selected roots contain Talos. All
+Terraform deployment jobs currently use version `1.15.8`.
+
+### Approval and saved plans
+
+Configure these GitHub environments in repository settings:
+
+| Environment | Access | Protection |
+| --- | --- | --- |
+| `proxmox-ro` | Credentials for planning | No required reviewers |
+| `proxmox-rw` | Write credentials and plan decryption key | Required reviewers; deployments restricted to `main` |
+
+Approval depends on those GitHub settings. The workflow's `environment` field
+alone does not require review. Keep write credentials and the plan decryption
+key exclusively in `proxmox-rw` environment secrets.
+
+For pushes and manual runs on `main`, the plan job encrypts the saved plan and
+provider lock file and uploads the archive. After approval, apply or destroy
+decrypts that archive and executes the saved plan. It never generates a
+replacement plan during apply. Each job supplies its own Proxmox API token;
+the Terraform token variable is ephemeral and is not saved in the plan.
+
+Artifacts are unique to each run attempt and root and expire after seven days.
+If a plan becomes stale, its artifact expires, or a deployment fails, rerun
+**all jobs** to generate and review a fresh plan. Plan logs remain visible in
+this public repository; only the saved plan archive is encrypted.
+
+### Concurrency and networking
+
+The [WireGuard action](.github/actions/wireguard/action.yml) uses one shared
+runner profile through `WIREGUARD_PRIVATE_KEY`, `RUNNER_IP`, `PEER_IP`,
+`WIREGUARD_PEER_PUBLIC_KEY`, and `WIREGUARD_ENDPOINT` secrets. Its private route
+is currently `10.0.0.0/24`.
+
+Terraform matrices use `max-parallel: 1`. This serializes jobs within each matrix;
+separate workflow runs can still overlap on the shared tunnel. Avoid overlapping
+VPN workflows while using this profile.
+
+Apply and destroy share a concurrency group per environment and target. They
+cannot write the same state simultaneously, and new runs do not cancel an active
+apply. GitHub can replace an older pending job with a newer one in the same group.
+
+## Setup
+
+### Terraform state
+
+Run the [S3 Bootstrap workflow](.github/workflows/bootstrap.yml) with an explicit
+bucket name and region. The Terraform roots use an encrypted S3 backend with
+lock files enabled.
+
+Create the repository variable `TF_CLI_ARGS_init` in GitHub **Settings → Secrets
+and variables → Actions → Variables**:
+
+```text
+-backend-config=bucket=YOUR_STATE_BUCKET -backend-config=region=YOUR_AWS_REGION
+```
+
+Terraform and State Unlock use this variable during initialization and supply
+the state key separately as `terraform/<environment>/<target>.tfstate`. Use the
+same bucket and region you selected during bootstrap.
+
+For local use, authenticate to AWS and export the variable:
+
+```sh
+export TF_CLI_ARGS_init='-backend-config=bucket=YOUR_STATE_BUCKET -backend-config=region=YOUR_AWS_REGION'
+terraform -chdir=terraform/environments/dev/sandbox init \
+  -backend-config="key=terraform/dev/sandbox.tfstate"
+```
+
+The exported arguments apply to every `terraform init` in that shell. The
+[State Unlock workflow](.github/workflows/state-unlock.yml) accepts an environment,
+target, and lock ID for the corresponding state.
+
+### Plan encryption
 
 Generate a dedicated encryption key locally with GnuPG:
 
@@ -115,103 +176,50 @@ gpg --homedir "$plan_key_dir" --batch --pinentry-mode loopback --passphrase '' \
   > "$plan_key_dir/private.asc"
 ```
 
-In GitHub **Settings → Secrets and variables → Actions → Variables**, create
-the repository variable `TF_PLAN_PUBLIC_KEY` from the complete contents of
-`public.asc`. In **Settings → Environments → proxmox-rw → Environment secrets**,
-create `TF_PLAN_PRIVATE_KEY` from the complete contents of `private.asc`.
-The dedicated private key has no passphrase; protect it as a secret and do not
-commit either generated key file. Store a secure backup and remove the local
-temporary key directory after setup. Rotate the key pair before its one-year expiry.
+| GitHub setting | Value |
+| --- | --- |
+| Repository variable `TF_PLAN_PUBLIC_KEY` | Complete contents of `public.asc` |
+| `proxmox-rw` environment secret `TF_PLAN_PRIVATE_KEY` | Complete contents of `private.asc` |
 
-Artifacts expire after seven days and are named per run attempt and Terraform
-root. Approve within that period. If the plan becomes stale, the artifact expires,
-or you retry a failed deployment, rerun **all jobs** to generate and review a new
-plan. There is no fallback that creates a fresh plan during apply. Plan logs
-remain visible in this public repository; only the saved binary plan is encrypted.
+The dedicated private key has no passphrase. Keep a secure backup, remove the
+temporary key directory after setup, and rotate the pair before its one-year
+expiry. Do not commit the generated files.
 
-### Infrastructure Provisioning
-**Terraform**<br>
-Terraform plan safetly maps what's it's going to create, modify or destroy, in CI/CD this stage has read only access. 
+## VM configuration with Ansible
 
-Once the plan has been approved, the Terraform apply/destroy stage is provided write access.
+Ansible discovers VMs from Proxmox tags and connects over SSH as `ansible` with
+sudo access. Each run intersects the selected target with its environment tag.
 
-For the backend, object storage such as AWS S3 is recommended. It has state locking support.
+| VM tags | Playbooks for a matching target run |
+| --- | --- |
+| `managed` | `managed.yml`: timezone, Ansible user, and packages |
+| `managed` + `vault` | `managed.yml`, then `vault.yml` |
+| `managed` + `sandbox` | `managed.yml`, then `sandbox.yml` |
+| `vault` or `sandbox`, without `managed` | Corresponding service playbook only |
+| No matching tag | Skipped |
 
-The S3 backend is configured at initialisation. Create a GitHub Actions
-repository variable named `TF_CLI_ARGS_init` with your bucket and region:
+The managed baseline is optional and does not exclude service roles. Sandbox
+currently has no additional tasks. See [Ansible deployment targets](ansible/README.md)
+for credentials, inventory conventions, and offline checks.
 
-```text
--backend-config=bucket=YOUR_STATE_BUCKET -backend-config=region=YOUR_AWS_REGION
-```
-
-The Terraform and State Unlock workflows expose this variable to the runner.
-Terraform automatically adds these arguments to `terraform init`. Each workflow
-supplies the state key separately as `terraform/<environment>/<target>.tfstate`.
-
-The S3 Bootstrap workflow requires an explicit bucket name. Use that same bucket
-and its region in `TF_CLI_ARGS_init` before running the Terraform workflow.
-
-For local use, authenticate to AWS and export the same variable in your shell
-(or add it to `~/.bashrc`):
+Preview a Vault run from the repository root:
 
 ```sh
-export TF_CLI_ARGS_init='-backend-config=bucket=YOUR_STATE_BUCKET -backend-config=region=YOUR_AWS_REGION'
-terraform -chdir=terraform/environments/dev/sandbox init \
-  -backend-config="key=terraform/dev/sandbox.tfstate"
+bash ansible/run-playbook.sh dev vault --list-hosts
+bash ansible/run-playbook.sh dev vault --check
 ```
 
-The exported arguments apply to every `terraform init` in that shell.
+### Example VM
 
-Modules
-  - cloud-image
-  - virtual-machine
+The [sandbox variables](terraform/environments/dev/sandbox/terraform.auto.tfvars)
+include environment and target tags so the VM is selected by the runner:
 
-### Talos cluster
-
-The [Talos module](terraform/modules/talos-cluster/README.md) uses ISO boot,
-Talos API configuration, cluster health checks, and sensitive credential outputs.
-The dev example is excluded from deployment discovery by a `.disabled` marker
-until its DHCP reservations, versions, and any existing-state migration are
-reviewed. Offline module tests still run in CI. See the module README for setup,
-credential retrieval, rolling upgrades, and migration steps.
-
-### Virtualisation Platform
-**Proxmox VE**<br>
-This hypervisor provides APIs which are consumed by Terraform and Ansible to create and run Virtual Machines.
-
-### Configuration Management 
-**Ansible**<br>
-Inventory is dynamically pulled from the Proxmox API. Roles are applied based on tags. If a node has the `managed` tag, they will have the managed ansible roles applied.
-
-Ansible remotes to Virtual Machines with SSHs keys.
-
-VMs tagged `managed` receive the `managed.yml` baseline before their selected
-service playbook. VMs tagged `sandbox` or `vault` receive `sandbox.yml` or
-`vault.yml`, respectively, whether managed or not; VMs without a
-matching tag are skipped. Workflows use the [target runner](ansible/run-playbook.sh).
-See [Ansible deployment targets](ansible/README.md)
-for tag conventions, previews, and offline checks.
-
-### Virtual Machines 
-The virtual machines use AlmaLinux 10 to host services and workloads. Kubernetes nodes in the Talos cluster use Talos Linux.
-
-- Services
-    - vault
-- Workloads
-    - Talos Kubernetes
-
-### VPN
-**Wireguard**<br>
-Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
-
-## Environment Example
-[./terraform/environments/dev/sandbox/terraform.auto.tfvars](https://github.com/rauland/iac/blob/main/terraform/environments/dev/sandbox/terraform.auto.tfvars)
 ```hcl
 vms = {
   cockpit = {
     vm_name         = "cockpit"
     node_name       = "pve"
-    tags            = ["managed", "cockpit"]
+    tags            = ["dev", "managed", "sandbox", "cockpit"]
     cpu             = 2
     memory          = 4096
     image_file_name = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
@@ -219,20 +227,20 @@ vms = {
 }
 ```
 
-## Limitations
-By the ephemeral nature of deployments, destroys and scaling. The assumption is that your infrastructure supports DHCP and dynamic DNS or that you're able to set static IPs.
+VM networking requires DHCP and dynamic DNS or explicitly configured static
+addresses. Talos requires the DHCP reservations described in its module guide.
 
-## Feature Status
+## Feature status
 
-Status reflects the configuration in this repository; it does not verify external
-GitHub settings or services configured manually.
+This table reflects repository configuration, not externally configured GitHub
+protections or the health of deployed services.
 
 | Feature | Status | Coverage and remaining work |
 | --- | --- | --- |
-| SSH certificates | Planned | VM access uses SSH keys through the [SSH action](.github/actions/ssh/action.yml) and cloud-init. No SSH CA, certificate signing, or certificate renewal is configured. |
-| Secrets management | Partial | Workflows consume GitHub Actions secrets, saved plans are encrypted, and Talos client credentials are ignored by Git. A [Vault deployment](terraform/environments/dev/vault/main.tf) and [Ansible role](ansible/roles/vault/tasks/main.yml) exist, but there is no SOPS or Ansible Vault integration, automated Vault initialization/unsealing, or workload secret retrieval. |
-| Terraform formatting | Implemented | The [Terraform workflow](.github/workflows/terraform.yml) runs `terraform fmt -check -recursive terraform` before planning. |
-| Broader linting and validation | Partial | Terraform validation and offline Talos tests run in CI. Dedicated Terraform linting, Ansible linting, and workflow linting are not configured. |
-| Kubernetes GitOps | Planned | No Flux or Argo CD bootstrap, application manifests, or reconciliation configuration is present. Terraform automation provisions infrastructure but does not provide Kubernetes workload GitOps. |
-| Persistent workload backups to cloud | Planned | No volume backup controller, backup schedule, cloud backup destination, or restore procedure is configured. The S3 Terraform backend stores infrastructure state, not workload data. |
-| Static IPAM integration | Planned | VM and Talos addresses are supplied explicitly or obtained through DHCP. Talos relies on manually configured DHCP reservations; no IPAM integration allocates addresses or manages reservations. |
+| SSH certificates | Planned | VM access uses SSH keys and cloud-init; no SSH CA or certificate lifecycle is configured. |
+| Secrets management | Partial | GitHub Actions secrets, encrypted saved plans, and ignored Talos credentials are in place. Vault provisioning and an Ansible role exist; automated initialization, unsealing, and workload secret retrieval are not configured. |
+| Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
+| Linting and validation | Partial | Terraform validation and offline Talos tests run in CI; dedicated Terraform, Ansible, and workflow linting are not configured. |
+| Kubernetes GitOps | Planned | No Flux or Argo CD bootstrap or workload reconciliation is configured. |
+| Workload backups | Planned | No workload backup or restore process is configured. S3 stores Terraform state only. |
+| IP address management | Planned | Addresses are supplied explicitly or through DHCP; no IPAM integration allocates addresses or manages reservations. |
