@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
 name: Setup SSH
 description: Reusable SSH setup action for GitHub workflows
 runs:
@@ -13,4 +14,3 @@ inputs:
   SSH_PRIVATE_KEY_ANSIBLE:
     description: "SSH private key for Ansible"
     required: true
-    secret: true

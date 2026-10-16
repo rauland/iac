@@ -1,6 +1,6 @@
 ---
 - name: Apply roles
-  hosts: vault
+  hosts: tag_vault
   remote_user: ansible
   become: true
   roles:

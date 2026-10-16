@@ -1,0 +1,23 @@
+all:
+  children:
+    dev:
+      hosts:
+        dev-vault:
+        dev-sandbox:
+        dev-unmanaged-sandbox:
+    prod:
+      hosts:
+        prod-vault:
+    tag_managed:
+      hosts:
+        dev-vault:
+        dev-sandbox:
+        prod-vault:
+    tag_vault:
+      hosts:
+        dev-vault:
+        prod-vault:
+    tag_sandbox:
+      hosts:
+        dev-sandbox:
+        dev-unmanaged-sandbox:

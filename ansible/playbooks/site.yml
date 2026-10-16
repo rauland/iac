@@ -8,3 +8,8 @@
   ansible.builtin.import_playbook: vault.yml
   tags: 
     - vault
+
+- name: Import Sandbox
+  ansible.builtin.import_playbook: sandbox.yml
+  tags:
+    - sandbox

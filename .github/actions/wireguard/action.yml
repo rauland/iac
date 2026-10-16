@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
 name: Setup WireGuard
 description: Reusable WireGuard setup action for GitHub workflows
 runs:
@@ -26,7 +27,6 @@ inputs:
   WIREGUARD_PRIVATE_KEY:
     description: "WireGuard private key"
     required: true
-    secret: true
   RUNNER_IP:
     description: "IP address for the GitHub runner"
     required: true

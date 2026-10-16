@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
 name: Ansible run
 description: Reusable Ansible action for GitHub workflows
 runs:
@@ -23,19 +24,24 @@ runs:
 
     - name: Run Ansible playbook
       working-directory: "${{ inputs.working-directory}}"
-      run: ansible-playbook ./playbooks/site.yml --limit "${{ inputs.environment }}:&${{ inputs.target }}"
+      env:
+        ANSIBLE_ENVIRONMENT: ${{ inputs.environment }}
+        ANSIBLE_TARGET: ${{ inputs.target }}
+      run: |
+        set -euo pipefail
+        bash ./run-playbook.sh "$ANSIBLE_ENVIRONMENT" "$ANSIBLE_TARGET" --syntax-check
+        bash ./run-playbook.sh "$ANSIBLE_ENVIRONMENT" "$ANSIBLE_TARGET"
       shell: bash
 
 inputs:
   working-directory:
     description: "Working directory for Ansible playbook"
   target:
-    description: "Name of the playbook to run"
+    description: "Deployment target: managed, sandbox, or vault"
     required: true
   SSH_PRIVATE_KEY_ANSIBLE:
     description: "SSH private key for Ansible"
     required: true
-    secret: true
   environment:
     description: "Environment to target"
     required: true

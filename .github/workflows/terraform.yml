@@ -214,6 +214,7 @@ jobs:
           PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
           PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
           PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         with:
           working-directory: ansible
           SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
