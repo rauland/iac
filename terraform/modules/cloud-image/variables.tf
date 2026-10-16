@@ -14,8 +14,8 @@ variable "content_type" {
 }
 
 variable "datastore_id" {
-  description = "ID of the datastore to upload the cloud image to"
-  default     = "local-lvm"
+  description = "ID of a file-based datastore with the selected content type enabled (for example, local with import support)"
+  default     = "local"
 }
 
 variable "node_names" {
