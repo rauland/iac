@@ -4,22 +4,24 @@ Use `bash ansible/run-playbook.sh ENVIRONMENT TARGET` from the repository root.
 The GitHub Actions composite action uses the same runner. Environments are `dev`
 and `prod`; supported targets are listed below.
 
-| Target | Baseline | Target playbook | Host selection |
+| Target | Managed hosts | Other hosts | Host selection |
 | --- | --- | --- | --- |
 | `managed` | `managed.yml` | None | Environment and `managed` tag |
-| `sandbox` | `managed.yml` for selected hosts tagged `managed` | `sandbox.yml` | Environment and `sandbox` tag |
-| `vault` | `managed.yml` for selected hosts tagged `managed` | `vault.yml` | Environment and `vault` tag |
+| `sandbox` | `managed.yml` | `sandbox.yml` | Environment and `sandbox` tag |
+| `vault` | `managed.yml` | `vault.yml` | Environment and `vault` tag |
 
-The baseline applies timezone, Ansible-user, and package configuration. A baseline
-failure stops the target playbook. `sandbox.yml` is the entry point for future
-sandbox-specific roles; it currently has no additional tasks. A Vault run applies
-the baseline to managed Vault hosts, then the Vault role, without loading sandbox
-roles. `site.yml` remains an explicit entry point for running all playbooks.
+The `managed` tag takes priority: those VMs receive only timezone, Ansible-user,
+and package configuration from `managed.yml`. VMs without `managed` receive
+`vault.yml` or `sandbox.yml` when they have the corresponding target tag. VMs
+without any matching tag receive no playbook. `sandbox.yml` currently has no
+additional tasks. `site.yml` runs all matching playbooks with the same rules.
+If a VM has both `vault` and `sandbox` but no `managed` tag, both service
+playbooks match when using `site.yml`.
 
 Proxmox tags create groups prefixed with `tag_`, such as `tag_managed` and
 `tag_vault`, to avoid collisions with VM names. The `dev` and `prod` groups come
 from their corresponding environment tags. Tag each VM with its environment and
-target; add `managed` when it should receive the baseline. The sandbox Terraform
+target; add `managed` when it should receive only managed configuration. The sandbox Terraform
 configuration includes these tags; an existing VM gets them on its next Terraform
 apply. Group variable files use the same prefixed names.
 

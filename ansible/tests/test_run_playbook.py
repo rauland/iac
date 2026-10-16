@@ -1,7 +1,9 @@
-"""Offline checks for target isolation and baseline ordering."""
+"""Offline checks for target isolation and managed-tag precedence."""
 import json
 import os
 from pathlib import Path
+import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -33,7 +35,7 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
         calls = [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
         return result, calls
 
-    def test_vault_runs_baseline_then_only_vault(self):
+    def test_vault_selects_managed_and_vault_playbooks(self):
         result, calls = self.run_target('dev', 'vault', '--check')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([c['args'] for c in calls], [
@@ -65,6 +67,42 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
             result, calls = self.run_target(*args)
             self.assertEqual(result.returncode, 2)
             self.assertEqual(calls, [])
+
+
+@unittest.skipUnless(shutil.which('ansible-playbook'), 'Ansible is not installed')
+class HostSelectionTests(unittest.TestCase):
+    def list_hosts(self, target=None):
+        with tempfile.TemporaryDirectory() as local_temp:
+            env = dict(os.environ, ANSIBLE_LOCAL_TEMP=local_temp)
+            if target is None:
+                command = ['ansible-playbook', 'playbooks/site.yml']
+            else:
+                command = ['bash', str(RUNNER), 'dev', target]
+            result = subprocess.run(
+                command + ['-i', 'tests/inventory.yml', '--list-hosts'],
+                cwd=RUNNER.parent, env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # Retain each play's host set to detect hosts receiving multiple plays.
+        return [set(re.findall(r'^      (\S+)$', block, re.MULTILINE))
+                for block in result.stdout.split('  play #')[1:]]
+
+    def test_site_routes_managed_service_and_untagged_hosts(self):
+        self.assertEqual(self.list_hosts(), [
+            {'dev-vault', 'dev-sandbox', 'prod-vault'},
+            {'dev-unmanaged-vault'},
+            {'dev-unmanaged-sandbox'}])
+
+    def test_vault_target_preserves_environment_and_managed_precedence(self):
+        self.assertEqual(self.list_hosts('vault'), [
+            {'dev-vault'}, {'dev-unmanaged-vault'}])
+
+    def test_sandbox_target_preserves_managed_precedence(self):
+        self.assertEqual(self.list_hosts('sandbox'), [
+            {'dev-sandbox'}, {'dev-unmanaged-sandbox'}])
+
+    def test_managed_target_selects_only_managed_hosts(self):
+        self.assertEqual(self.list_hosts('managed'), [
+            {'dev-vault', 'dev-sandbox'}])
 
 
 if __name__ == '__main__':

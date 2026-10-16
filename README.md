@@ -183,9 +183,9 @@ Inventory is dynamically pulled from the Proxmox API. Roles are applied based on
 
 Ansible remotes to Virtual Machines with SSHs keys.
 
-Each deployment selects its own playbook after applying the managed baseline to
-selected hosts tagged `managed`. Sandbox uses `sandbox.yml`; Vault uses
-`vault.yml`. Workflows use the [target runner](ansible/run-playbook.sh) instead of
+VMs tagged `managed` receive only `managed.yml`. Otherwise, VMs tagged `sandbox`
+or `vault` receive `sandbox.yml` or `vault.yml`, respectively; VMs without a
+matching tag are skipped. Workflows use the [target runner](ansible/run-playbook.sh) instead of
 loading every role through `site.yml`. See [Ansible deployment targets](ansible/README.md)
 for tag conventions, previews, and offline checks.
 

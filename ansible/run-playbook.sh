@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Select one playbook and intersect its hosts with the requested environment.
+# Select a target and intersect its hosts with the requested environment.
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
@@ -22,7 +22,7 @@ esac
 
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 ansible_limit="$ansible_environment:&$ansible_group"
-# The baseline playbook itself selects only hosts carrying the managed tag.
+# Managed hosts receive only managed.yml; the target playbooks exclude them.
 if [[ "$ansible_target" != managed ]]; then
   ansible-playbook ./playbooks/managed.yml --limit "$ansible_limit" "$@"
 fi

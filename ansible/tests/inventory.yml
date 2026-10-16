@@ -5,6 +5,8 @@ all:
         dev-vault:
         dev-sandbox:
         dev-unmanaged-sandbox:
+        dev-unmanaged-vault:
+        dev-untagged:
     prod:
       hosts:
         prod-vault:
@@ -16,6 +18,7 @@ all:
     tag_vault:
       hosts:
         dev-vault:
+        dev-unmanaged-vault:
         prod-vault:
     tag_sandbox:
       hosts:
