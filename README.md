@@ -227,8 +227,3 @@ GitHub settings or services configured manually.
 | Kubernetes GitOps | Planned | No Flux or Argo CD bootstrap, application manifests, or reconciliation configuration is present. Terraform automation provisions infrastructure but does not provide Kubernetes workload GitOps. |
 | Persistent workload backups to cloud | Planned | No volume backup controller, backup schedule, cloud backup destination, or restore procedure is configured. The S3 Terraform backend stores infrastructure state, not workload data. |
 | Static IPAM integration | Planned | VM and Talos addresses are supplied explicitly or obtained through DHCP. Talos relies on manually configured DHCP reservations; no IPAM integration allocates addresses or manages reservations. |
-
-The Vault role currently contains unquoted template expressions in its Certbot
-arguments that prevent the full Ansible site playbook from passing its syntax
-check. Vault deployment code alone should not be treated as completed secrets
-management.

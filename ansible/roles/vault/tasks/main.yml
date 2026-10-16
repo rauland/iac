@@ -102,9 +102,9 @@
       - --non-interactive
       - --agree-tos
       - --email
-      - {{ certbot_email }}
+      - "{{ certbot_email }}"
       - -d
-      - {{ vault_api_addr }}
+      - "{{ vault_api_addr }}"
   args:
     creates: /etc/letsencrypt/live/{{ vault_api_addr }}/fullchain.pem
 
