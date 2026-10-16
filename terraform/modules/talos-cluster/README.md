@@ -4,13 +4,13 @@ This module creates Proxmox VMs, boots a custom Talos **metal ISO from CD-ROM**,
 installs onto separate SCSI disks through the Talos API, bootstraps one control
 plane, checks cluster health, and exposes sensitive client configurations.
 It does not use cloud-init, snippets, Proxmox-host SSH, or runner-local credential
-resources. The four former child modules are now ordinary Terraform files.
+resources.
 
-## Before enabling the example environment
+## Deploying the example environment
 
-`terraform/environments/dev/talos/.disabled` excludes the root from both automatic
-and manual deployment discovery. The module call and sensitive outputs are enabled for local deployment.
-Keep the workflow exclusion until CI deployment is deliberately enabled.
+`terraform/environments/dev/talos` is enabled for local and GitHub Actions
+deployments. It participates in automatic discovery and manual `single` or `all`
+runs. Forks must adapt the example configuration to their own infrastructure.
 
 1. Set the cluster name, Kubernetes endpoint, bootstrap node, and pinned Talos and
    Kubernetes versions. The dev example pins Talos v1.14.3 and Kubernetes v1.37.1 for a fresh
@@ -28,8 +28,14 @@ Keep the workflow exclusion until CI deployment is deliberately enabled.
    balancer or a virtual IP.
 4. Ensure each selected Proxmox host has `iso_datastore_id` with ISO support and
    `disk_datastore_id` for VM disks. The defaults are `local` and `local-lvm`.
-5. For CI deployment, remove `.disabled` after reviewing the deployment plans.
-   Local Terraform commands operate independently of this workflow marker.
+5. Run the Terraform workflow on `main` with environment `dev`, mode `single`,
+   and target `talos`. Review the plan before approving apply. Mode `all` for
+   `dev` also includes Sandbox and Vault.
+
+To opt out of GitHub Actions deployments, add a `.disabled` file in the root
+directory. The marker excludes it from automatic and manual discovery without
+changing the module configuration; local Terraform commands are unaffected.
+Remove the marker when you want workflow deployments to include it again.
 
 The node map keys must equal `node_name`. Keep keys, API addresses, and
 `bootstrap_node` stable. The module derives Proxmox hosts from the node map;
@@ -64,7 +70,7 @@ configuration application again. Bootstrap is a one-time cluster operation;
 recreating the bootstrap VM does not automatically bootstrap a new etcd cluster.
 Recover loss of the control plane through the Talos disaster-recovery procedure.
 
-After enabling the root outputs and applying, retrieve credentials deliberately:
+After applying, retrieve credentials deliberately:
 
 ```sh
 umask 077
@@ -77,7 +83,7 @@ Both outputs are sensitive, but the underlying cluster secrets remain in
 Terraform state. Keep the existing remote-state protections and encrypted-plan
 workflow. Client files are ignored by Git; store them securely outside the repo.
 Replacing the machine-secrets resource would change the cluster's identity, so
-its version input is ignored after creation and it is preserved by a state move.
+its version input is ignored after creation.
 
 ## Upgrades and node removal
 
@@ -120,34 +126,10 @@ References: [Talos Proxmox installation](https://docs.siderolabs.com/talos/v1.11
 [Talos upgrades](https://docs.siderolabs.com/talos/v1.11/configure-your-talos-cluster/lifecycle-management/upgrading-talos),
 [Talos provider configuration apply](https://raw.githubusercontent.com/siderolabs/terraform-provider-talos/v0.12.0/docs/resources/machine_configuration_apply.md).
 
-## Existing clusters and state migration
-
-Do not approve a blanket apply of this refactor against an existing cluster.
-First back up state and etcd and retain working administrator credentials. No
-remote state was inspected or modified while preparing this change.
-
-`moved.tf` preserves resource identities for the schematic, machine secrets,
-Proxmox downloads, VMs, bootstrap, and kubeconfig. Keep this file for existing
-consumers. Old snippets and runner-local files are forgotten with
-`destroy = false`, leaving their contents intact. Remove the secret-bearing
-snippets from Proxmox securely once machines no longer depend on them.
-
-Address moves are not a disk-format conversion. The old module imported an ISO
-into a VM disk and attached cloud-init snippets; this module uses separate
-installation media and no cloud-init drive. If the old cluster exists, inspect
-the proposed disk, boot, firmware, network, and configuration changes carefully.
-Migration may require a separate new cluster or a planned node-by-node rebuild.
-Any seed regeneration, bootstrap replacement, disk replacement, or unintended
-VM deletion in the plan is a reason to stop and resolve migration first.
-
-Commenting out a module block does not protect an existing cluster: an empty
-root with existing state would propose destroying it. The `.disabled` discovery
-marker prevents that root from being run by this repository's workflow while
-migration is being prepared; it does not stop someone running Terraform locally.
-
 ## Offline tests
 
-The CI workflow validates the module even while the environment is disabled.
+The CI workflow validates the module on pushes and pull requests, independently
+of deployment exclusion markers. Manual runs validate it when Talos is selected.
 Contract tests mock both providers and reject invalid bootstrap selections,
 unpinned releases, mismatched addresses, and static networking without DNS.
 A separate test exercises the real local Talos configuration generator while

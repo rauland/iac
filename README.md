@@ -60,10 +60,16 @@ Talos API.
 | [.github/workflows](.github/workflows) | Terraform, Ansible, S3 bootstrap, and state unlock workflows |
 | [.github/actions](.github/actions) | Shared WireGuard, SSH, and Ansible actions |
 
-Enabled roots are `dev/sandbox`, `dev/vault`, and `prod/images`. The `dev/talos`
-root has a `.disabled` marker and is excluded from deployment discovery, including
-manual selection. See the [Talos module guide](terraform/modules/talos-cluster/README.md)
-before enabling it: review DHCP reservations, versions, and existing-state migration.
+Enabled roots are `dev/sandbox`, `dev/vault`, `dev/talos`, and `prod/images`.
+Talos is included in automatic discovery and manual deployments. See the
+[Talos module guide](terraform/modules/talos-cluster/README.md) for networking,
+deployment, and cluster lifecycle procedures.
+
+When forking, adapt the environment variables, VM addresses, and WireGuard setup
+to your own infrastructure before running deployments. To exclude a root from
+GitHub Actions, add a `.disabled` file in its directory. This optional marker
+excludes it from automatic discovery and both manual modes; local Terraform
+commands still work. Remove the marker to include the root again.
 
 ## Deployments
 

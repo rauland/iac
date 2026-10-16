@@ -1,4 +1,3 @@
-# Local deployments are enabled. The .disabled marker excludes this root from CI.
 # See ../../../modules/talos-cluster/README.md for lifecycle procedures.
 module "talos_cluster" {
   source = "../../../modules/talos-cluster"
