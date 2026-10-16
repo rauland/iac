@@ -8,6 +8,7 @@ on:
         type: choice
         options:
           - single
+          - all
         default: single
         required: true
       environment:
@@ -18,7 +19,7 @@ on:
           - dev
           - prod
       target:
-        description: "Target to deploy (e.g., images, vault)"
+        description: "Target to deploy in single mode (ignored in all mode)"
         required: true
         type: choice
         options:
@@ -50,6 +51,8 @@ permissions:
 jobs:
   talos_checks:
     name: Talos module tests (offline)
+    needs: discover
+    if: github.event_name != 'workflow_dispatch' || contains(fromJSON(needs.discover.outputs.matrix).*.target, 'talos')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -84,6 +87,7 @@ jobs:
         id: roots
         env:
           EVENT_NAME: ${{ github.event_name }}
+          DEPLOYMENT_MODE: ${{ inputs.deployment_mode }}
           SELECTED_ENV: ${{ inputs.environment }}
           SELECTED_TARGET: ${{ inputs.target }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -92,7 +96,11 @@ jobs:
 
   plan:
     name: Terraform Plan
-    if: needs.discover.outputs.has-changes == 'true'
+    if: >-
+      !cancelled() &&
+      needs.discover.result == 'success' &&
+      needs.discover.outputs.has-changes == 'true' &&
+      (needs.talos_checks.result == 'success' || needs.talos_checks.result == 'skipped')
     needs: [discover, talos_checks]
     runs-on: ubuntu-latest
     strategy:

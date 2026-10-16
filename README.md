@@ -78,8 +78,10 @@ GitHub Settings; the workflow's `environment` field alone does not require appro
 Pull requests run formatting checks, validation, and preview plans for affected
 roots. A push to `main` automatically starts the deployment workflow: it plans
 affected roots and queues apply for environment approval. There is no separate
-manual dispatch needed after merging. Manual runs remain available for a selected
-root, including destruction; destruction is never triggered by a push.
+manual dispatch needed after merging. Manual runs support `single` mode for one
+root or `all` mode for every enabled root in the selected environment. In `all`
+mode the target input is ignored and roots with a `.disabled` marker are skipped.
+Both modes support destruction; destruction is never triggered by a push.
 
 For pushes and manual runs on `main`, the plan job saves the plan and provider lock file,
 encrypts them with a public key, and uploads only the encrypted archive. After

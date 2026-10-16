@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Discover Terraform roots affected by an event, or one manual selection."""
+"""Discover affected Terraform roots or manual selections within an environment."""
 
 import json
 import os
@@ -25,6 +25,15 @@ def discover():
         key=lambda root: (root["environment"], root["target"]),
     )
     if os.environ["EVENT_NAME"] == "workflow_dispatch":
+        mode = os.environ.get("DEPLOYMENT_MODE", "single")
+        if mode == "all":
+            selected = [root for root in roots
+                        if root["environment"] == os.environ["SELECTED_ENV"]]
+            if not selected:
+                raise SystemExit("No enabled Terraform roots found for selected environment")
+            return selected
+        if mode != "single":
+            raise SystemExit(f"Unsupported deployment mode: {mode}")
         selected = {"environment": os.environ["SELECTED_ENV"],
                     "target": os.environ["SELECTED_TARGET"]}
         if selected not in roots:

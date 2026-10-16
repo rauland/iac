@@ -104,6 +104,32 @@ class RootDiscoveryTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("No Terraform root", result.stderr)
 
+    def test_manual_all_selects_only_chosen_environment_and_ignores_target(self):
+        for environment, expected in [('dev', self.roots[:2]),
+                                      ('prod', ['prod/images'])]:
+            with self.subTest(environment=environment):
+                self.assertEqual(self.discover(
+                    'workflow_dispatch', DEPLOYMENT_MODE='all',
+                    SELECTED_ENV=environment, SELECTED_TARGET='ignored')[1], expected)
+
+    def test_manual_all_excludes_disabled_roots(self):
+        self.write('terraform/environments/dev/sandbox/.disabled', 'disabled\n')
+        self.assertEqual(self.discover(
+            'workflow_dispatch', DEPLOYMENT_MODE='all', SELECTED_ENV='dev')[1],
+            ['dev/vault'])
+
+    def test_manual_all_rejects_environment_without_enabled_roots(self):
+        result, _ = self.discover('workflow_dispatch', DEPLOYMENT_MODE='all',
+                                  SELECTED_ENV='missing')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('No enabled Terraform roots', result.stderr)
+
+    def test_manual_rejects_unknown_mode(self):
+        result, _ = self.discover('workflow_dispatch', DEPLOYMENT_MODE='unknown',
+                                  SELECTED_ENV='dev', SELECTED_TARGET='sandbox')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Unsupported deployment mode', result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
