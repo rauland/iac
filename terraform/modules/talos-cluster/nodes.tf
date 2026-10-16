@@ -32,9 +32,15 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   efi_disk {
-    datastore_id      = coalesce(each.value.disk_datastore_id, var.disk_datastore_id)
-    type              = "4m"
+    datastore_id = coalesce(each.value.disk_datastore_id, var.disk_datastore_id)
+    type         = "4m"
+    # Start in UEFI setup mode so the Talos ISO can enroll its signing keys.
     pre_enrolled_keys = false
+  }
+
+  tpm_state {
+    datastore_id = coalesce(each.value.disk_datastore_id, var.disk_datastore_id)
+    version      = "v2.0"
   }
 
   disk {

@@ -1,8 +1,9 @@
 # Talos on Proxmox
 
-This module creates Proxmox VMs, boots a custom Talos **metal ISO from CD-ROM**,
+This module creates Proxmox VMs, boots a custom Talos **Secure Boot metal ISO from CD-ROM**,
 installs onto separate SCSI disks through the Talos API, bootstraps one control
-plane, checks cluster health, and exposes sensitive client configurations.
+plane, encrypts `STATE` and `EPHEMERAL` with TPM-backed LUKS2, checks cluster health,
+and exposes sensitive client configurations.
 It does not use cloud-init, snippets, Proxmox-host SSH, or runner-local credential
 resources.
 
@@ -43,11 +44,60 @@ there is no separate `pve_nodes` list that can disagree with it. CPU, memory,
 disk capacity, storage override, bridge, VLAN, MAC, VM ID, and YAML patches can be
 set per node. Defaults are 2 CPUs, 4096 MiB RAM, and a 32 GiB disk.
 
-VMs use UEFI, q35, VirtIO SCSI, one NIC, and `/dev/sda` as the installation target.
+VMs use UEFI, q35, a 4 MiB EFI disk, a persistent TPM 2.0 device, VirtIO SCSI,
+one NIC, and `/dev/sda` as the installation target. EFI and TPM state use the
+node's disk datastore (or the module default). The EFI disk intentionally has
+`pre_enrolled_keys = false`: fresh firmware starts in setup mode so the Secure
+Boot ISO can automatically enroll Sidero Labs signing keys under virtualization.
+Proxmox's pre-enrolled Microsoft/distribution keys do not replace Talos key enrollment.
 The installation ISO contains `qemu-guest-agent`; waiting for its IP report is
 disabled to avoid blocking configuration while the VM is in maintenance mode.
 The boot order tries the installed disk before the ISO. The network patch selects
 the one physical NIC rather than relying on a Linux interface name.
+
+## Secure Boot and system-volume encryption
+
+Both boot media and installation/upgrade images use Image Factory's Secure Boot
+variants with the same schematic and extensions. `installer_iso_url` and
+`installer_image` expose those variants too; use the latter for rolling upgrades.
+
+Every node receives `VolumeConfig` documents for `STATE` and `EPHEMERAL`. Each
+uses LUKS2 with a single TPM key in slot 0, explicitly bound to PCR 7 (Secure Boot
+state), in addition to the signed UKI policy. Key enrollment fails if Secure Boot
+is disabled; there is no static passphrase or node-ID fallback. `EPHEMERAL` also
+uses `lockToState: true`, so wiping/replacing `STATE` prevents that volume from
+being unlocked. Encryption keys are generated and sealed on the node, not passed
+through Terraform variables.
+
+The default etcd, container-runtime, kubelet, and log directories live under
+`EPHEMERAL` and inherit its encryption. If additional configuration patches place
+them on dedicated partitions, configure encryption for those volumes separately.
+CSI-managed disks and remote persistent volumes need their own encryption settings.
+Custom global/per-node patches run last and can override the module defaults;
+review any changes to boot or encryption settings carefully.
+
+After initial boot, verify each node through its installed system:
+
+```sh
+talosctl --talosconfig /secure/path/talosconfig -n NODE_IP get securitystate
+talosctl --talosconfig /secure/path/talosconfig -n NODE_IP get volumestatus STATE -o yaml
+talosctl --talosconfig /secure/path/talosconfig -n NODE_IP get volumestatus EPHEMERAL -o yaml
+```
+
+Require `SECUREBOOT=true` and confirm that both volumes report `luks2` with TPM
+encryption. If boot or enrollment fails, inspect the Proxmox console and firmware
+settings; do not bypass the Secure Boot enrollment check.
+
+Preserve the VM's EFI variables and TPM state alongside its encrypted disks in
+backups and migrations. With only a TPM key, loss of the TPM state or an
+incompatible boot-policy change can make the disks unrecoverable. Maintain and
+test independent etcd/workload backups for recovery onto fresh nodes. A Proxmox
+vTPM is controlled by the hypervisor; this does not protect against an administrator
+who controls the Proxmox host, or against a compromised running node.
+
+References: [Talos Secure Boot](https://docs.siderolabs.com/talos/v1.14/platform-specific-installations/bare-metal-platforms/secureboot),
+[Talos disk encryption](https://docs.siderolabs.com/talos/v1.14/configure-your-talos-cluster/storage-and-disk-management/disk-encryption),
+[VolumeConfig](https://docs.siderolabs.com/talos/v1.14/reference/configuration/block/volumeconfig).
 
 ## Configuration and credentials
 
@@ -111,6 +161,9 @@ before proceeding, then upgrade workers individually. Update the pinned
 `talos_version` through a reviewed Terraform change after the rolling operation
 so future machines use the same version. ISO attachments may update, but the
 disk-first boot order preserves installed systems.
+Always use the matching Secure Boot installer image and preserve signing-key
+continuity; a regular installer image can leave a node unable to boot or unlock
+its system volumes.
 
 For Kubernetes upgrades, run `talosctl upgrade-k8s --to TARGET_VERSION` through a
 control-plane node, verify health, and only then update `kubernetes_version` in
@@ -134,7 +187,8 @@ Contract tests mock both providers and reject invalid bootstrap selections,
 unpinned releases, mismatched addresses, and static networking without DNS.
 A separate test exercises the real local Talos configuration generator while
 overriding every network-facing operation. The upgrade helper tests use a fake
-`talosctl` executable.
+`talosctl` executable. Tests also cover Secure Boot image selection, UEFI/TPM
+hardware, and the real generator's encrypted-volume configuration for both node roles.
 
 ```sh
 terraform -chdir=terraform/modules/talos-cluster init -backend=false

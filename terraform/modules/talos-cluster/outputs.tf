@@ -3,11 +3,11 @@ output "schematic_id" {
 }
 
 output "installer_iso_url" {
-  value = data.talos_image_factory_urls.this.urls.iso
+  value = data.talos_image_factory_urls.this.urls.iso_secureboot
 }
 
 output "installer_image" {
-  value = data.talos_image_factory_urls.this.urls.installer
+  value = data.talos_image_factory_urls.this.urls.installer_secureboot
 }
 
 output "node_addresses" {

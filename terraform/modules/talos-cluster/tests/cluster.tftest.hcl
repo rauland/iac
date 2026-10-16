@@ -12,8 +12,10 @@ mock_provider "talos" {
   mock_data "talos_image_factory_urls" {
     defaults = {
       urls = {
-        iso       = "https://factory.example/metal-amd64.iso"
-        installer = "factory.example/installer/test:v1.14.3"
+        iso                  = "https://factory.example/metal-amd64.iso"
+        installer            = "factory.example/installer/test:v1.14.3"
+        iso_secureboot       = "https://factory.example/metal-amd64-secureboot.iso"
+        installer_secureboot = "factory.example/installer-secureboot/test:v1.14.3"
       }
     }
   }
@@ -67,6 +69,23 @@ run "boot_and_configuration_contract" {
   assert {
     condition     = length(proxmox_download_file.iso) == 2 && data.talos_image_factory_urls.this.platform == "metal"
     error_message = "Download metal ISO boot media to each Proxmox host used by the nodes."
+  }
+  assert {
+    condition = alltrue([for node in proxmox_virtual_environment_vm.node : (
+      node.bios == "ovmf" && node.machine == "q35" &&
+      node.efi_disk[0].type == "4m" && !node.efi_disk[0].pre_enrolled_keys &&
+      node.tpm_state[0].version == "v2.0" &&
+      node.tpm_state[0].datastore_id == node.disk[0].datastore_id
+    )])
+    error_message = "Every node needs UEFI setup mode for Talos key enrollment and a persistent TPM 2.0 on its disk datastore."
+  }
+  assert {
+    condition = (
+      alltrue([for iso in proxmox_download_file.iso : iso.url == "https://factory.example/metal-amd64-secureboot.iso" && endswith(iso.file_name, "-secureboot.iso")]) &&
+      output.installer_iso_url == "https://factory.example/metal-amd64-secureboot.iso" &&
+      output.installer_image == "factory.example/installer-secureboot/test:v1.14.3"
+    )
+    error_message = "Boot media and exported installation/upgrade images must use the Secure Boot variants."
   }
   assert {
     condition     = talos_machine_bootstrap.this.node == "192.0.2.10" && talos_machine_bootstrap.this.endpoint == "192.0.2.10"

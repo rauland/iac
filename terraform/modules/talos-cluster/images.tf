@@ -28,8 +28,8 @@ resource "proxmox_download_file" "iso" {
   node_name    = each.key
   datastore_id = var.iso_datastore_id
   content_type = "iso"
-  file_name    = "${var.cluster_name}-talos-${var.talos_version}-${talos_image_factory_schematic.this.id}.iso"
-  url          = data.talos_image_factory_urls.this.urls.iso
+  file_name    = "${var.cluster_name}-talos-${var.talos_version}-${talos_image_factory_schematic.this.id}-secureboot.iso"
+  url          = data.talos_image_factory_urls.this.urls.iso_secureboot
 
   lifecycle {
     create_before_destroy = true

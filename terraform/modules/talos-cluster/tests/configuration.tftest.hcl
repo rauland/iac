@@ -20,8 +20,10 @@ override_data {
   target = data.talos_image_factory_urls.this
   values = {
     urls = {
-      iso       = "https://factory.example/metal-amd64.iso"
-      installer = "factory.example/installer/test:v1.14.3"
+      iso                  = "https://factory.example/metal-amd64.iso"
+      installer            = "factory.example/installer/test:v1.14.3"
+      iso_secureboot       = "https://factory.example/metal-amd64-secureboot.iso"
+      installer_secureboot = "factory.example/installer-secureboot/test:v1.14.3"
     }
   }
 }
@@ -70,6 +72,27 @@ variables {
 run "generate_valid_talos_configuration_offline" {
   command = apply
   assert {
+    condition = alltrue([for node in data.talos_machine_configuration.node : (
+      one([for doc in split("\n---\n", node.machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "UnattendedInstallConfig"]).installer.image == "factory.example/installer-secureboot/test:v1.14.3"
+    )])
+    error_message = "The real Talos generator must select the Secure Boot installer for every node."
+  }
+  assert {
+    condition = alltrue([for node in data.talos_machine_configuration.node : (
+      length([for doc in split("\n---\n", node.machine_configuration) : doc if try(yamldecode(doc).kind, "") == "VolumeConfig"]) == 2 &&
+      alltrue([for volume in [for doc in split("\n---\n", node.machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "VolumeConfig"] : (
+        contains(["STATE", "EPHEMERAL"], volume.name) &&
+        volume.encryption.provider == "luks2" &&
+        length(volume.encryption.keys) == 1 &&
+        volume.encryption.keys[0].slot == 0 &&
+        volume.encryption.keys[0].tpm.checkSecurebootStatusOnEnroll &&
+        volume.encryption.keys[0].tpm.options.pcrs == [7] &&
+        try(volume.encryption.keys[0].lockToState, false) == (volume.name == "EPHEMERAL")
+      )])
+    )])
+    error_message = "Every node must encrypt STATE and EPHEMERAL with only a TPM key, require Secure Boot, bind PCR 7, and lock only EPHEMERAL to STATE."
+  }
+  assert {
     condition = (
       one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "UnattendedInstallConfig"]).provisioning.diskSelector.match == "disk.dev_path == \"/dev/sda\"" &&
       one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "ResolverConfig"]).nameservers[0].address == "192.0.2.1" &&
@@ -80,5 +103,20 @@ run "generate_valid_talos_configuration_offline" {
       !can(one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).version, "") == "v1alpha1"]).machine.install)
     )
     error_message = "The real Talos generator must accept the patches and preserve networking, endpoint, and node roles."
+  }
+}
+
+run "generate_legacy_talos_configuration_offline" {
+  command = apply
+  variables {
+    talos_version      = "v1.11.2"
+    kubernetes_version = "v1.34.1"
+  }
+  assert {
+    condition = alltrue([for node in data.talos_machine_configuration.node : (
+      one([for doc in split("\n---\n", node.machine_configuration) : yamldecode(doc) if try(yamldecode(doc).version, "") == "v1alpha1"]).machine.install.image == "factory.example/installer-secureboot/test:v1.14.3" &&
+      length([for doc in split("\n---\n", node.machine_configuration) : doc if try(yamldecode(doc).kind, "") == "VolumeConfig"]) == 2
+    )])
+    error_message = "The legacy machine configuration layout must also use the Secure Boot installer and accept both encrypted system volumes."
   }
 }

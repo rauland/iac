@@ -26,7 +26,7 @@ data "talos_machine_configuration" "node" {
       machine = merge({ for key, value in {
         install = {
           disk  = "/dev/sda"
-          image = data.talos_image_factory_urls.this.urls.installer
+          image = data.talos_image_factory_urls.this.urls.installer_secureboot
         }
         } : key => value if !local.split_machine_config }, {
         network = merge({ for key, value in {
@@ -46,7 +46,7 @@ data "talos_machine_configuration" "node" {
     yamlencode({
       apiVersion = "v1alpha1"
       kind       = "UnattendedInstallConfig"
-      installer  = { image = data.talos_image_factory_urls.this.urls.installer }
+      installer  = { image = data.talos_image_factory_urls.this.urls.installer_secureboot }
       provisioning = {
         diskSelector = { match = "disk.dev_path == \"/dev/sda\"" }
         wipe         = false
@@ -68,7 +68,21 @@ data "talos_machine_configuration" "node" {
       kind        = "ResolverConfig"
       nameservers = [for address in var.dns_servers : { address = address }]
     })
-  ] : [], var.config_patches, each.value.config_patches)
+    ] : [], [for volume in ["STATE", "EPHEMERAL"] : yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "VolumeConfig"
+      name       = volume
+      encryption = {
+        provider = "luks2"
+        keys = [merge({
+          slot = 0
+          tpm = {
+            checkSecurebootStatusOnEnroll = true
+            options                       = { pcrs = [7] }
+          }
+        }, volume == "EPHEMERAL" ? { lockToState = true } : {})]
+      }
+  })], var.config_patches, each.value.config_patches)
 }
 
 resource "talos_machine_configuration_apply" "node" {
