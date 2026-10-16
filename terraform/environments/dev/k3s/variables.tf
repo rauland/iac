@@ -3,6 +3,7 @@ variable "virtual_environment_endpoint" {
 }
 
 variable "virtual_environment_api_token" {
+  ephemeral = true
   type      = string
   sensitive = true
 }
@@ -16,6 +17,6 @@ variable "vms" {
     memory             = optional(number)
     image_datastore_id = optional(string, "local")
     image_file_name    = optional(string, "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2")
-    
+
   }))
 }

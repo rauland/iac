@@ -67,6 +67,50 @@ Additionally workflows provided
 - Bootstrap AWS S3 storage
 - Unlock Terraform State in S3
 
+#### Approval and saved plans
+
+Configure the `proxmox-ro` GitHub environment without required reviewers and the
+`proxmox-rw` environment with required reviewers and deployments restricted to
+`main`. Keep write credentials and the plan decryption key exclusively in
+`proxmox-rw` environment secrets. These protection rules must be configured in
+GitHub Settings; the workflow's `environment` field alone does not require approval.
+
+For manual runs on `main`, the plan job saves the plan and provider lock file,
+encrypts them with a public key, and uploads only the encrypted archive. After
+approval, apply downloads and decrypts that archive and applies the saved plan
+before running Ansible. Destroy follows the same process with a saved destroy
+plan. Push and pull request runs produce preview plans without uploading them.
+All three jobs use Terraform 1.15.8. The Proxmox API token is ephemeral so each
+job uses its own environment's credentials rather than saving the read-only
+token into the plan.
+
+Generate a dedicated encryption key locally with GnuPG:
+
+```sh
+plan_key_dir=$(mktemp -d)
+gpg --homedir "$plan_key_dir" --batch --passphrase '' \
+  --quick-generate-key 'Terraform plan encryption' rsa3072 encr 1y
+gpg --homedir "$plan_key_dir" --armor --export 'Terraform plan encryption' \
+  > "$plan_key_dir/public.asc"
+gpg --homedir "$plan_key_dir" --batch --pinentry-mode loopback --passphrase '' \
+  --armor --export-secret-keys 'Terraform plan encryption' \
+  > "$plan_key_dir/private.asc"
+```
+
+In GitHub **Settings → Secrets and variables → Actions → Variables**, create
+the repository variable `TF_PLAN_PUBLIC_KEY` from the complete contents of
+`public.asc`. In **Settings → Environments → proxmox-rw → Environment secrets**,
+create `TF_PLAN_PRIVATE_KEY` from the complete contents of `private.asc`.
+The dedicated private key has no passphrase; protect it as a secret and do not
+commit either generated key file. Store a secure backup and remove the local
+temporary key directory after setup. Rotate the key pair before its one-year expiry.
+
+Artifacts expire after seven days and are named per run attempt and Terraform
+root. Approve within that period. If the plan becomes stale, the artifact expires,
+or you retry a failed deployment, rerun **all jobs** to generate and review a new
+plan. There is no fallback that creates a fresh plan during apply. Plan logs
+remain visible in this public repository; only the saved binary plan is encrypted.
+
 ### Infrastructure Provisioning
 **Terraform**<br>
 Terraform plan safetly maps what's it's going to create, modify or destroy, in CI/CD this stage has read only access. 

@@ -39,10 +39,14 @@ on:
       - "terraform/modules/**"
       - "terraform/environments/**"
       - ".github/workflows/terraform.yml"
+      - ".github/scripts/terraform-plan-artifact.sh"
 
   push:
     branches: [main]
     paths: *paths
+
+permissions:
+  contents: read
 
 jobs:
   discover:
@@ -126,8 +130,6 @@ jobs:
       max-parallel: 1
       matrix:
         include: ${{ fromJSON(needs.discover.outputs.matrix) }}
-    outputs:
-      plan-success: ${{ steps.plan.outputs.success }}
     environment: proxmox-ro
     env: &common-env
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -144,8 +146,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: latest
+        with: &terraform-setup
+          terraform_version: "1.15.8"
 
       - uses: ./.github/actions/wireguard
         with: &wireguard-env
@@ -163,10 +165,23 @@ jobs:
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - name: Plan
-        run: terraform plan -lock=false --input=false ${{ inputs.destroy == true && '-destroy' || '' }}
-
-        id: plan
+        run: terraform plan -lock=false -input=false -out=tfplan ${{ inputs.destroy == true && '-destroy' || '' }}
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
+
+      - name: Encrypt saved plan
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+        env:
+          TF_PLAN_PUBLIC_KEY: ${{ vars.TF_PLAN_PUBLIC_KEY }}
+        run: bash .github/scripts/terraform-plan-artifact.sh encrypt "terraform/environments/${{ matrix.environment }}/${{ matrix.target }}" "$RUNNER_TEMP/tfplan.tar.gpg"
+
+      - name: Upload encrypted plan
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
+          path: ${{ runner.temp }}/tfplan.tar.gpg
+          if-no-files-found: error
+          retention-days: 7
 
   apply:
     name: Terraform Apply
@@ -182,7 +197,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download encrypted plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
+          path: ${{ runner.temp }}/encrypted-plan
+
+      - name: Decrypt saved plan
+        env:
+          TF_PLAN_PRIVATE_KEY: ${{ secrets.TF_PLAN_PRIVATE_KEY }}
+        run: bash .github/scripts/terraform-plan-artifact.sh decrypt "terraform/environments/${{ matrix.environment }}/${{ matrix.target }}" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
+
       - uses: hashicorp/setup-terraform@v3
+        with: *terraform-setup
 
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
@@ -190,12 +218,12 @@ jobs:
       - name: Initialize Terraform backend
         shell: bash
         run: |
-          terraform init -input=false \
+          terraform init -input=false -lockfile=readonly \
             -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - name: Apply
-        run: terraform apply -auto-approve --input=false
+        run: terraform apply -input=false tfplan
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - uses: ./.github/actions/ansible
@@ -224,7 +252,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download encrypted plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
+          path: ${{ runner.temp }}/encrypted-plan
+
+      - name: Decrypt saved plan
+        env:
+          TF_PLAN_PRIVATE_KEY: ${{ secrets.TF_PLAN_PRIVATE_KEY }}
+        run: bash .github/scripts/terraform-plan-artifact.sh decrypt "terraform/environments/${{ matrix.environment }}/${{ matrix.target }}" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
+
       - uses: hashicorp/setup-terraform@v3
+        with: *terraform-setup
 
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
@@ -232,10 +273,10 @@ jobs:
       - name: Initialize Terraform backend
         shell: bash
         run: |
-          terraform init -input=false \
+          terraform init -input=false -lockfile=readonly \
             -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - name: Destroy
-        run: terraform destroy -auto-approve --input=false
+        run: terraform apply -input=false tfplan
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}

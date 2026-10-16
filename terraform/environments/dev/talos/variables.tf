@@ -3,6 +3,7 @@ variable "virtual_environment_endpoint" {
 }
 
 variable "virtual_environment_api_token" {
+  ephemeral = true
   type      = string
   sensitive = true
 }
