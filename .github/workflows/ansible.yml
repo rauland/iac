@@ -11,12 +11,11 @@ on:
           - dev
           - prod
       target:
-        description: "Target to deploy (e.g., managed, k3s, vault)"
+        description: "Target to deploy (e.g., managed, vault)"
         required: true
         type: choice
         options:
           - managed
-          - k3s
           - vault
   # push:
     # branches: [main]
@@ -50,7 +49,3 @@ jobs:
           SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
           target: ${{ inputs.target }}
           environment: ${{ inputs.environment }}
-
-      # - name: Run Ansible playbook for k3s hosts
-      #   working-directory: ./ansible
-      #   run: ansible-playbook k3s.orchestration.site -i ./inventory/k3s.inventory.yml

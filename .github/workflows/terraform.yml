@@ -23,7 +23,6 @@ on:
         type: choice
         options:
           - images
-          - k3s
           - sandbox
           - talos
           - vault

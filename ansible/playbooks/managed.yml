@@ -6,7 +6,4 @@
   roles:
     - system_timezone
     - ansible_user
-    - role: install_packages
-      when: ansible_facts['distribution'] == 'Ubuntu' 
-    - role: unattended_upgrades
-      when: ansible_facts['distribution'] == 'Ubuntu'
+    - install_packages

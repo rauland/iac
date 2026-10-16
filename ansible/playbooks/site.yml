@@ -4,11 +4,6 @@
   tags: 
     - managed
 
-- name: Import K3s cluster
-  ansible.builtin.import_playbook: k3s.yml
-  tags: 
-    - k3s
-
 - name: Import Vault
   ansible.builtin.import_playbook: vault.yml
   tags: 

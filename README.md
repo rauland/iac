@@ -154,8 +154,8 @@ For local use, authenticate to AWS and export the same variable in your shell
 
 ```sh
 export TF_CLI_ARGS_init='-backend-config=bucket=YOUR_STATE_BUCKET -backend-config=region=YOUR_AWS_REGION'
-terraform -chdir=terraform/environments/dev/k3s init \
-  -backend-config="key=terraform/dev/k3s.tfstate"
+terraform -chdir=terraform/environments/dev/sandbox init \
+  -backend-config="key=terraform/dev/sandbox.tfstate"
 ```
 
 The exported arguments apply to every `terraform init` in that shell.
@@ -184,32 +184,28 @@ Inventory is dynamically pulled from the Proxmox API. Roles are applied based on
 Ansible remotes to Virtual Machines with SSHs keys.
 
 ### Virtual Machines 
-The virtual machines will host services and workloads, any flavour of Linux could work but currently AlmaLinux10 and Ubuntu configuration is supported.
+The virtual machines use AlmaLinux 10 to host services and workloads. Kubernetes nodes in the Talos cluster use Talos Linux.
 
 - Services
     - vault
 - Workloads
-    - k3s
+    - Talos Kubernetes
 
 ### VPN
 **Wireguard**<br>
 Connections to the Proxmox API is done securely over Wireguard. With this solution no runner is required in your environment.
 
 ## Environment Example
-[./terraform/environments/dev/k3s/terraform.auto.tfvars](https://github.com/rauland/iac/blob/main/terraform/environments/dev/k3s/terraform.auto.tfvars)
-```
-vms = {                              # 1 or more VMs can be defined
-  k3s-01 = {                         # name of guest
-    node_name = "pve"                # name of pve node
-    tags      = ["managed", "k3s"]   # managed for ansible configuration
-    cpu       = 2
-    memory    = 4096
-  }
-  k3s-02 = {
-    node_name = "pve"
-    tags      = ["managed", "k3s"]
-    cpu       = 2
-    memory    = 4096
+[./terraform/environments/dev/sandbox/terraform.auto.tfvars](https://github.com/rauland/iac/blob/main/terraform/environments/dev/sandbox/terraform.auto.tfvars)
+```hcl
+vms = {
+  cockpit = {
+    vm_name         = "cockpit"
+    node_name       = "pve"
+    tags            = ["managed", "cockpit"]
+    cpu             = 2
+    memory          = 4096
+    image_file_name = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
   }
 }
 ```
@@ -217,20 +213,22 @@ vms = {                              # 1 or more VMs can be defined
 ## Limitations
 By the ephemeral nature of deployments, destroys and scaling. The assumption is that your infrastructure supports DHCP and dynamic DNS or that you're able to set static IPs.
 
-## Planned Features
-### Configuration Management
-- K3s Roles
-- SSH Certs
-- Secrets Management
-    - SOPS or Ansible-Vault
+## Feature Status
 
-### CI/CD
-- Linting
-    - Terraform fmt
+Status reflects the configuration in this repository; it does not verify external
+GitHub settings or services configured manually.
 
-### K8s
-- GitOps
-- Backup persistent container data to cloud
- 
-## Future Features
-- Static IPAM integration
+| Feature | Status | Coverage and remaining work |
+| --- | --- | --- |
+| SSH certificates | Planned | VM access uses SSH keys through the [SSH action](.github/actions/ssh/action.yml) and cloud-init. No SSH CA, certificate signing, or certificate renewal is configured. |
+| Secrets management | Partial | Workflows consume GitHub Actions secrets, saved plans are encrypted, and Talos client credentials are ignored by Git. A [Vault deployment](terraform/environments/dev/vault/main.tf) and [Ansible role](ansible/roles/vault/tasks/main.yml) exist, but there is no SOPS or Ansible Vault integration, automated Vault initialization/unsealing, or workload secret retrieval. |
+| Terraform formatting | Implemented | The [Terraform workflow](.github/workflows/terraform.yml) runs `terraform fmt -check -recursive terraform` before planning. |
+| Broader linting and validation | Partial | Terraform validation and offline Talos tests run in CI. Dedicated Terraform linting, Ansible linting, and workflow linting are not configured. |
+| Kubernetes GitOps | Planned | No Flux or Argo CD bootstrap, application manifests, or reconciliation configuration is present. Terraform automation provisions infrastructure but does not provide Kubernetes workload GitOps. |
+| Persistent workload backups to cloud | Planned | No volume backup controller, backup schedule, cloud backup destination, or restore procedure is configured. The S3 Terraform backend stores infrastructure state, not workload data. |
+| Static IPAM integration | Planned | VM and Talos addresses are supplied explicitly or obtained through DHCP. Talos relies on manually configured DHCP reservations; no IPAM integration allocates addresses or manages reservations. |
+
+The Vault role currently contains unquoted template expressions in its Certbot
+arguments that prevent the full Ansible site playbook from passing its syntax
+check. Vault deployment code alone should not be treated as completed secrets
+management.
