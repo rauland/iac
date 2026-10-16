@@ -49,6 +49,26 @@ permissions:
   contents: read
 
 jobs:
+  talos_checks:
+    name: Talos module tests (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
+      - name: Initialize module providers
+        run: terraform init -backend=false -input=false
+        working-directory: terraform/modules/talos-cluster
+      - name: Validate module
+        run: terraform validate -no-color
+        working-directory: terraform/modules/talos-cluster
+      - name: Run offline cluster tests
+        run: terraform test -no-color
+        working-directory: terraform/modules/talos-cluster
+      - name: Test upgrade ordering
+        run: python3 terraform/modules/talos-cluster/scripts/test_upgrade_node.py
+
   discover:
     name: Discover Terraform roots
     runs-on: ubuntu-latest
@@ -74,7 +94,7 @@ jobs:
   plan:
     name: Terraform Plan
     if: needs.discover.outputs.has-changes == 'true'
-    needs: discover
+    needs: [discover, talos_checks]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

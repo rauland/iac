@@ -21,14 +21,14 @@ def discover():
     roots = sorted(
         ({"environment": p.parent.name, "target": p.name}
          for p in Path("terraform/environments").glob("*/*")
-         if p.is_dir() and any(p.glob("*.tf"))),
+         if p.is_dir() and any(p.glob("*.tf")) and not (p / ".disabled").exists()),
         key=lambda root: (root["environment"], root["target"]),
     )
     if os.environ["EVENT_NAME"] == "workflow_dispatch":
         selected = {"environment": os.environ["SELECTED_ENV"],
                     "target": os.environ["SELECTED_TARGET"]}
         if selected not in roots:
-            raise SystemExit(f"No Terraform root found for {selected}")
+            raise SystemExit(f"No Terraform root found (or it is disabled) for {selected}")
         return [selected]
 
     base = os.environ.get("BASE_SHA", "")

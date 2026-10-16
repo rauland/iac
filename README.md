@@ -164,6 +164,15 @@ Modules
   - cloud-image
   - virtual-machine
 
+### Talos cluster
+
+The [Talos module](terraform/modules/talos-cluster/README.md) uses ISO boot,
+Talos API configuration, cluster health checks, and sensitive credential outputs.
+The dev example is excluded from deployment discovery by a `.disabled` marker
+until its DHCP reservations, versions, and any existing-state migration are
+reviewed. Offline module tests still run in CI. See the module README for setup,
+credential retrieval, rolling upgrades, and migration steps.
+
 ### Virtualisation Platform
 **Proxmox VE**<br>
 This hypervisor provides APIs which are consumed by Terraform and Ansible to create and run Virtual Machines.

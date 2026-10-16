@@ -1,31 +1,27 @@
 output "schematic_id" {
-  value = module.factory.schematic_id
+  value = talos_image_factory_schematic.this.id
 }
 
 output "installer_iso_url" {
-  value = module.factory.installer_iso_url
+  value = data.talos_image_factory_urls.this.urls.iso
 }
 
 output "installer_image" {
-  value = module.factory.installer_image
+  value = data.talos_image_factory_urls.this.urls.installer
 }
 
-output "talos_controlpane_configuration" {
-  value     = module.cluster.talos_controlpane_configuration
-  sensitive = true
+output "node_addresses" {
+  value = { for key, node in var.talos_nodes : key => node.api_address }
 }
 
-output "talos_worker_configuration" {
-  value     = module.cluster.talos_worker_configuration
-  sensitive = true
+output "talosconfig" {
+  description = "Talos administrator configuration. Retrieve deliberately with terraform output -raw; do not upload as a public artifact."
+  value       = data.talos_client_configuration.this.talos_config
+  sensitive   = true
 }
 
-resource "local_file" "talosconfig" {
-  filename = "talosconfig"
-  content  = module.cluster.talos_client_configuration
-}
-
-resource "local_file" "kubeconfig" {
-  filename = "kubeconfig"
-  content  = module.bootstrap.kubeconfig
+output "kubeconfig" {
+  description = "Kubernetes administrator configuration, available after cluster health checks pass."
+  value       = talos_cluster_kubeconfig.this.kubeconfig_raw
+  sensitive   = true
 }

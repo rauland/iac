@@ -86,6 +86,16 @@ class RootDiscoveryTests(unittest.TestCase):
     def test_first_push_selects_all(self):
         self.assertEqual(self.discover(BASE_SHA="0" * 40)[1], self.roots)
 
+    def test_disabled_root_cannot_be_deployed(self):
+        self.write("terraform/environments/dev/sandbox/.disabled", "disabled\n")
+        self.commit()
+        self.assertEqual(self.discover()[1], [])
+        self.assertEqual(self.discover(BASE_SHA="0" * 40)[1], self.roots[1:])
+        result, _ = self.discover("workflow_dispatch", SELECTED_ENV="dev",
+                                  SELECTED_TARGET="sandbox")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("disabled", result.stderr)
+
     def test_manual_selection_and_invalid_combination(self):
         self.assertEqual(self.discover("workflow_dispatch", SELECTED_ENV="prod",
                                        SELECTED_TARGET="images")[1], ["prod/images"])

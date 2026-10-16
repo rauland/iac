@@ -1,0 +1,1 @@
+Talos is excluded from automatic and manual deployments until its maintenance-mode IP reservations and any existing state migration have been reviewed. See terraform/modules/talos-cluster/README.md.

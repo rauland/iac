@@ -1,38 +1,6 @@
-module "factory" {
-  source = "./modules/factory"
-
-  providers = {
-    talos = talos
-  }
-}
-
-module "cluster" {
-  source = "./modules/cluster"
-
-  installer_image = module.factory.installer_image
-  providers = {
-    talos = talos
-  }
-  depends_on = [module.factory]
-}
-
-module "nodes" {
-  source = "./modules/nodes"
-
-  pve_nodes           = var.pve_nodes
-  iso_url             = module.factory.installer_iso_url
-  controlplane_config = module.cluster.talos_controlpane_configuration
-  worker_config       = module.cluster.talos_worker_configuration
-  talos_nodes         = var.talos_nodes
-  providers = {
-    proxmox = proxmox
-  }
-  depends_on = [module.cluster]
-}
-
-module "bootstrap" {
-  source = "./modules/bootstrap"
-
-  talos_machine_secrets = module.cluster.talos_machine_secrets
-  depends_on            = [module.nodes]
+locals {
+  control_plane_nodes = { for key, node in var.talos_nodes : key => node if node.node_type == "controlplane" }
+  worker_nodes        = { for key, node in var.talos_nodes : key => node if node.node_type == "worker" }
+  bootstrap_address   = try(var.talos_nodes[var.bootstrap_node].api_address, "")
+  proxmox_nodes       = toset([for node in var.talos_nodes : node.pve_node])
 }

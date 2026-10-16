@@ -1,9 +1,26 @@
-# module "talos_cluster" {
-#   source = "../../../modules/talos-cluster"
-#   providers = {
-#     talos = talos
-#     proxmox = proxmox
-#   }
-#   pve_nodes = var.pve_nodes
-#   talos_nodes = var.talos_nodes
-# }
+# Local deployments are enabled. The .disabled marker excludes this root from CI.
+# See ../../../modules/talos-cluster/README.md for lifecycle procedures.
+module "talos_cluster" {
+  source = "../../../modules/talos-cluster"
+  providers = {
+    talos   = talos
+    proxmox = proxmox
+  }
+  cluster_name       = var.cluster_name
+  cluster_endpoint   = var.cluster_endpoint
+  bootstrap_node     = var.bootstrap_node
+  talos_version      = var.talos_version
+  kubernetes_version = var.kubernetes_version
+  talos_nodes        = var.talos_nodes
+  dns_servers        = var.dns_servers
+}
+
+output "talosconfig" {
+  value     = module.talos_cluster.talosconfig
+  sensitive = true
+}
+
+output "kubeconfig" {
+  value     = module.talos_cluster.kubeconfig
+  sensitive = true
+}
