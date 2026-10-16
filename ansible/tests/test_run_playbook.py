@@ -71,13 +71,10 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
 
 @unittest.skipUnless(shutil.which('ansible-playbook'), 'Ansible is not installed')
 class HostSelectionTests(unittest.TestCase):
-    def list_hosts(self, target=None):
+    def list_hosts(self, target):
         with tempfile.TemporaryDirectory() as local_temp:
             env = dict(os.environ, ANSIBLE_LOCAL_TEMP=local_temp)
-            if target is None:
-                command = ['ansible-playbook', 'playbooks/site.yml']
-            else:
-                command = ['bash', str(RUNNER), 'dev', target]
+            command = ['bash', str(RUNNER), 'dev', target]
             result = subprocess.run(
                 command + ['-i', 'tests/inventory.yml', '--list-hosts'],
                 cwd=RUNNER.parent, env=env, capture_output=True, text=True)
@@ -85,12 +82,6 @@ class HostSelectionTests(unittest.TestCase):
         # Retain each play's host set to detect hosts receiving multiple plays.
         return [set(re.findall(r'^      (\S+)$', block, re.MULTILINE))
                 for block in result.stdout.split('  play #')[1:]]
-
-    def test_site_routes_managed_service_and_untagged_hosts(self):
-        self.assertEqual(self.list_hosts(), [
-            {'dev-vault', 'dev-sandbox', 'prod-vault'},
-            {'dev-unmanaged-vault'},
-            {'dev-unmanaged-sandbox'}])
 
     def test_vault_target_preserves_environment_and_managed_precedence(self):
         self.assertEqual(self.list_hosts('vault'), [

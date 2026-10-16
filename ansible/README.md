@@ -14,9 +14,7 @@ The `managed` tag takes priority: those VMs receive only timezone, Ansible-user,
 and package configuration from `managed.yml`. VMs without `managed` receive
 `vault.yml` or `sandbox.yml` when they have the corresponding target tag. VMs
 without any matching tag receive no playbook. `sandbox.yml` currently has no
-additional tasks. `site.yml` runs all matching playbooks with the same rules.
-If a VM has both `vault` and `sandbox` but no `managed` tag, both service
-playbooks match when using `site.yml`.
+additional tasks. Use the runner to select the environment and target for each run.
 
 Proxmox tags create groups prefixed with `tag_`, such as `tag_managed` and
 `tag_vault`, to avoid collisions with VM names. The `dev` and `prod` groups come
