@@ -75,6 +75,31 @@ Once the plan has been approved, the Terraform apply/destroy stage is provided w
 
 For the backend, object storage such as AWS S3 is recommended. It has state locking support.
 
+The S3 backend is configured at initialisation. Create a GitHub Actions
+repository variable named `TF_CLI_ARGS_init` with your bucket and region:
+
+```text
+-backend-config=bucket=YOUR_STATE_BUCKET -backend-config=region=YOUR_AWS_REGION
+```
+
+The Terraform and State Unlock workflows expose this variable to the runner.
+Terraform automatically adds these arguments to `terraform init`. Each workflow
+supplies the state key separately as `terraform/<environment>/<target>.tfstate`.
+
+The S3 Bootstrap workflow requires an explicit bucket name. Use that same bucket
+and its region in `TF_CLI_ARGS_init` before running the Terraform workflow.
+
+For local use, authenticate to AWS and export the same variable in your shell
+(or add it to `~/.bashrc`):
+
+```sh
+export TF_CLI_ARGS_init='-backend-config=bucket=YOUR_STATE_BUCKET -backend-config=region=YOUR_AWS_REGION'
+terraform -chdir=terraform/environments/dev/k3s init \
+  -backend-config="key=terraform/dev/k3s.tfstate"
+```
+
+The exported arguments apply to every `terraform init` in that shell.
+
 Modules
   - cloud-image
   - virtual-machine

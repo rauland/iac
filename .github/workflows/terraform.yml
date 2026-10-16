@@ -133,6 +133,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
+      TF_CLI_ARGS_init: ${{ vars.TF_CLI_ARGS_init }}
       PROXMOX_USER: ${{ secrets.PROXMOX_USER }}
       PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
       PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
@@ -154,7 +155,11 @@ jobs:
           WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
 
-      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
+      - name: Initialize Terraform backend
+        shell: bash
+        run: |
+          terraform init -input=false \
+            -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - name: Plan
@@ -182,7 +187,11 @@ jobs:
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
 
-      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
+      - name: Initialize Terraform backend
+        shell: bash
+        run: |
+          terraform init -input=false \
+            -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - name: Apply
@@ -220,7 +229,11 @@ jobs:
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
 
-      - run: terraform init -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
+      - name: Initialize Terraform backend
+        shell: bash
+        run: |
+          terraform init -input=false \
+            -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
         working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
 
       - name: Destroy

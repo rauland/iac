@@ -6,13 +6,23 @@ on:
       LOCK_ID:
         description: "Terraform state lock ID to unlock"
         required: true
-      infrastructure:
-        description: "Target environment to deploy (e.g., compute, talos)"
+      environment:
+        description: "Environment holding the state to unlock"
         required: true
         type: choice
         options:
-          - compute
+          - dev
+          - prod
+      target:
+        description: "Target holding the state to unlock"
+        required: true
+        type: choice
+        options:
+          - images
+          - k3s
+          - sandbox
           - talos
+          - vault
 jobs:
   state_unlock:
     runs-on: ubuntu-latest
@@ -21,6 +31,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
+      TF_CLI_ARGS_init: ${{ vars.TF_CLI_ARGS_init }}
     steps:
       - uses: actions/checkout@v3
 
@@ -28,8 +39,12 @@ jobs:
         with:
           terraform_version: latest
 
-      - run: terraform init
-        working-directory: ./terraform/infrastructure/${{ inputs.infrastructure }}
+      - name: Initialize Terraform backend
+        shell: bash
+        run: |
+          terraform init -input=false \
+            -backend-config="key=terraform/${{ inputs.environment }}/${{ inputs.target }}.tfstate"
+        working-directory: ./terraform/environments/${{ inputs.environment }}/${{ inputs.target }}
 
       - run: terraform force-unlock -force "${{ inputs.LOCK_ID }}"
-        working-directory: ./terraform/infrastructure/${{ inputs.infrastructure }}
+        working-directory: ./terraform/environments/${{ inputs.environment }}/${{ inputs.target }}
