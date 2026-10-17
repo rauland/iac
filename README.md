@@ -58,6 +58,7 @@ Talos API.
 | [terraform/platform](terraform/platform) | Shared images and administrator-operated Proxmox/AWS access configuration, with separate states |
 | [terraform/modules](terraform/modules) | Reusable cloud-image, virtual-machine, and talos-cluster modules |
 | [ansible](ansible/README.md) | Dynamic Proxmox inventory, playbooks, and roles |
+| [ssh](ssh/README.md) | Environment-specific public keys, verified host keys, and SSH rotation |
 | [.github/workflows](.github/workflows) | Terraform, Ansible, S3 bootstrap, and state unlock workflows |
 | [.github/actions](.github/actions) | Shared WireGuard, SSH, and Ansible actions |
 
@@ -80,8 +81,9 @@ commands still work. Remove the marker to include the root again.
 
 The [Terraform workflow](.github/workflows/terraform.yml) discovers roots from
 changes under `terraform/workloads` and `terraform/platform/images`. Changes
-to shared modules, workflow scripts, or the Terraform workflow select all enabled
-deployment roots. Manual runs select the scope `dev`, `prod`, or `platform`;
+to shared modules, SSH access files, Ansible, reusable actions, workflow scripts,
+or the Terraform workflow select all enabled deployment roots. Manual runs
+select the scope `dev`, `prod`, or `platform`;
 choose `platform` and target `images` for shared image publishing.
 
 | Trigger | Behavior |

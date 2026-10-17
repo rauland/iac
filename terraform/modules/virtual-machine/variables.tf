@@ -8,6 +8,16 @@ variable "pool_id" {
   }
 }
 
+variable "ssh_public_keys" {
+  description = "Environment-specific public SSH keys installed during first boot. Rotate existing guests with Ansible."
+  type        = list(string)
+  nullable    = false
+  validation {
+    condition     = length(var.ssh_public_keys) > 0 && alltrue([for key in var.ssh_public_keys : can(regex("^ssh-ed25519 [A-Za-z0-9+/]+=*( .*)?$", trimspace(key)))])
+    error_message = "Supply at least one Ed25519 public SSH key for this environment."
+  }
+}
+
 variable "vm_config" {
   description = <<EOT
     Virtual machine configuration object containing the following attributes:
@@ -36,7 +46,6 @@ variable "vm_config" {
     ip_config_ipv4_gateway | The IPv4 gateway (must be omitted when dhcp is used as the address).
     wait_for_ipv4_address  | Whether to wait for the VM to acquire an IP address before proceeding.
     user_account_username  | Username for the user account.
-    user_account_keys_file | Path to the public SSH key file for the user account.
     network_device_bridge  | Bridge for the network device.
   EOT
 
@@ -65,7 +74,6 @@ variable "vm_config" {
     ip_config_ipv4_gateway = optional(string, null)
     wait_for_ipv4_address  = optional(bool, true)
     user_account_username  = optional(string, "ansible")
-    user_account_keys_file = optional(string, "../../../ssh/id_ed25519.pub")
     network_device_bridge  = optional(string, "vmbr0")
   })
 }

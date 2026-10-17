@@ -21,7 +21,11 @@ class PlaybookSelectionTests(unittest.TestCase):
         fake.write_text("""#!/usr/bin/env python3
 import json, os, sys
 with open(os.environ['CALL_LOG'], 'a') as log:
-    log.write(json.dumps({'args': sys.argv[1:], 'cwd': os.getcwd()}) + '\\n')
+    log.write(json.dumps({'args': sys.argv[1:], 'cwd': os.getcwd(),
+                         'environment': os.environ.get('ANSIBLE_ENVIRONMENT'),
+                         'private_key_file': os.environ.get('ANSIBLE_PRIVATE_KEY_FILE'),
+                         'host_key_checking': os.environ.get('ANSIBLE_HOST_KEY_CHECKING'),
+                         'ssh_args': os.environ.get('ANSIBLE_SSH_COMMON_ARGS')}) + '\\n')
 if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
     sys.exit(7)
 """)
@@ -67,6 +71,21 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
             result, calls = self.run_target(*args)
             self.assertEqual(result.returncode, 2)
             self.assertEqual(calls, [])
+
+    def test_ssh_identity_and_trust_follow_environment(self):
+        self.env.pop('ANSIBLE_PRIVATE_KEY_FILE', None)
+        for environment in ('dev', 'prod'):
+            self.log.unlink(missing_ok=True)
+            result, calls = self.run_target(environment, 'managed')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            call = calls[0]
+            self.assertEqual(call['environment'], environment)
+            self.assertTrue(call['private_key_file'].endswith(f'/ssh/.credentials/{environment}/ansible-ci'))
+            self.assertEqual(call['host_key_checking'], 'True')
+            self.assertIn('StrictHostKeyChecking=yes', call['ssh_args'])
+            self.assertIn('IdentitiesOnly=yes', call['ssh_args'])
+            self.assertIn('IdentityAgent=none', call['ssh_args'])
+            self.assertIn(f'/ssh/known_hosts/{environment}', call['ssh_args'])
 
 
 @unittest.skipUnless(shutil.which('ansible-playbook'), 'Ansible is not installed')

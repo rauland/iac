@@ -5,8 +5,10 @@ runs:
   using: "composite"
   steps:
     - uses: ./.github/actions/ssh
+      id: ssh
       with:
-        SSH_PRIVATE_KEY_ANSIBLE: ${{ inputs.SSH_PRIVATE_KEY_ANSIBLE }}    
+        SSH_PRIVATE_KEY_ANSIBLE: ${{ inputs.SSH_PRIVATE_KEY_ANSIBLE }}
+        environment: ${{ inputs.environment }}
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -31,6 +33,13 @@ runs:
         set -euo pipefail
         bash ./run-playbook.sh "$ANSIBLE_ENVIRONMENT" "$ANSIBLE_TARGET" --syntax-check
         bash ./run-playbook.sh "$ANSIBLE_ENVIRONMENT" "$ANSIBLE_TARGET"
+      shell: bash
+
+    - name: Remove temporary SSH credentials
+      if: always()
+      env:
+        SSH_DIRECTORY: ${{ steps.ssh.outputs.directory }}
+      run: bash "$GITHUB_WORKSPACE/ssh/setup-ci.sh" cleanup "$SSH_DIRECTORY"
       shell: bash
 
 inputs:

@@ -1,6 +1,7 @@
 module "virtual_machine" {
-  source  = "../../../modules/virtual-machine"
-  pool_id = "dev"
+  source          = "../../../modules/virtual-machine"
+  pool_id         = "dev"
+  ssh_public_keys = [file("${path.root}/../../../../ssh/public_keys/dev/ansible-ci.pub")]
 
   providers = {
     proxmox = proxmox

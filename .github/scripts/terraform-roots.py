@@ -9,7 +9,7 @@ import subprocess
 
 def select_roots(roots, paths):
     # Shared modules can have transitive consumers: conservatively plan all roots.
-    if any(p.startswith(("terraform/modules/", ".github/scripts/"))
+    if any(p.startswith(("terraform/modules/", ".github/scripts/", ".github/actions/", "ssh/", "ansible/"))
            or p == ".github/workflows/terraform.yml" for p in paths):
         return roots
     return [root for root in roots

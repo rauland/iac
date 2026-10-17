@@ -4,8 +4,11 @@
 
 The six `proxmox-{dev,prod,platform}-{plan,apply}` environments have their scoped
 Proxmox API token, endpoint and URL. Dev/prod apply environments also have scoped
-Ansible inventory credentials, the SSH key matching the Terraform guest public
-key, and the Cloudflare token. All apply environments have the replacement
+Ansible inventory credentials and the Cloudflare token. Dev and prod apply
+environments use distinct Ansible SSH keys, matching their public keys under
+`ssh/public_keys/ENVIRONMENT/ansible-ci.pub`; follow the
+[SSH cutover procedure](../../../ssh/README.md#rotation) when rotating keys.
+All apply environments have the replacement
 `TF_PLAN_PRIVATE_KEY`. The repository's `TF_PLAN_PUBLIC_KEY` was updated, as was
 the legacy `proxmox-rw` private key so existing main-branch workflows remain
 compatible. The actual saved-plan encryption scripts passed a round-trip test.

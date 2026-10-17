@@ -42,6 +42,9 @@ on:
       - "terraform/platform/**"
       - ".github/workflows/terraform.yml"
       - ".github/scripts/**"
+      - ".github/actions/**"
+      - "ssh/**"
+      - "ansible/**"
 
   push:
     branches: [main]
@@ -56,6 +59,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test SSH credential handling
+        run: python3 ssh/test_setup_ci.py
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.15.8"

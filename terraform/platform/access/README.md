@@ -103,7 +103,8 @@ URL. In dev/prod apply environments, set `PROXMOX_USER_ANSIBLE`,
 `PROXMOX_TOKEN_ID_ANSIBLE` and `PROXMOX_TOKEN_SECRET_ANSIBLE` from the inventory
 identity. Retain the existing WireGuard secrets, AWS credentials/region, and
 backend init settings. Apply environments also need `TF_PLAN_PRIVATE_KEY`;
-dev/prod apply environments need the existing Ansible SSH/Cloudflare secrets.
+dev/prod apply environments need their distinct Ansible SSH private keys and
+the Cloudflare secret. See [SSH access and rotation](../../../ssh/README.md).
 Keep the public plan encryption key in the repository variable.
 
 Configure required reviewers and allow deployment only from `main` for all

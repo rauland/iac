@@ -1,3 +1,4 @@
 collections:
+  - name: ansible.posix
   - name: https://github.com/ansible-collections/community.proxmox.git
     type: git
