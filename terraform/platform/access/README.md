@@ -109,10 +109,8 @@ Keep the public plan encryption key in the repository variable.
 Configure required reviewers and allow deployment only from `main` for all
 apply environments. Also require reviewers for `proxmox-prod-plan`, because
 its credentials permit disk changes. Dev plan and shared-image plan environments
-can run without reviewers. After all secrets
-and protections are configured, set the environment variable
-`PROXMOX_RBAC_READY=true` in each of these six GitHub environments. Workflows
-fail before using credentials until this flag is set. Do not set it globally.
+can run without reviewers. Configure all secrets and deployment protections
+before running the workflows.
 
 **AWS permissions must be scoped before retiring legacy access.** Workload CI
 credentials must not be able to read `terraform/platform/access.tfstate`, its

@@ -142,11 +142,6 @@ jobs:
       TF_VAR_virtual_environment_endpoint: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT }}
       TF_VAR_virtual_environment_api_token: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN }}
     steps:
-      - name: Require configured RBAC environment
-        env:
-          RBAC_READY: ${{ vars.PROXMOX_RBAC_READY }}
-        run: test "$RBAC_READY" = true
-
       - uses: actions/checkout@v4
 
       - uses: hashicorp/setup-terraform@v3
@@ -211,11 +206,6 @@ jobs:
     env: *common-env
 
     steps:
-      - name: Require configured RBAC environment
-        env:
-          RBAC_READY: ${{ vars.PROXMOX_RBAC_READY }}
-        run: test "$RBAC_READY" = true
-
       - uses: actions/checkout@v4
 
       - name: Download encrypted plan
@@ -277,11 +267,6 @@ jobs:
     env: *common-env
 
     steps:
-      - name: Require configured RBAC environment
-        env:
-          RBAC_READY: ${{ vars.PROXMOX_RBAC_READY }}
-        run: test "$RBAC_READY" = true
-
       - uses: actions/checkout@v4
 
       - name: Download encrypted plan

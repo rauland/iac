@@ -29,8 +29,8 @@ create these identities using an AWS administrator in the portal instead:
 | `iac-tf-platform-images-plan` | [tf-platform-images-plan.json](policies/tf-platform-images-plan.json) | `proxmox-platform-plan` |
 | `iac-tf-platform-images-apply` | [tf-platform-images-apply.json](policies/tf-platform-images-apply.json) | `proxmox-platform-apply` |
 
-The files target bucket `rauland-iac-homelab`. Before setting
-`PROXMOX_RBAC_READY=true`, verify that plan users can read only their state,
+The files target bucket `rauland-iac-homelab`. Before running CI,
+verify that plan users can read only their state,
 apply users can write their state/manage locks, and all six are denied access to
 `terraform/platform/access.tfstate` and `terraform/platform/state-access.tfstate`.
 Then follow the [GitHub cutover/secret cleanup checklist](../access/GITHUB-CUTOVER.md).

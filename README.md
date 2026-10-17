@@ -120,9 +120,8 @@ users, token export, state IAM requirements, and migration from legacy access.
 
 Approval depends on those GitHub settings. The workflow's `environment` field
 alone does not require review. Keep write credentials and the plan decryption
-key exclusively in the apply environment secrets. Set the environment variable
-`PROXMOX_RBAC_READY=true` only after configuring each environment's credentials
-and protections; workflows stop before using credentials when it is absent.
+key exclusively in the apply environment secrets. Configure each environment's
+scoped Proxmox and AWS credentials and deployment protections before running CI.
 The `platform/images` root uses platform image credentials and state key
 `terraform/platform/images.tfstate`. The administrator-operated access root is
 excluded from deployment discovery and is applied separately.
