@@ -1,0 +1,40 @@
+---
+# tasks file for automation_user
+- name: Require the requested environment's pool
+  ansible.builtin.assert:
+    that:
+      - automation_user_environment in ['dev', 'prod']
+      - inventory_hostname in groups.get('proxmox_pool_' ~ automation_user_environment, [])
+    fail_msg: "SSH access must be configured only for the selected environment's pool."
+
+- name: Ensure automation user exists
+  ansible.builtin.user:
+    name: "{{ automation_user_name }}"
+    shell: "{{ automation_user_shell }}"
+    groups: "{{ automation_user_groups | default(omit, true) }}"
+    home: "{{ automation_user_home }}"
+    state: present
+    create_home: yes
+
+- name: Ensure .ssh directory exists
+  ansible.builtin.file:
+    path: "{{ automation_user_home }}/.ssh"
+    state: directory
+    owner: "{{ automation_user_name }}"
+    group: "{{ automation_user_name }}"
+    mode: '0700'
+
+- name: Set authorized key for automation user
+  ansible.posix.authorized_key:
+    user: "{{ automation_user_name }}"
+    key: "{{ automation_user_ssh_key }}"
+    state: present
+    key_options: "no-agent-forwarding,no-port-forwarding,no-X11-forwarding"
+
+- name: Remove retired and other-environment automation keys
+  ansible.posix.authorized_key:
+    user: "{{ automation_user_name }}"
+    key: "{{ item }}"
+    state: absent
+  loop: "{{ automation_user_retired_ssh_keys }}"
+  when: automation_user_remove_retired_keys | bool

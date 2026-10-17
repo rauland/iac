@@ -10,7 +10,7 @@ module "virtual_machine" {
   vm_config = {
     vm_name            = "vault"
     node_name          = "pve"
-    tags               = ["managed", "vault", "dev"]
+    tags               = ["common", "vault", "dev"]
     cpu                = 2
     memory             = 4096
     image_datastore_id = "local"

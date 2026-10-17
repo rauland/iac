@@ -1,0 +1,9 @@
+---
+- name: Configure common host baseline
+  hosts: tag_common
+  remote_user: ansible
+  become: true
+  roles:
+    - system_timezone
+    - automation_user
+    - system_packages

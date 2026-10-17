@@ -1,5 +1,5 @@
 ---
-- name: Apply roles
+- name: Configure HashiCorp Vault
   hosts: tag_vault
   remote_user: ansible
   become: true

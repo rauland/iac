@@ -4,8 +4,8 @@ all:
       hosts:
         dev-vault:
         dev-sandbox:
-        dev-unmanaged-sandbox:
-        dev-unmanaged-vault:
+        dev-service-only-sandbox:
+        dev-service-only-vault:
         dev-untagged:
     proxmox_pool_prod:
       hosts:
@@ -17,7 +17,7 @@ all:
     prod:
       hosts:
         dev-vault:
-    tag_managed:
+    tag_common:
       hosts:
         dev-vault:
         dev-sandbox:
@@ -26,10 +26,10 @@ all:
     tag_vault:
       hosts:
         dev-vault:
-        dev-unmanaged-vault:
+        dev-service-only-vault:
         prod-vault:
         unpooled-vault:
     tag_sandbox:
       hosts:
         dev-sandbox:
-        dev-unmanaged-sandbox:
+        dev-service-only-sandbox:

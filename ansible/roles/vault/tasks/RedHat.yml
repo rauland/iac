@@ -1,0 +1,31 @@
+---
+# Package and repository setup for RHEL-family hosts.
+- name: Ensure yum-utils is installed
+  ansible.builtin.dnf:
+    name: yum-utils
+    state: present
+
+- name: Add HashiCorp repository
+  ansible.builtin.get_url:
+    url: https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+    dest: /etc/yum.repos.d/hashicorp.repo
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install HashiCorp Vault
+  ansible.builtin.dnf:
+    name: vault
+    state: present
+
+- name: Install EPEL repository
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+
+- name: Install Certbot and Cloudflare DNS plugin
+  ansible.builtin.dnf:
+    name:
+      - certbot
+      - python3-certbot-dns-cloudflare
+    state: present

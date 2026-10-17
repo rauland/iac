@@ -38,7 +38,7 @@ class ScopedInventoryTests(unittest.TestCase):
                     return
                 vmid = 103 if environment == 'dev' else 203
                 guest = dict(vmid=vmid, name=f'{environment}-vault', status='running',
-                             type='qemu', node='pve', tags='managed;vault')
+                             type='qemu', node='pve', tags='common;vault')
                 responses = {
                     '/nodes': [dict(node='pve', type='node', status='online')],
                     '/nodes/pve/lxc': [],
@@ -47,7 +47,7 @@ class ScopedInventoryTests(unittest.TestCase):
                     '/pools': [dict(poolid=environment)],
                     f'/pools/{environment}': dict(members=[guest]),
                     f'/nodes/pve/qemu/{vmid}/status/current': dict(status='running', qmpstatus='running'),
-                    f'/nodes/pve/qemu/{vmid}/config': dict(tags='managed;vault', ipconfig0=f'ip=10.0.0.{vmid}/24'),
+                    f'/nodes/pve/qemu/{vmid}/config': dict(tags='common;vault', ipconfig0=f'ip=10.0.0.{vmid}/24'),
                     f'/nodes/pve/qemu/{vmid}/snapshot': [],
                 }
                 if path not in responses:
@@ -87,6 +87,9 @@ class ScopedInventoryTests(unittest.TestCase):
     def test_dev_inventory_works_without_global_cluster_audit(self):
         inventory = self.inventory('dev')
         self.assertEqual(inventory['proxmox_pool_dev']['hosts'], ['dev-vault'])
+        self.assertEqual(inventory['tag_common']['hosts'], ['dev-vault'])
+        self.assertEqual(inventory['_meta']['hostvars']['dev-vault']['system_packages_base'],
+                         ['qemu-guest-agent'])
         # Newer Ansible preserves the untrusted-string tag in inventory JSON.
         self.assertIn(inventory['_meta']['hostvars']['dev-vault']['ansible_host'],
                       ('10.0.0.103', {'__ansible_unsafe': '10.0.0.103'}))
@@ -95,6 +98,9 @@ class ScopedInventoryTests(unittest.TestCase):
     def test_prod_inventory_works_without_global_cluster_audit(self):
         inventory = self.inventory('prod')
         self.assertEqual(inventory['proxmox_pool_prod']['hosts'], ['prod-vault'])
+        self.assertEqual(inventory['tag_common']['hosts'], ['prod-vault'])
+        self.assertEqual(inventory['_meta']['hostvars']['prod-vault']['system_packages_base'],
+                         ['qemu-guest-agent'])
         self.assertNotIn('dev-vault', inventory['_meta']['hostvars'])
 
     def test_permission_failure_stops_playbooks_instead_of_skipping_hosts(self):

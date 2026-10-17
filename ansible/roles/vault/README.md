@@ -1,42 +1,39 @@
-Role Name
-=========
+# vault
 
-A brief description of the role goes here.
+Install HashiCorp Vault from its RPM repository on RHEL-family hosts, configure
+file storage in `/opt/vault/data`, and enable its systemd service. TLS
+certificates are obtained with Certbot using Cloudflare DNS validation and
+copied into `/etc/vault.d/ssl`.
 
-Requirements
-------------
+The repository provisions AlmaLinux guests. The role requires DNF, availability
+of `epel-release`, systemd, privilege escalation, outbound repository and ACME
+access, and a Cloudflare-managed DNS zone. It has no role dependencies and uses
+Ansible's built-in modules.
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+`tasks/main.yml` checks the gathered OS family before any changes. Package and
+repository tasks live in `tasks/RedHat.yml`; account, storage, TLS, and service
+tasks live in `tasks/common.yml`. Other OS families are rejected until their
+package setup is implemented.
 
-Role Variables
---------------
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `vault_api_addr` | Required | DNS name used for the TLS certificate and API URL on port 8200. |
+| `vault_cluster_addr` | Required | DNS name used for the cluster URL on port 8201. |
+| `certbot_email` | Required | ACME account email address. |
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+The repository supplies these variables in `inventory/group_vars/tag_vault.yml`.
+The controller must also supply `CLOUDFLARE_API_TOKEN` with DNS edit access for
+the certificate's zone. The token is written to a root-only credentials file;
+the task suppresses its output.
 
-Dependencies
-------------
+Run through the scoped runner:
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+```sh
+bash ansible/run-playbook.sh dev vault --check
+bash ansible/run-playbook.sh dev vault
+```
 
-Example Playbook
-----------------
-
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
-
-License
--------
-
-BSD
-
-Author Information
-------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
-
-TODO
-#export VAULT_ADDR="https://vault.netkuki.com:8200"
-#vault operator init
+Initialization and unsealing are separate operational steps. Certificate
+issuance is skipped when a certificate already exists; this role does not
+configure renewal deployment hooks to copy renewed certificates or restart
+Vault.

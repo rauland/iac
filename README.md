@@ -228,14 +228,17 @@ Environment tags are optional; pool membership determines the environment.
 
 | VM tags | Playbooks for a matching target run |
 | --- | --- |
-| `managed` | `managed.yml`: timezone, Ansible user, and packages |
-| `managed` + `vault` | `managed.yml`, then `vault.yml` |
-| `managed` + `sandbox` | `managed.yml`, then `sandbox.yml` |
-| `vault` or `sandbox`, without `managed` | Corresponding service playbook only |
+| `common` | `common.yml`: timezone, Ansible user, and packages |
+| `common` + `vault` | `common.yml`, then `vault.yml` |
+| `common` + `sandbox` | `common.yml`, then `sandbox.yml` |
+| `vault` or `sandbox`, without `common` | Corresponding service playbook only |
 | No matching tag | Skipped |
 
-The managed baseline is optional and does not exclude service roles. Sandbox
-currently has no additional tasks. See [Ansible deployment targets](ansible/README.md)
+The common baseline is optional and does not exclude service roles. `common`
+is the VM tag and runner target, and creates the `tag_common` inventory group.
+OS-family differences are handled inside roles; Vault currently
+supports RHEL-family guests with DNF and EPEL. Sandbox currently has no additional
+tasks. See [Ansible deployment targets](ansible/README.md)
 for credentials, inventory conventions, and offline checks.
 
 Preview a Vault run from the repository root:
@@ -256,7 +259,7 @@ vms = {
   cockpit = {
     vm_name         = "cockpit"
     node_name       = "pve"
-    tags            = ["dev", "managed", "sandbox", "cockpit"]
+    tags            = ["dev", "common", "sandbox", "cockpit"]
     cpu             = 2
     memory          = 4096
     image_file_name = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"

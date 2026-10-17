@@ -70,10 +70,10 @@ requested Proxmox pool.
 For rotation, retain the old private key and public key until the replacement
 has been verified. Generate the new pair outside Terraform, replace the
 environment's public key above, and retain the old public key in the role's
-`ansible_user_retired_ssh_keys` list. Then:
+`automation_user_retired_ssh_keys` list. Then:
 
-1. Install the new public key on every managed guest using the old credential
-   and `ansible_user_remove_retired_keys=false`.
+1. Install the new public key on every guest tagged `common` using the old credential
+   and `automation_user_remove_retired_keys=false`.
 2. Verify a fresh SSH connection and noninteractive sudo using the new key on
    every guest. Disable multiplexed connection reuse during this verification.
 3. Upload the new private key to the matching GitHub environment secrets (both
@@ -96,12 +96,12 @@ export ANSIBLE_SSH_COMMON_ARGS="-o IdentitiesOnly=yes -o IdentityAgent=none -o S
 ANSIBLE_CONFIG="$PWD/ansible/ansible.cfg" ansible-playbook \
   -i "$PWD/ansible/inventory/proxmox.yml" \
   "$PWD/ansible/playbooks/ssh-access.yml" \
-  --limit 'proxmox_pool_dev:&tag_managed' \
-  -e ansible_user_remove_retired_keys=false
+  --limit 'proxmox_pool_dev:&tag_common' \
+  -e automation_user_remove_retired_keys=false
 ```
 
 After verifying the replacement on every guest and switching to its private key,
-run the same command with `ansible_user_remove_retired_keys=true`.
+run the same command with `automation_user_remove_retired_keys=true`.
 
 Run deployments from the commit containing the replacement public key and role.
 Do not rerun old deployment commits: their role may reinstall the retired key.

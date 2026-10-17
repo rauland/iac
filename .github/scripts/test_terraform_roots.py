@@ -82,7 +82,7 @@ class RootDiscoveryTests(unittest.TestCase):
     def test_shared_module_or_automation_change_selects_all(self):
         for name in ("terraform/modules/example/main.tf", ".github/scripts/helper.py",
                      ".github/workflows/terraform.yml", "ssh/public_keys/dev/ansible-ci.pub",
-                     "ssh/known_hosts/dev", "ansible/roles/ansible_user/tasks/main.yml",
+                     "ssh/known_hosts/dev", "ansible/roles/automation_user/tasks/main.yml",
                      ".github/actions/ssh/action.yml"):
             with self.subTest(path=name):
                 base = self.git("rev-parse", "HEAD")

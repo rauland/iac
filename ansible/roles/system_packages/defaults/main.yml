@@ -1,0 +1,4 @@
+---
+# Package lists can be overridden in group or host variables.
+system_packages_base: []
+system_packages_extra: []

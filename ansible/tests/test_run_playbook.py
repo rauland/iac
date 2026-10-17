@@ -1,4 +1,4 @@
-"""Offline checks for target isolation and optional managed baseline."""
+"""Offline checks for target isolation and optional common baseline."""
 import json
 import os
 from pathlib import Path
@@ -26,7 +26,7 @@ with open(os.environ['CALL_LOG'], 'a') as log:
                          'private_key_file': os.environ.get('ANSIBLE_PRIVATE_KEY_FILE'),
                          'host_key_checking': os.environ.get('ANSIBLE_HOST_KEY_CHECKING'),
                          'ssh_args': os.environ.get('ANSIBLE_SSH_COMMON_ARGS')}) + '\\n')
-if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
+if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/common.yml'):
     sys.exit(7)
 """)
         fake.chmod(0o755)
@@ -39,11 +39,11 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
         calls = [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
         return result, calls
 
-    def test_vault_selects_managed_and_vault_playbooks(self):
+    def test_vault_selects_common_and_vault_playbooks(self):
         result, calls = self.run_target('dev', 'vault', '--check')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([c['args'] for c in calls], [
-            ['./playbooks/managed.yml', '--limit', 'proxmox_pool_dev:&tag_vault', '--check'],
+            ['./playbooks/common.yml', '--limit', 'proxmox_pool_dev:&tag_vault', '--check'],
             ['./playbooks/vault.yml', '--limit', 'proxmox_pool_dev:&tag_vault', '--check']])
         self.assertTrue(all(c['cwd'] == str(RUNNER.parent) for c in calls))
 
@@ -51,14 +51,14 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
         result, calls = self.run_target('dev', 'sandbox')
         self.assertEqual(result.returncode, 0)
         self.assertEqual([c['args'][0] for c in calls],
-                         ['./playbooks/managed.yml', './playbooks/sandbox.yml'])
+                         ['./playbooks/common.yml', './playbooks/sandbox.yml'])
         self.assertTrue(all(c['args'][-1] == 'proxmox_pool_dev:&tag_sandbox' for c in calls))
 
-    def test_managed_runs_baseline_once(self):
-        result, calls = self.run_target('prod', 'managed')
+    def test_common_runs_baseline_once(self):
+        result, calls = self.run_target('prod', 'common')
         self.assertEqual(result.returncode, 0)
         self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0]['args'], ['./playbooks/managed.yml', '--limit', 'proxmox_pool_prod:&tag_managed'])
+        self.assertEqual(calls[0]['args'], ['./playbooks/common.yml', '--limit', 'proxmox_pool_prod:&tag_common'])
 
     def test_baseline_failure_stops_service_apply(self):
         self.env['FAIL_BASELINE'] = '1'
@@ -67,7 +67,7 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
         self.assertEqual(len(calls), 1)
 
     def test_invalid_scope_cannot_apply(self):
-        for args in [('dev', 'all'), ('all', 'vault'), ('dev',)]:
+        for args in [('dev', 'all'), ('all', 'vault'), ('dev', 'managed'), ('dev',)]:
             result, calls = self.run_target(*args)
             self.assertEqual(result.returncode, 2)
             self.assertEqual(calls, [])
@@ -76,7 +76,7 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
         self.env.pop('ANSIBLE_PRIVATE_KEY_FILE', None)
         for environment in ('dev', 'prod'):
             self.log.unlink(missing_ok=True)
-            result, calls = self.run_target(environment, 'managed')
+            result, calls = self.run_target(environment, 'common')
             self.assertEqual(result.returncode, 0, result.stderr)
             call = calls[0]
             self.assertEqual(call['environment'], environment)
@@ -102,21 +102,50 @@ class HostSelectionTests(unittest.TestCase):
         return [set(re.findall(r'^      (\S+)$', block, re.MULTILINE))
                 for block in result.stdout.split('  play #')[1:]]
 
-    def test_vault_target_runs_service_for_managed_and_unmanaged_hosts(self):
+    def test_vault_target_runs_service_with_and_without_common_baseline(self):
         self.assertEqual(self.list_hosts('vault'), [
-            {'dev-vault'}, {'dev-vault', 'dev-unmanaged-vault'}])
+            {'dev-vault'}, {'dev-vault', 'dev-service-only-vault'}])
 
-    def test_sandbox_target_runs_service_for_managed_and_unmanaged_hosts(self):
+    def test_sandbox_target_runs_service_with_and_without_common_baseline(self):
         self.assertEqual(self.list_hosts('sandbox'), [
-            {'dev-sandbox'}, {'dev-sandbox', 'dev-unmanaged-sandbox'}])
+            {'dev-sandbox'}, {'dev-sandbox', 'dev-service-only-sandbox'}])
 
-    def test_managed_target_selects_only_managed_hosts(self):
-        self.assertEqual(self.list_hosts('managed'), [
+    def test_common_target_selects_only_common_hosts(self):
+        self.assertEqual(self.list_hosts('common'), [
             {'dev-vault', 'dev-sandbox'}])
 
     def test_prod_pool_overrides_stale_environment_groups_and_excludes_unpooled_hosts(self):
         self.assertEqual(self.list_hosts('vault', 'prod'), [
             {'prod-vault'}, {'prod-vault'}])
+
+
+@unittest.skipUnless(shutil.which('ansible-playbook'), 'Ansible is not installed')
+class VaultOSFamilyTests(unittest.TestCase):
+    def test_unsupported_os_families_fail_before_configuration(self):
+        with tempfile.TemporaryDirectory() as local_temp:
+            playbook = Path(local_temp) / 'vault.yml'
+            env = dict(os.environ, ANSIBLE_LOCAL_TEMP=local_temp,
+                       ANSIBLE_ROLES_PATH=str(RUNNER.parent / 'roles'))
+            for family in ('Debian', 'Windows'):
+                with self.subTest(family=family):
+                    playbook.write_text(f'''---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_facts:
+      os_family: {family}
+  roles:
+    - vault
+''')
+                    result = subprocess.run(
+                        ['ansible-playbook', str(playbook), '-i', 'localhost,', '--check'],
+                        cwd=RUNNER.parent, env=env, capture_output=True, text=True)
+                    self.assertNotEqual(result.returncode, 0, result.stderr)
+                    self.assertIn('currently supports only RHEL-family hosts', result.stdout)
+                    self.assertIn(f'targeting {family} hosts', result.stdout)
+                    self.assertNotIn('TASK [vault : Ensure yum-utils is installed]', result.stdout)
+                    self.assertNotIn('TASK [vault : Create Vault system user]', result.stdout)
 
 
 if __name__ == '__main__':

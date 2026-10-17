@@ -1,9 +1,0 @@
----
-- name: Apply roles
-  hosts: tag_managed
-  remote_user: ansible
-  become: true
-  roles:
-    - system_timezone
-    - ansible_user
-    - install_packages

@@ -11,11 +11,11 @@ on:
           - dev
           - prod
       target:
-        description: "Target to deploy (e.g., managed, sandbox, vault)"
+        description: "Target to deploy (e.g., common, sandbox, vault)"
         required: true
         type: choice
         options:
-          - managed
+          - common
           - sandbox
           - vault
   # push:

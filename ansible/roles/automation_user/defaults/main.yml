@@ -1,0 +1,12 @@
+---
+# defaults file for automation_user
+automation_user_name: ansible
+automation_user_shell: /bin/bash
+automation_user_home: "/home/{{ automation_user_name }}"
+automation_user_groups: []
+automation_user_environment: "{{ lookup('env', 'ANSIBLE_ENVIRONMENT') }}"
+automation_user_ssh_key: "{{ lookup('file', playbook_dir ~ '/../../ssh/public_keys/' ~ automation_user_environment ~ '/ansible-ci.pub') }}"
+automation_user_remove_retired_keys: true
+automation_user_retired_ssh_keys:
+  - "{{ lookup('file', playbook_dir ~ '/../../ssh/public_keys/retired/ansible-shared.pub') }}"
+  - "{{ lookup('file', playbook_dir ~ '/../../ssh/public_keys/' ~ ('prod' if automation_user_environment == 'dev' else 'dev') ~ '/ansible-ci.pub') }}"

@@ -46,7 +46,7 @@ inputs:
   working-directory:
     description: "Working directory for Ansible playbook"
   target:
-    description: "Deployment target: managed, sandbox, or vault"
+    description: "Deployment target: common, sandbox, or vault"
     required: true
   SSH_PRIVATE_KEY_ANSIBLE:
     description: "SSH private key for Ansible"

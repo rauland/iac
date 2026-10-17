@@ -1,8 +1,8 @@
 ---
 - name: Configure environment SSH automation access
-  hosts: tag_managed
+  hosts: tag_common
   remote_user: ansible
   become: true
   gather_facts: false
   roles:
-    - ansible_user
+    - automation_user

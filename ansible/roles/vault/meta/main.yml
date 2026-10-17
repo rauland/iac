@@ -1,6 +1,6 @@
 galaxy_info:
   author: your name
-  description: your role description
+  description: Install and configure HashiCorp Vault with Cloudflare DNS TLS certificates on RHEL-family hosts.
   company: your company (optional)
 
   # If the issue tracker for your role is not on github, uncomment the

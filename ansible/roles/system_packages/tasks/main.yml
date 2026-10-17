@@ -1,9 +1,9 @@
 ---
-# tasks file for install-packages
+# tasks file for system_packages
 - name: Install each package
   ansible.builtin.package:
     name: "{{ item }}"
     state: present
-  loop: "{{ install_packages }}"
+  loop: "{{ system_packages_list }}"
   loop_control:
     label: "{{ item }}"
