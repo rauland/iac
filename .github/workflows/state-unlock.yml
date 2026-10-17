@@ -25,6 +25,7 @@ on:
           - vault
 jobs:
   state_unlock:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: ${{ format('proxmox-{0}-apply', inputs.environment) }}
     env:
@@ -33,20 +34,21 @@ jobs:
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
       TF_CLI_ARGS_init: ${{ vars.TF_CLI_ARGS_init }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Resolve Terraform root
         id: root
         env:
           EVENT_NAME: workflow_dispatch
-          DEPLOYMENT_MODE: single
+          DEPLOYMENT_MODE: infrastructure
+          DEPLOYMENT_SCOPE: single
           SELECTED_ENV: ${{ inputs.environment }}
           SELECTED_TARGET: ${{ inputs.target }}
-        run: python3 .github/scripts/terraform-roots.py
+        run: python3 .github/scripts/deployment-targets.py
 
-      - uses: hashicorp/setup-terraform@v1
+      - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: latest
+          terraform_version: "1.15.8"
 
       - name: Initialize Terraform backend
         shell: bash
@@ -55,5 +57,7 @@ jobs:
             -backend-config="key=terraform/${{ inputs.environment }}/${{ inputs.target }}.tfstate"
         working-directory: ./${{ steps.root.outputs.directory }}
 
-      - run: terraform force-unlock -force "${{ inputs.LOCK_ID }}"
+      - run: terraform force-unlock -force "$LOCK_ID"
+        env:
+          LOCK_ID: ${{ inputs.LOCK_ID }}
         working-directory: ./${{ steps.root.outputs.directory }}
