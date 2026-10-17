@@ -59,7 +59,7 @@ Talos API.
 | [terraform/modules](terraform/modules) | Reusable cloud-image, virtual-machine, and talos-cluster modules |
 | [ansible](ansible/README.md) | Dynamic Proxmox inventory, playbooks, and roles |
 | [ssh](ssh/README.md) | Environment-specific public keys, verified host keys, and SSH rotation |
-| [.github/workflows](.github/workflows) | Terraform, Ansible, S3 bootstrap, and state unlock workflows |
+| [.github/workflows](.github/workflows) | Infrastructure/configuration, S3 bootstrap, and state unlock workflows |
 | [.github/actions](.github/actions) | Shared WireGuard, SSH, and Ansible actions |
 
 Enabled deployment roots are `dev/sandbox`, `dev/vault`, `dev/talos`, and
@@ -74,93 +74,125 @@ deployment, and cluster lifecycle procedures.
 When forking, adapt the environment variables, VM addresses, and WireGuard setup
 to your own infrastructure before running deployments. To exclude a root from
 GitHub Actions, add a `.disabled` file in its directory. This optional marker
-excludes it from automatic discovery and both manual modes; local Terraform
+excludes it from automatic discovery and manual target selection; local Terraform
 commands still work. Remove the marker to include the root again.
 
 ## Deployments
 
-The [Terraform workflow](.github/workflows/terraform.yml) discovers roots from
-changes under `terraform/workloads` and `terraform/platform/images`. Changes
-to shared modules, SSH access files, Ansible, reusable actions, workflow scripts,
-or the Terraform workflow select all enabled deployment roots. Manual runs
-select the scope `dev`, `prod`, or `platform`;
-choose `platform` and target `images` for shared image publishing.
+The [deployment workflow](.github/workflows/terraform.yml) handles Terraform and
+Ansible independently. It runs on every pull request to `main`, every push to
+`main`, merge-queue validation, and manual requests. Feature branches use the
+same PR checks; they cannot deploy. The stable **CI** check runs without
+infrastructure secrets and reports even for documentation-only pull requests.
 
-| Trigger | Behavior |
+| Change | Work selected |
 | --- | --- |
-| Pull request to `main` | Format, validate, and produce preview plans for affected roots |
-| Push to `main` | Plan affected roots, then apply dev automatically; prod/platform require approval |
-| Manual, `single` mode | Plan the selected environment and target |
-| Manual, `all` mode | Plan every enabled root in the selected environment; ignore the target input |
-| Manual, `destroy: true` | Generate a destroy plan, then queue destroy for approval on `main` |
+| Workload Terraform files | Plan that enabled root; apply only if the plan has changes. |
+| Shared Terraform modules | Plan all enabled roots conservatively. |
+| Ansible role, playbook, inventory, or runtime requirements | Configure affected VM targets without requiring Terraform. |
+| Environment SSH public keys | Plan that environment's roots and configure its VM targets. |
+| Verified SSH host keys | Configure VM targets in that environment. |
+| Documentation, tests, lint policy, or pipeline implementation only | Run CI; no deployment. |
 
-Manual apply runs also require `main`. Explicit destroy runs are only triggered manually.
-Before removing a root's configuration, destroy its resources explicitly;
-discovery does not destroy deleted roots.
+Shared baseline roles select enabled VM targets. Vault-specific files select
+only Vault targets. Images and Talos never run Ansible. Any actual infrastructure
+change to a VM target also runs Ansible after the saved plan is successfully
+applied. A no-op Terraform plan does not suppress separately requested Ansible
+work. Removed roots are never destroyed automatically: destroy them explicitly
+before removing their configuration.
 
-After applying a VM target, the workflow runs Ansible for that environment and
-target. Images and Talos skip Ansible. The separate [Ansible workflow](.github/workflows/ansible.yml)
-can configure existing VMs without running Terraform.
+### Manual modes
 
-Offline Talos module and upgrade-order tests run on pushes and pull requests.
-Manual runs include them only when the selected roots contain Talos. All
-Terraform deployment jobs currently use version `1.15.8`.
+Run the deployment workflow from `main`, choose an environment (`dev`, `prod`,
+or `platform`), and choose `single` or `all` scope. Single scope also requires a
+target; all scope selects enabled targets in the chosen environment.
+
+| Mode | Behavior |
+| --- | --- |
+| `auto` | Reconcile the selected infrastructure and VM configuration, including Ansible when Terraform has no changes. |
+| `infrastructure` | Plan/apply the selected roots; configure VM targets after actual infrastructure changes. |
+| `configuration` | Run Ansible only; no Terraform plan or apply. |
+| `destroy` | Generate and apply an explicitly requested destroy plan after approval; never run Ansible. |
+
+For configuration-only single runs, targets are `common`, `sandbox`, or `vault`
+in dev/prod. They may configure existing guests without a matching Terraform
+root. All-scope configuration selects enabled VM workload roots. Use
+`platform/images` for shared cloud-image publishing. The separate Ansible
+workflow has been consolidated into this workflow.
+
+### Main branch protection
+
+The main ruleset requires a pull request, a successful **CI** result produced by
+GitHub Actions, and an up-to-date branch. Force pushes and branch deletion are
+blocked, with no bypass actors. The desired configuration is recorded in
+[main-ruleset.json](.github/policies/main-ruleset.json); enforcement lives in
+GitHub repository settings. Required CI jobs cannot depend on deployment approval.
+
+The ruleset requires zero approving PR reviews to support a solo maintainer;
+PRs, passing checks, and resolving review conversations are still required.
+This is separate from the mandatory production deployment review. If a team
+joins the repository, increase the approving PR review count in the ruleset.
 
 ### Approval and saved plans
 
-Configure these GitHub environments in repository settings. The
-[Proxmox access root](terraform/platform/access/README.md) documents the scoped
-users, token export, state IAM requirements, and migration from legacy access.
+The [Proxmox access root](terraform/platform/access/README.md) documents scoped
+users, token export, and state IAM requirements. GitHub environments supply
+credentials and enforce the following deployment policies:
 
 | Environment | Access | Protection |
 | --- | --- | --- |
-| `proxmox-dev-plan` | Dev audit credentials plus pool-scoped disk permission required for refresh | No required reviewers |
-| `proxmox-prod-plan` | Prod audit credentials plus pool-scoped disk permission required for refresh | Required reviewers |
-| `proxmox-dev-auto-apply` | Dev write/inventory credentials and plan decryption key; Terraform apply only | No required reviewers; deployments restricted to `main` |
-| `proxmox-dev-apply` | Dev write credentials for explicit destroy, state unlock, and standalone Ansible | Required reviewers; deployments restricted to `main` |
-| `proxmox-prod-apply` | Prod write/inventory credentials and plan decryption key | Required reviewers; deployments restricted to `main` |
-| `proxmox-platform-plan` | Audit credentials for shared image storage | No required reviewers |
-| `proxmox-platform-apply` | Shared image publishing credentials and plan decryption key | Required reviewers; deployments restricted to `main` |
+| `proxmox-dev-plan` | Dev audit credentials plus refresh permissions | No required reviewers |
+| `proxmox-prod-plan` | Prod audit credentials plus refresh permissions | Required human approval, including PR previews |
+| `proxmox-dev-auto-apply` | Dev write/inventory credentials and plan decryption key | Automatic deployments from pushes to `main` only |
+| `proxmox-dev-apply` | Dev write credentials for manual reconciliation, destroy, and state unlock | Required reviewers; `main` only |
+| `proxmox-prod-apply` | Prod write/inventory credentials and plan decryption key | Required human approval for infrastructure and Ansible-only changes; `main` only |
+| `proxmox-platform-plan` | Shared-image audit credentials | No required reviewers |
+| `proxmox-platform-apply` | Image publishing credentials and plan decryption key | Required reviewers; `main` only |
 
-Approval depends on those GitHub settings. The workflow's `environment` field
-alone does not require review. Keep write credentials and the plan decryption
-key exclusively in the apply environment secrets. Configure each environment's
-scoped Proxmox and AWS credentials and deployment protections before running CI.
-The `platform/images` root uses platform image credentials and state key
-`terraform/platform/images.tfstate`. The administrator-operated access root is
-excluded from deployment discovery and is applied separately.
+Required reviewers and branch restrictions must exist in GitHub environment
+settings; referencing an environment in YAML alone does not require approval.
+Production currently names the repository owner as required reviewer, allows
+that human to approve their own initiated run, and disables administrator
+bypasses. Plan approval and deployment approval remain separate. When Terraform
+and Ansible both need to run, one deployment approval covers both tools.
 
-For pushes and manual runs on `main`, the plan job encrypts the saved plan and
-provider lock file and uploads the archive. Dev applies proceed automatically
-after successful checks and plans. Prod/platform applies and explicit dev
-destroy still require approval. Each apply or destroy decrypts the archive and
-executes the saved plan. It never generates a
-replacement plan during apply. Each job supplies its own Proxmox API token;
-the Terraform token variable is ephemeral and is not saved in the plan.
+Live plans are allowed only for same-repository PRs and trusted `main` runs.
+Fork PRs and merge queues run the credential-free checks without live plans.
+Production plan approval is not a required merge check. Write credentials and
+plan decryption keys stay exclusively in deployment environments.
 
-Automatic dev applies can still delete or replace resources when those actions
-are present in an ordinary plan. Approval for explicit destroy covers the
-manual `destroy: true` workflow; it is not a deletion filter on normal applies.
+Terraform uses `-detailed-exitcode`: 0 means no changes, 2 means changes, and an
+error fails the run. Each matrix target uploads its own non-secret result,
+bound to the commit, workflow run, attempt, target, and destroy mode. The
+preparation job validates every expected result and publishes a deployment
+summary before any deployment approval is requested. Missing or mismatched
+results fail closed. No-op targets with no Ansible work do not create deployment
+jobs or request deployment approval.
 
-Artifacts are unique to each run attempt and root and expire after seven days.
-If a plan becomes stale, its artifact expires, or a deployment fails, rerun
-**all jobs** to generate and review a fresh plan. Plan logs remain visible in
-this public repository; only the saved plan archive is encrypted.
+Only changed plans from `main` are encrypted and uploaded together with their
+provider lock file. Apply executes that exact saved plan; it never creates a
+replacement plan. The Terraform API token remains ephemeral and is supplied
+by the job's selected environment. Metadata artifacts contain routing flags and
+commit/run identifiers, not plan contents. Plan logs remain visible in this
+public repository; saved plan archives are encrypted.
+
+Artifacts are unique to each run attempt and target and expire after seven
+days. If a plan becomes stale, an artifact expires, or a deployment fails,
+rerun **all jobs** so the plan, result metadata, and approval summary match.
+Automatic dev applies may delete or replace resources when an ordinary plan
+contains those actions; explicit destroy approval is not a deletion filter on
+normal plans. Terraform deployment jobs use version `1.15.8`.
 
 ### Concurrency and networking
 
 The [WireGuard action](.github/actions/wireguard/action.yml) uses one shared
-runner profile through `WIREGUARD_PRIVATE_KEY`, `RUNNER_IP`, `PEER_IP`,
-`WIREGUARD_PEER_PUBLIC_KEY`, and `WIREGUARD_ENDPOINT` secrets. Its private route
-is currently `10.0.0.0/24`.
-
-Terraform matrices use `max-parallel: 1`. This serializes jobs within each matrix;
-separate workflow runs can still overlap on the shared tunnel. Avoid overlapping
-VPN workflows while using this profile.
-
-Apply and destroy share a concurrency group per environment and target. They
-cannot write the same state simultaneously, and new runs do not cancel an active
-apply. GitHub can replace an older pending job with a newer one in the same group.
+runner profile through its environment secrets. Its private route is
+`10.0.0.0/24`. Plan and deployment jobs share the `iac-private-network`
+concurrency group and use `cancel-in-progress: false`, preventing overlapping
+use of the shared peer or concurrent deployments. Matrices also use
+`max-parallel: 1`. GitHub may replace an older pending job with a newer one;
+missing plan results prevent partial runs from deploying. Rerun all jobs after
+a cancellation. State unlock remains an explicit, approved recovery operation.
 
 ## Setup
 

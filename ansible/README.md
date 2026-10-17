@@ -55,8 +55,10 @@ generated localhost test playbooks.
 
 CI runs the Ansible Lint `production` profile with warnings treated as failures.
 It checks all Ansible content, including YAML formatting, module names,
-variable prefixes, and playbook syntax. Terraform plans and manual Ansible
-deployments depend on this check succeeding.
+variable prefixes, and playbook syntax. It contributes to the required `CI`
+check. Plans and deployments depend on that check succeeding. The consolidated
+[deployment workflow](../.github/workflows/terraform.yml) supports manual
+`configuration` mode for Ansible-only runs; production still requires approval.
 
 The shared `.github/actions/ansible-lint` action uses Python 3.12 and exact
 tool versions from `requirements-lint.txt`. Collections are pinned in

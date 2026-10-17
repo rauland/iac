@@ -1,59 +1,66 @@
-name: Terraform Actions
+name: Infrastructure and configuration
 
 on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  merge_group:
   workflow_dispatch:
     inputs:
-      deployment_mode:
-        description: "Which Terraform roots to plan and apply"
+      mode:
+        description: Work to perform (auto reconciles infrastructure and configuration)
         type: choice
-        options:
-          - single
-          - all
+        options: [auto, infrastructure, configuration, destroy]
+        default: auto
+        required: true
+      scope:
+        description: Select one target or all enabled targets in the environment
+        type: choice
+        options: [single, all]
         default: single
         required: true
       environment:
-        description: "Scope to deploy (dev, prod, platform)"
-        required: true
+        description: Environment to deploy
         type: choice
-        options:
-          - dev
-          - prod
-          - platform
+        options: [dev, prod, platform]
+        required: true
       target:
-        description: "Target to deploy in single mode (ignored in all mode)"
-        required: true
+        description: Target (ignored when scope is all)
         type: choice
-        options:
-          - images
-          - sandbox
-          - talos
-          - vault
-      destroy:
-        description: "Destroy resources"
+        options: [common, sandbox, vault, talos, images]
+        default: vault
         required: true
-        default: false
-        type: boolean
-
-  pull_request:
-    branches: [main]
-    paths: &paths
-      - "terraform/modules/**"
-      - "terraform/workloads/**"
-      - "terraform/platform/**"
-      - ".github/workflows/terraform.yml"
-      - ".github/scripts/**"
-      - ".github/actions/**"
-      - "ssh/**"
-      - "ansible/**"
-
-  push:
-    branches: [main]
-    paths: *paths
 
 permissions:
   contents: read
 
 jobs:
+  discover:
+    name: Discover deployment work
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.targets.outputs.matrix }}
+      plan-matrix: ${{ steps.targets.outputs.plan-matrix }}
+      has-plans: ${{ steps.targets.outputs.has-plans }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test deployment routing and saved plans
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+      - name: Select infrastructure and configuration targets
+        id: targets
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DEPLOYMENT_MODE: ${{ inputs.mode }}
+          DEPLOYMENT_SCOPE: ${{ inputs.scope }}
+          SELECTED_ENV: ${{ inputs.environment }}
+          SELECTED_TARGET: ${{ inputs.target }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: python3 .github/scripts/deployment-targets.py
+
   ansible_lint:
     name: Ansible lint (offline)
     runs-on: ubuntu-latest
@@ -70,7 +77,7 @@ jobs:
         run: python3 ssh/test_setup_ci.py
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - name: Install Ansible inventory test dependencies
         run: |
           pip install ansible requests netaddr
@@ -92,8 +99,6 @@ jobs:
 
   talos_checks:
     name: Talos module tests (offline)
-    needs: discover
-    if: github.event_name != 'workflow_dispatch' || contains(fromJSON(needs.discover.outputs.matrix).*.target, 'talos')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -112,50 +117,65 @@ jobs:
       - name: Test upgrade ordering
         run: python3 terraform/modules/talos-cluster/scripts/test_upgrade_node.py
 
-  discover:
-    name: Discover Terraform roots
+  terraform_validate:
+    name: Terraform format and validation
+    needs: discover
     runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.roots.outputs.matrix }}
-      has-changes: ${{ steps.roots.outputs.has-changes }}
-
     steps:
       - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
         with:
-          fetch-depth: 0
-
-      - name: Test deployment discovery
-        run: python3 .github/scripts/test_terraform_roots.py
-
-      - name: Discover deployment targets
-        id: roots
+          terraform_version: "1.15.8"
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive terraform
+      - name: Validate selected roots without backend credentials
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          DEPLOYMENT_MODE: ${{ inputs.deployment_mode }}
-          SELECTED_ENV: ${{ inputs.environment }}
-          SELECTED_TARGET: ${{ inputs.target }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: python3 .github/scripts/terraform-roots.py
+          TARGETS_JSON: ${{ needs.discover.outputs.plan-matrix }}
+        run: |
+          while IFS= read -r directory; do
+            terraform -chdir="$directory" init -backend=false -input=false
+            terraform -chdir="$directory" validate -no-color
+          done < <(jq -r '.[].directory' <<< "$TARGETS_JSON")
+
+  ci:
+    name: CI
+    if: always()
+    needs: [discover, ansible_lint, access_checks, talos_checks, terraform_validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every validation job to succeed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PYCODE'
+          import json, os
+          results = json.loads(os.environ['NEEDS_JSON'])
+          failed = [name for name, result in results.items() if result['result'] != 'success']
+          if failed:
+              raise SystemExit('Required checks did not succeed: ' + ', '.join(failed))
+          print('All required checks passed.')
+          PYCODE
 
   plan:
-    name: Terraform Plan
+    name: Terraform preview (${{ matrix.environment }}/${{ matrix.target }})
+    needs: [discover, ci]
     if: >-
-      !cancelled() &&
-      needs.discover.result == 'success' &&
-      needs.access_checks.result == 'success' &&
-      needs.ansible_lint.result == 'success' &&
-      needs.discover.outputs.has-changes == 'true' &&
-      (needs.talos_checks.result == 'success' || needs.talos_checks.result == 'skipped')
-    needs: [discover, talos_checks, access_checks, ansible_lint]
+      needs.discover.outputs.has-plans == 'true' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
-        include: ${{ fromJSON(needs.discover.outputs.matrix) }}
+        include: ${{ fromJSON(needs.discover.outputs.plan-matrix) }}
+    concurrency:
+      group: iac-private-network
+      cancel-in-progress: false
     environment: ${{ format('proxmox-{0}-plan', matrix.environment) }}
-    env: &common-env
+    env: &terraform-env
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
@@ -165,11 +185,10 @@ jobs:
       TF_VAR_virtual_environment_api_token: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: hashicorp/setup-terraform@v3
-        with: &terraform-setup
+        with:
           terraform_version: "1.15.8"
-
+          terraform_wrapper: false
       - uses: ./.github/actions/wireguard
         with: &wireguard-env
           WIREGUARD_PRIVATE_KEY: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
@@ -177,33 +196,42 @@ jobs:
           PEER_IP: ${{ secrets.PEER_IP }}
           WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
           WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
-
       - name: Initialize Terraform backend
-        shell: bash
+        env:
+          STATE_KEY: terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate
+        run: terraform init -input=false -backend-config="key=$STATE_KEY"
+        working-directory: ./${{ matrix.directory }}
+      - name: Create saved plan and record actual changes
+        id: plan
+        env:
+          TARGET_DIRECTORY: ${{ matrix.directory }}
+          TARGET_ENVIRONMENT: ${{ matrix.environment }}
+          TARGET_NAME: ${{ matrix.target }}
+          DESTROY: ${{ matrix.destroy }}
         run: |
-          terraform init -input=false \
-            -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
-        working-directory: ./${{ matrix.directory }}
-
-      - name: Check Terraform formatting
-        run: terraform fmt -check -recursive terraform
-
-      - name: Validate Terraform configuration
-        run: terraform validate -no-color
-        working-directory: ./${{ matrix.directory }}
-
-      - name: Plan
-        run: terraform plan -lock=false -input=false -out=tfplan ${{ inputs.destroy == true && '-destroy' || '' }}
-        working-directory: ./${{ matrix.directory }}
-
-      - name: Encrypt saved plan
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+          python3 .github/scripts/terraform-plan.py \
+            --directory "$TARGET_DIRECTORY" --environment "$TARGET_ENVIRONMENT" \
+            --target "$TARGET_NAME" --destroy "$DESTROY" \
+            --result "$RUNNER_TEMP/plan-result/$TARGET_ENVIRONMENT--$TARGET_NAME.json"
+      - name: Upload non-secret plan result
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-result-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
+          path: ${{ runner.temp }}/plan-result/*.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Encrypt saved plan when changes exist
+        if: >-
+          steps.plan.outputs.changes == 'true' && github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         env:
           TF_PLAN_PUBLIC_KEY: ${{ vars.TF_PLAN_PUBLIC_KEY }}
-        run: bash .github/scripts/terraform-plan-artifact.sh encrypt "${{ matrix.directory }}" "$RUNNER_TEMP/tfplan.tar.gpg"
-
+          TARGET_DIRECTORY: ${{ matrix.directory }}
+        run: bash .github/scripts/terraform-plan-artifact.sh encrypt "$TARGET_DIRECTORY" "$RUNNER_TEMP/tfplan.tar.gpg"
       - name: Upload encrypted plan
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: >-
+          steps.plan.outputs.changes == 'true' && github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
@@ -211,55 +239,85 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  apply:
-    name: Terraform Apply
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.destroy == false))
-    needs: [discover, plan]
+  prepare:
+    name: Prepare deployment approval summary
+    needs: [discover, ci, plan]
+    if: >-
+      always() && needs.ci.result == 'success' && needs.discover.result == 'success' &&
+      (needs.discover.outputs.has-plans == 'false' || needs.plan.result == 'success')
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.deployments.outputs.matrix }}
+      has-deployments: ${{ steps.deployments.outputs.has-deployments }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download plan results for this run attempt
+        if: needs.discover.outputs.has-plans == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tf-result-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: ${{ runner.temp }}/plan-results
+          merge-multiple: true
+      - name: Select only targets needing deployment
+        id: deployments
+        env:
+          TARGETS_JSON: ${{ needs.discover.outputs.matrix }}
+          PLAN_RESULTS_DIRECTORY: ${{ runner.temp }}/plan-results
+          DEPLOYMENT_MODE: ${{ inputs.mode }}
+        run: python3 .github/scripts/prepare-deployments.py
+
+  deploy:
+    name: Deploy (${{ matrix.environment }}/${{ matrix.target }})
+    needs: [ci, prepare]
+    if: >-
+      always() && needs.ci.result == 'success' && needs.prepare.result == 'success' &&
+      needs.prepare.outputs.has-deployments == 'true' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
-        include: ${{ fromJSON(needs.discover.outputs.matrix) }}
+        include: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     concurrency:
-      group: terraform-state-${{ matrix.environment }}-${{ matrix.target }}
+      group: iac-private-network
       cancel-in-progress: false
-    environment: ${{ matrix.environment == 'dev' && 'proxmox-dev-auto-apply' || format('proxmox-{0}-apply', matrix.environment) }}
-    env: *common-env
-
+    environment: ${{ matrix.approval_environment }}
+    env: *terraform-env
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download encrypted plan
+      - name: Download encrypted saved plan
+        if: matrix.terraform
         uses: actions/download-artifact@v4
         with:
           name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
           path: ${{ runner.temp }}/encrypted-plan
-
       - name: Decrypt saved plan
+        if: matrix.terraform
         env:
           TF_PLAN_PRIVATE_KEY: ${{ secrets.TF_PLAN_PRIVATE_KEY }}
-        run: bash .github/scripts/terraform-plan-artifact.sh decrypt "${{ matrix.directory }}" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
-
+          TARGET_DIRECTORY: ${{ matrix.directory }}
+        run: bash .github/scripts/terraform-plan-artifact.sh decrypt "$TARGET_DIRECTORY" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
       - uses: hashicorp/setup-terraform@v3
-        with: *terraform-setup
-
+        if: matrix.terraform
+        with:
+          terraform_version: "1.15.8"
+          terraform_wrapper: false
       - uses: ./.github/actions/wireguard
         with: *wireguard-env
-
-      - name: Initialize Terraform backend
-        shell: bash
-        run: |
-          terraform init -input=false -lockfile=readonly \
-            -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
+      - name: Initialize Terraform with the reviewed dependency selections
+        if: matrix.terraform
+        env:
+          STATE_KEY: terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate
+        run: terraform init -input=false -lockfile=readonly -backend-config="key=$STATE_KEY"
         working-directory: ./${{ matrix.directory }}
-
-      - name: Apply
+      - name: Apply the saved infrastructure or destroy plan
+        if: matrix.terraform
         run: terraform apply -input=false tfplan
         working-directory: ./${{ matrix.directory }}
-
-      - uses: ./.github/actions/ansible
-        if: matrix.target != 'images' && matrix.target != 'talos'
+      - name: Configure selected guests
+        if: matrix.ansible
+        uses: ./.github/actions/ansible
         env:
           PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
           PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
@@ -271,50 +329,3 @@ jobs:
           SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
           target: ${{ matrix.target }}
           environment: ${{ matrix.environment }}
-
-  destroy:
-    name: Terraform Destroy
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.destroy == true
-    needs: [discover, plan]
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        include: ${{ fromJSON(needs.discover.outputs.matrix) }}
-    concurrency:
-      group: terraform-state-${{ matrix.environment }}-${{ matrix.target }}
-      cancel-in-progress: false
-    environment: ${{ format('proxmox-{0}-apply', matrix.environment) }}
-    env: *common-env
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download encrypted plan
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
-          path: ${{ runner.temp }}/encrypted-plan
-
-      - name: Decrypt saved plan
-        env:
-          TF_PLAN_PRIVATE_KEY: ${{ secrets.TF_PLAN_PRIVATE_KEY }}
-        run: bash .github/scripts/terraform-plan-artifact.sh decrypt "${{ matrix.directory }}" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
-
-      - uses: hashicorp/setup-terraform@v3
-        with: *terraform-setup
-
-      - uses: ./.github/actions/wireguard
-        with: *wireguard-env
-
-      - name: Initialize Terraform backend
-        shell: bash
-        run: |
-          terraform init -input=false -lockfile=readonly \
-            -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
-        working-directory: ./${{ matrix.directory }}
-
-      - name: Destroy
-        run: terraform apply -input=false tfplan
-        working-directory: ./${{ matrix.directory }}
