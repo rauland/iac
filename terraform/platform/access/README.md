@@ -88,6 +88,7 @@ separate user/name/secret fields.
 | --- | --- | --- |
 | `proxmox-dev-plan` | `tf-dev-plan` | — |
 | `proxmox-dev-apply` | `tf-dev-apply` | `ansible-dev` |
+| `proxmox-dev-auto-apply` | `tf-dev-apply` | `ansible-dev` |
 | `proxmox-prod-plan` | `tf-prod-plan` | — |
 | `proxmox-prod-apply` | `tf-prod-apply` | `ansible-prod` |
 | `proxmox-platform-plan` | `tf-platform-images-plan` | — |
@@ -107,8 +108,12 @@ dev/prod apply environments need their distinct Ansible SSH private keys and
 the Cloudflare secret. See [SSH access and rotation](../../../ssh/README.md).
 Keep the public plan encryption key in the repository variable.
 
-Configure required reviewers and allow deployment only from `main` for all
-apply environments. Also require reviewers for `proxmox-prod-plan`, because
+Allow deployment only from `main` for all apply environments. Dev Terraform
+apply uses `proxmox-dev-auto-apply` without required reviewers, with the same
+scoped credentials and variables as `proxmox-dev-apply`. Keep reviewers on
+`proxmox-dev-apply` for explicit destroy, state unlock, and standalone Ansible,
+and on the prod/platform apply environments. Also require reviewers for
+`proxmox-prod-plan`, because
 its credentials permit disk changes. Dev plan and shared-image plan environments
 can run without reviewers. Configure all secrets and deployment protections
 before running the workflows.

@@ -216,7 +216,7 @@ jobs:
     concurrency:
       group: terraform-state-${{ matrix.environment }}-${{ matrix.target }}
       cancel-in-progress: false
-    environment: ${{ format('proxmox-{0}-apply', matrix.environment) }}
+    environment: ${{ matrix.environment == 'dev' && 'proxmox-dev-auto-apply' || format('proxmox-{0}-apply', matrix.environment) }}
     env: *common-env
 
     steps:

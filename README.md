@@ -89,12 +89,12 @@ choose `platform` and target `images` for shared image publishing.
 | Trigger | Behavior |
 | --- | --- |
 | Pull request to `main` | Format, validate, and produce preview plans for affected roots |
-| Push to `main` | Plan affected roots, then queue apply for environment approval |
+| Push to `main` | Plan affected roots, then apply dev automatically; prod/platform require approval |
 | Manual, `single` mode | Plan the selected environment and target |
 | Manual, `all` mode | Plan every enabled root in the selected environment; ignore the target input |
 | Manual, `destroy: true` | Generate a destroy plan, then queue destroy for approval on `main` |
 
-Manual apply runs also require `main`. Destruction is only triggered manually.
+Manual apply runs also require `main`. Explicit destroy runs are only triggered manually.
 Before removing a root's configuration, destroy its resources explicitly;
 discovery does not destroy deleted roots.
 
@@ -116,7 +116,9 @@ users, token export, state IAM requirements, and migration from legacy access.
 | --- | --- | --- |
 | `proxmox-dev-plan` | Dev audit credentials plus pool-scoped disk permission required for refresh | No required reviewers |
 | `proxmox-prod-plan` | Prod audit credentials plus pool-scoped disk permission required for refresh | Required reviewers |
-| `proxmox-dev-apply`, `proxmox-prod-apply` | Environment-specific write/inventory credentials and plan decryption key | Required reviewers; deployments restricted to `main` |
+| `proxmox-dev-auto-apply` | Dev write/inventory credentials and plan decryption key; Terraform apply only | No required reviewers; deployments restricted to `main` |
+| `proxmox-dev-apply` | Dev write credentials for explicit destroy, state unlock, and standalone Ansible | Required reviewers; deployments restricted to `main` |
+| `proxmox-prod-apply` | Prod write/inventory credentials and plan decryption key | Required reviewers; deployments restricted to `main` |
 | `proxmox-platform-plan` | Audit credentials for shared image storage | No required reviewers |
 | `proxmox-platform-apply` | Shared image publishing credentials and plan decryption key | Required reviewers; deployments restricted to `main` |
 
@@ -129,10 +131,16 @@ The `platform/images` root uses platform image credentials and state key
 excluded from deployment discovery and is applied separately.
 
 For pushes and manual runs on `main`, the plan job encrypts the saved plan and
-provider lock file and uploads the archive. After approval, apply or destroy
-decrypts that archive and executes the saved plan. It never generates a
+provider lock file and uploads the archive. Dev applies proceed automatically
+after successful checks and plans. Prod/platform applies and explicit dev
+destroy still require approval. Each apply or destroy decrypts the archive and
+executes the saved plan. It never generates a
 replacement plan during apply. Each job supplies its own Proxmox API token;
 the Terraform token variable is ephemeral and is not saved in the plan.
+
+Automatic dev applies can still delete or replace resources when those actions
+are present in an ordinary plan. Approval for explicit destroy covers the
+manual `destroy: true` workflow; it is not a deletion filter on normal applies.
 
 Artifacts are unique to each run attempt and root and expire after seven days.
 If a plan becomes stale, its artifact expires, or a deployment fails, rerun

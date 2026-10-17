@@ -13,9 +13,10 @@ All apply environments have the replacement
 the legacy `proxmox-rw` private key so existing main-branch workflows remain
 compatible. The actual saved-plan encryption scripts passed a round-trip test.
 
-All apply environments require the existing reviewer (`rauland`) and allow only
+The existing apply environments require the reviewer (`rauland`) and allow only
 `main`. Prod planning also requires review because its Proxmox token can change
-disks. The shared repository-level WireGuard secrets are inherited.
+disks.
+The shared repository-level WireGuard secrets are inherited.
 
 All six environments also have their scoped `AWS_ACCESS_KEY_ID` and
 `AWS_SECRET_ACCESS_KEY`. The credential identities, policy boundaries and live
@@ -23,6 +24,21 @@ S3 read isolation were verified before upload. The state-access Terraform plan
 reported no changes.
 
 The temporary readiness flag and its workflow checks have been removed.
+
+## Automatic dev apply setup
+
+Before pushing the workflow change, create `proxmox-dev-auto-apply` without
+required reviewers and restrict deployments to the branch `main`. Copy all 11
+scoped secrets and the `AWS_DEFAULT_REGION` variable from `proxmox-dev-apply`.
+GitHub cannot return secret values; use the existing protected local credential
+sources and upload via stdin without printing credentials. Keep both dev
+environments in sync when rotating credentials.
+
+Terraform dev applies use this additional environment. The original
+`proxmox-dev-apply` retains its reviewer for explicit destroy, state unlock and
+standalone Ansible. Prod/platform approvals remain unchanged. Existing waiting
+runs use the environment selected by their original workflow revision; a new
+push generates fresh plans using the updated routing.
 
 ## Scoped AWS state access
 

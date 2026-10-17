@@ -6,7 +6,7 @@ control API access; guest SSH access is controlled separately by authorized keys
 
 | Environment | Public key | Private-key secret | Trusted host keys |
 | --- | --- | --- | --- |
-| Dev | [public_keys/dev/ansible-ci.pub](public_keys/dev/ansible-ci.pub) | `proxmox-dev-apply` → `SSH_PRIVATE_KEY_ANSIBLE` | [known_hosts/dev](known_hosts/dev) |
+| Dev | [public_keys/dev/ansible-ci.pub](public_keys/dev/ansible-ci.pub) | `proxmox-dev-apply` and `proxmox-dev-auto-apply` → `SSH_PRIVATE_KEY_ANSIBLE` | [known_hosts/dev](known_hosts/dev) |
 | Prod | [public_keys/prod/ansible-ci.pub](public_keys/prod/ansible-ci.pub) | `proxmox-prod-apply` → `SSH_PRIVATE_KEY_ANSIBLE` | [known_hosts/prod](known_hosts/prod) |
 
 The same public-key files are used by Terraform for first boot and Ansible for
@@ -76,7 +76,8 @@ environment's public key above, and retain the old public key in the role's
    and `ansible_user_remove_retired_keys=false`.
 2. Verify a fresh SSH connection and noninteractive sudo using the new key on
    every guest. Disable multiplexed connection reuse during this verification.
-3. Upload the new private key to the matching GitHub environment secret via
+3. Upload the new private key to the matching GitHub environment secrets (both
+   dev apply environments for a dev key) via
    stdin, without printing it or placing it in command-line arguments. Push the
    matching public key and workflow changes together with the cutover.
 4. Use the new credential to run the SSH-access playbook with retired-key
