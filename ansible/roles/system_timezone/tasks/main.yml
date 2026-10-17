@@ -1,5 +1,4 @@
 ---
-# tasks file for system-timezone
 - name: Ensure the correct timezone is set
-  timezone:
-    name: "{{ system_timezone }}"
+  community.general.timezone:
+    name: "{{ system_timezone_name }}"

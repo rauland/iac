@@ -44,6 +44,41 @@ tasks and extend the assertion and task imports in `roles/vault/tasks/main.yml`;
 keep shared configuration in `common.yml`. This follows Ansible's documented
 [OS-family role pattern](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_reuse_roles.html).
 
+New roles should contain a README and the files they use. Put configurable,
+role-prefixed inputs in `defaults/main.yml`; add handlers, templates, static
+files, or internal variables as needed. These internal roles keep their
+descriptions in their READMEs and omit unused Galaxy publishing metadata.
+Maintain offline regression tests in `ansible/tests` instead of retaining
+generated localhost test playbooks.
+
+## Linting
+
+CI runs the Ansible Lint `production` profile with warnings treated as failures.
+It checks all Ansible content, including YAML formatting, module names,
+variable prefixes, and playbook syntax. Terraform plans and manual Ansible
+deployments depend on this check succeeding.
+
+The shared `.github/actions/ansible-lint` action uses Python 3.12 and exact
+tool versions from `requirements-lint.txt`. Collections are pinned in
+`requirements.yml` and installed before linting. The lint step uses
+`tests/inventory.yml` and offline mode, so it needs no infrastructure credentials.
+
+Run the same checks locally from the repository root with Python 3.12 or newer:
+
+```sh
+cd ansible
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements-lint.txt
+export PATH="$PWD/.venv/bin:$PATH"
+export ANSIBLE_COLLECTIONS_PATH="$PWD/.venv/collections"
+export ANSIBLE_INVENTORY="$PWD/tests/inventory.yml"
+ansible-galaxy collection install -r requirements.yml
+ansible-lint --offline --strict .
+```
+
+The YAML policy in `.yamllint` is also used by Ansible Lint. Fix findings in the
+content; the configuration contains no ignored rules or baseline exemptions.
+
 ## Inventory and access
 
 Proxmox tags create groups prefixed with `tag_`, such as `tag_common` and

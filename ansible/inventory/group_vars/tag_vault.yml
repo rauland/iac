@@ -1,3 +1,4 @@
+---
 vault_api_addr: "vault.netkuki.com"
 vault_cluster_addr: "vault.netkuki.com"
 certbot_email: "admin@netkuki.com"

@@ -9,10 +9,10 @@ role dependencies.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `system_timezone` | `UTC` | Timezone database name, such as `Australia/Melbourne`. |
+| `system_timezone_name` | `UTC` | Timezone database name, such as `Australia/Melbourne`. |
 
 Override the timezone in group or host variables:
 
 ```yaml
-system_timezone: Australia/Melbourne
+system_timezone_name: Australia/Melbourne
 ```

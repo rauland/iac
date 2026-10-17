@@ -1,5 +1,4 @@
 ---
-# tasks file for automation_user
 - name: Require the requested environment's pool
   ansible.builtin.assert:
     that:
@@ -14,7 +13,7 @@
     groups: "{{ automation_user_groups | default(omit, true) }}"
     home: "{{ automation_user_home }}"
     state: present
-    create_home: yes
+    create_home: true
 
 - name: Ensure .ssh directory exists
   ansible.builtin.file:

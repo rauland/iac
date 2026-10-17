@@ -1,4 +1,3 @@
 ---
-# defaults file for system-timezone
 # Default timezone to be set on the system
-system_timezone: "UTC"
+system_timezone_name: "UTC"

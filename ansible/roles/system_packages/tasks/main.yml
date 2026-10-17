@@ -1,5 +1,4 @@
 ---
-# tasks file for system_packages
 - name: Install each package
   ansible.builtin.package:
     name: "{{ item }}"

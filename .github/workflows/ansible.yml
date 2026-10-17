@@ -24,8 +24,16 @@ on:
       # - "ansible/**"
 
 jobs:
+  lint:
+    name: Ansible lint (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ansible-lint
+
   run:
     name: Ansible run
+    needs: lint
     runs-on: ubuntu-latest
     environment: ${{ format('proxmox-{0}-apply', inputs.environment) }}
     steps:

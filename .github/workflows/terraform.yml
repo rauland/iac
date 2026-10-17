@@ -54,6 +54,13 @@ permissions:
   contents: read
 
 jobs:
+  ansible_lint:
+    name: Ansible lint (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ansible-lint
+
   access_checks:
     name: Proxmox RBAC tests (offline)
     runs-on: ubuntu-latest
@@ -137,9 +144,10 @@ jobs:
       !cancelled() &&
       needs.discover.result == 'success' &&
       needs.access_checks.result == 'success' &&
+      needs.ansible_lint.result == 'success' &&
       needs.discover.outputs.has-changes == 'true' &&
       (needs.talos_checks.result == 'success' || needs.talos_checks.result == 'skipped')
-    needs: [discover, talos_checks, access_checks]
+    needs: [discover, talos_checks, access_checks, ansible_lint]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

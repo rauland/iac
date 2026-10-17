@@ -280,7 +280,7 @@ protections or the health of deployed services.
 | SSH certificates | Planned | VM access uses SSH keys and cloud-init; no SSH CA or certificate lifecycle is configured. |
 | Secrets management | Partial | GitHub Actions secrets, encrypted saved plans, and ignored Talos credentials are in place. Vault provisioning and an Ansible role exist; automated initialization, unsealing, and workload secret retrieval are not configured. |
 | Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
-| Linting and validation | Partial | Terraform validation and offline Talos tests run in CI; dedicated Terraform, Ansible, and workflow linting are not configured. |
+| Linting and validation | Partial | Ansible linting, Terraform validation, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
 | Kubernetes GitOps | Planned | No Flux or Argo CD bootstrap or workload reconciliation is configured. |
 | Workload backups | Planned | No workload backup or restore process is configured. S3 stores Terraform state only. |
 | IP address management | Planned | Addresses are supplied explicitly or through DHCP; no IPAM integration allocates addresses or manages reservations. |

@@ -14,3 +14,7 @@
 # Python test caches.
 __pycache__/
 *.py[cod]
+
+# Local Ansible lint environment and cache.
+ansible/.venv/
+ansible/.cache/
