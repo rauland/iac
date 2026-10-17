@@ -87,7 +87,9 @@ class ScopedInventoryTests(unittest.TestCase):
     def test_dev_inventory_works_without_global_cluster_audit(self):
         inventory = self.inventory('dev')
         self.assertEqual(inventory['proxmox_pool_dev']['hosts'], ['dev-vault'])
-        self.assertEqual(inventory['_meta']['hostvars']['dev-vault']['ansible_host'], '10.0.0.103')
+        # Newer Ansible preserves the untrusted-string tag in inventory JSON.
+        self.assertIn(inventory['_meta']['hostvars']['dev-vault']['ansible_host'],
+                      ('10.0.0.103', {'__ansible_unsafe': '10.0.0.103'}))
         self.assertNotIn('prod-vault', inventory['_meta']['hostvars'])
 
     def test_prod_inventory_works_without_global_cluster_audit(self):
