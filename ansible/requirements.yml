@@ -1,4 +1,6 @@
 collections:
   - name: ansible.posix
-  - name: https://github.com/ansible-collections/community.proxmox.git
-    type: git
+  # 2.1.0 queries /cluster/status and requires global Sys.Audit.
+  # Keep inventory compatible with the pool-scoped automation identities.
+  - name: community.proxmox
+    version: "2.0.0"

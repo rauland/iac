@@ -21,7 +21,7 @@ runs:
       shell: bash
 
     - name: Install Ansible collections
-      run: ansible-galaxy collection install -r ./ansible/requirements.yml
+      run: ansible-galaxy collection install -r ./ansible/requirements.yml --force
       shell: bash
 
     - name: Run Ansible playbook

@@ -38,6 +38,20 @@ The inventory reads Proxmox credentials from `PROXMOX_URL`, `PROXMOX_USER`,
 `CLOUDFLARE_API_TOKEN`; both deployment workflows pass it from GitHub environment
 secrets. SSH and sudo access as `ansible` must already be available on guests.
 
+Inventory uses the pinned `community.proxmox` version in `requirements.yml`.
+Install it from the repository root to override a different version bundled
+with Ansible:
+
+```sh
+ansible-galaxy collection install -r ansible/requirements.yml --force
+```
+
+Version 2.1.0 queries `/cluster/status`, which requires global `Sys.Audit`;
+version 2.0.0
+works with the existing pool-scoped inventory tokens. Test inventory with those
+tokens before upgrading the collection. An inventory source that cannot be
+parsed is a fatal error, so API permission failures cannot silently skip a run.
+
 Dev and prod have separate CI SSH key pairs. Public keys are shared with
 Terraform under `ssh/public_keys/ENVIRONMENT/ansible-ci.pub`; private keys live
 in their matching GitHub apply environments. For local runs, the runner uses
@@ -50,7 +64,7 @@ the dedicated `ssh-access.yml` migration playbook.
 Run offline selection tests and syntax checks without contacting Proxmox or hosts:
 
 ```sh
-python3 ansible/tests/test_run_playbook.py
+python3 -m unittest discover -s ansible/tests -p 'test_*.py'
 bash ansible/run-playbook.sh dev vault -i tests/inventory.yml --syntax-check
 bash ansible/run-playbook.sh dev sandbox -i tests/inventory.yml --syntax-check
 ```

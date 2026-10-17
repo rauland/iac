@@ -61,6 +61,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test SSH credential handling
         run: python3 ssh/test_setup_ci.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Ansible inventory test dependencies
+        run: |
+          pip install ansible requests netaddr
+          ansible-galaxy collection install -r ansible/requirements.yml --force
+      - name: Test scoped inventory and playbook selection
+        run: python3 -m unittest discover -s ansible/tests -p 'test_*.py'
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.15.8"
