@@ -1,25 +1,34 @@
 all:
   children:
-    dev:
+    proxmox_pool_dev:
       hosts:
         dev-vault:
         dev-sandbox:
         dev-unmanaged-sandbox:
         dev-unmanaged-vault:
         dev-untagged:
-    prod:
+    proxmox_pool_prod:
       hosts:
         prod-vault:
+    # Deliberately stale environment groups must not override pool membership.
+    dev:
+      hosts:
+        prod-vault:
+    prod:
+      hosts:
+        dev-vault:
     tag_managed:
       hosts:
         dev-vault:
         dev-sandbox:
         prod-vault:
+        unpooled-vault:
     tag_vault:
       hosts:
         dev-vault:
         dev-unmanaged-vault:
         prod-vault:
+        unpooled-vault:
     tag_sandbox:
       hosts:
         dev-sandbox:

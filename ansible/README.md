@@ -6,9 +6,9 @@ and `prod`; supported targets are listed below.
 
 | Target | Managed hosts | Other hosts | Host selection |
 | --- | --- | --- | --- |
-| `managed` | `managed.yml` | None | Environment and `managed` tag |
-| `sandbox` | `managed.yml`, then `sandbox.yml` | `sandbox.yml` | Environment and `sandbox` tag |
-| `vault` | `managed.yml`, then `vault.yml` | `vault.yml` | Environment and `vault` tag |
+| `managed` | `managed.yml` | None | Environment pool and `managed` tag |
+| `sandbox` | `managed.yml`, then `sandbox.yml` | `sandbox.yml` | Environment pool and `sandbox` tag |
+| `vault` | `managed.yml`, then `vault.yml` | `vault.yml` | Environment pool and `vault` tag |
 
 The `managed` tag adds timezone, Ansible-user, and package configuration from
 `managed.yml` before the selected service playbook. All VMs with the selected
@@ -18,11 +18,13 @@ playbook. A baseline failure stops the service playbook. `sandbox.yml` currently
 has no additional tasks. Use the runner to select the environment and target.
 
 Proxmox tags create groups prefixed with `tag_`, such as `tag_managed` and
-`tag_vault`, to avoid collisions with VM names. The `dev` and `prod` groups come
-from their corresponding environment tags. Tag each VM with its environment and
-target; add `managed` when it should also receive the managed baseline. The sandbox
-Terraform configuration includes these tags; an existing VM gets them on its next
-Terraform apply. Group variable files use the same prefixed names.
+`tag_vault`, to avoid collisions with VM names. The inventory plugin creates
+`proxmox_pool_dev` and `proxmox_pool_prod` from Proxmox resource pool membership.
+The runner intersects that pool group with the target tag, for example
+`proxmox_pool_dev:&tag_vault`. Assign each VM to its environment pool and tag its
+target; add `managed` when it should also receive the managed baseline.
+Environment tags such as `dev` and `prod` are optional and do not select hosts.
+Unpooled VMs are excluded. Group variable files retain their `tag_` names.
 
 Preview a target before applying:
 

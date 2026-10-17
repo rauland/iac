@@ -22,7 +22,16 @@ data "talos_image_factory_urls" "this" {
   architecture  = "amd64"
 }
 
-resource "proxmox_download_file" "iso" {
+# Preserve pre-RBAC media on shared storage. Dev credentials cannot delete
+# shared images, and existing running guests may still have this ISO attached.
+removed {
+  from = proxmox_download_file.iso
+  lifecycle {
+    destroy = false
+  }
+}
+
+resource "proxmox_download_file" "environment_iso" {
   for_each = local.proxmox_nodes
 
   node_name    = each.key

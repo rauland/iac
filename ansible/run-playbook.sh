@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Select a target and intersect its hosts with the requested environment.
+# Select a target and intersect its hosts with the requested Proxmox pool.
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
@@ -21,7 +21,7 @@ case "$ansible_target" in
 esac
 
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
-ansible_limit="$ansible_environment:&$ansible_group"
+ansible_limit="proxmox_pool_$ansible_environment:&$ansible_group"
 # Apply the baseline to managed hosts in this target before its service playbook.
 if [[ "$ansible_target" != managed ]]; then
   ansible-playbook ./playbooks/managed.yml --limit "$ansible_limit" "$@"

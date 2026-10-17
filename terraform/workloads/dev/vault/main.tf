@@ -1,5 +1,6 @@
 module "virtual_machine" {
-  source = "../../../modules/virtual-machine"
+  source  = "../../../modules/virtual-machine"
+  pool_id = "dev"
 
   providers = {
     proxmox = proxmox

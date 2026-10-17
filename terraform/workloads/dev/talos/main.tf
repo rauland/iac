@@ -1,6 +1,8 @@
 # See ../../../modules/talos-cluster/README.md for lifecycle procedures.
 module "talos_cluster" {
-  source = "../../../modules/talos-cluster"
+  source           = "../../../modules/talos-cluster"
+  pool_id          = "dev"
+  iso_datastore_id = "dev-images"
   providers = {
     talos   = talos
     proxmox = proxmox

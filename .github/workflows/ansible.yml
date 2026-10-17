@@ -27,8 +27,13 @@ jobs:
   run:
     name: Ansible run
     runs-on: ubuntu-latest
-    environment: proxmox-rw
+    environment: ${{ format('proxmox-{0}-apply', inputs.environment) }}
     steps:
+      - name: Require configured RBAC environment
+        env:
+          RBAC_READY: ${{ vars.PROXMOX_RBAC_READY }}
+        run: test "$RBAC_READY" = true
+
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/wireguard

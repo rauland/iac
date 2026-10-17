@@ -41,6 +41,7 @@ override_resource {
 }
 
 variables {
+  pool_id            = "dev"
   cluster_name       = "test-cluster"
   cluster_endpoint   = "https://192.0.2.10:6443"
   bootstrap_node     = "cp-01"

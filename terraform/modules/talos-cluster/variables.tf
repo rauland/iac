@@ -1,3 +1,13 @@
+variable "pool_id" {
+  description = "Environment resource pool. Created by terraform/platform/access."
+  type        = string
+  nullable    = false
+  validation {
+    condition     = contains(["dev", "prod"], var.pool_id)
+    error_message = "Select the dev or prod resource pool."
+  }
+}
+
 variable "cluster_name" {
   description = "Unique cluster name, also used to namespace downloaded boot media."
   type        = string

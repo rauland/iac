@@ -22,6 +22,8 @@ mock_provider "talos" {
 }
 
 variables {
+  pool_id            = "dev"
+  iso_datastore_id   = "dev-images"
   cluster_name       = "test-cluster"
   cluster_endpoint   = "https://192.0.2.10:6443"
   bootstrap_node     = "cp-01"
@@ -55,6 +57,14 @@ run "boot_and_configuration_contract" {
 
   assert {
     condition = (
+      alltrue([for node in proxmox_virtual_environment_vm.node : node.pool_id == "dev" && contains(node.tags, "dev")]) &&
+      alltrue([for iso in proxmox_download_file.environment_iso : iso.datastore_id == "dev-images"])
+    )
+    error_message = "Keep every Talos VM and its boot media within the selected environment."
+  }
+
+  assert {
+    condition = (
       proxmox_virtual_environment_vm.node["cp-01"].cdrom[0].file_id != null &&
       proxmox_virtual_environment_vm.node["cp-01"].disk[0].file_id == null &&
       proxmox_virtual_environment_vm.node["cp-01"].disk[0].import_from == null &&
@@ -67,7 +77,7 @@ run "boot_and_configuration_contract" {
     error_message = "Waiting for a guest agent before applying Talos configuration would deadlock installation."
   }
   assert {
-    condition     = length(proxmox_download_file.iso) == 2 && data.talos_image_factory_urls.this.platform == "metal"
+    condition     = length(proxmox_download_file.environment_iso) == 2 && data.talos_image_factory_urls.this.platform == "metal"
     error_message = "Download metal ISO boot media to each Proxmox host used by the nodes."
   }
   assert {
@@ -81,7 +91,7 @@ run "boot_and_configuration_contract" {
   }
   assert {
     condition = (
-      alltrue([for iso in proxmox_download_file.iso : iso.url == "https://factory.example/metal-amd64-secureboot.iso" && endswith(iso.file_name, "-secureboot.iso")]) &&
+      alltrue([for iso in proxmox_download_file.environment_iso : iso.url == "https://factory.example/metal-amd64-secureboot.iso" && endswith(iso.file_name, "-secureboot.iso")]) &&
       output.installer_iso_url == "https://factory.example/metal-amd64-secureboot.iso" &&
       output.installer_image == "factory.example/installer-secureboot/test:v1.14.3"
     )

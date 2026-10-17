@@ -1,3 +1,13 @@
+variable "pool_id" {
+  description = "Environment resource pool. Created by terraform/platform/access."
+  type        = string
+  nullable    = false
+  validation {
+    condition     = contains(["dev", "prod", "infra"], var.pool_id)
+    error_message = "Select the dev, prod, or infra resource pool."
+  }
+}
+
 variable "vm_config" {
   description = <<EOT
     Virtual machine configuration object containing the following attributes:

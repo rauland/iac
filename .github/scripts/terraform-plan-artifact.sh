@@ -21,7 +21,7 @@ case "$mode" in
         --output "$artifact" --encrypt
     ;;
   decrypt)
-    : "${TF_PLAN_PRIVATE_KEY:?Set TF_PLAN_PRIVATE_KEY in the proxmox-rw environment}"
+    : "${TF_PLAN_PRIVATE_KEY:?Set TF_PLAN_PRIVATE_KEY in the selected apply environment}"
     printf '%s\n' "$TF_PLAN_PRIVATE_KEY" > "$scratch/private.asc"
     gpg --batch --import "$scratch/private.asc"
     # Verify the entire encrypted message before extracting any plaintext.

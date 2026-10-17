@@ -54,13 +54,18 @@ Talos API.
 
 | Path | Purpose |
 | --- | --- |
-| [terraform/environments](terraform/environments) | Terraform roots, each with its own state |
+| [terraform/workloads](terraform/workloads) | Environment workload roots, each with its own state |
+| [terraform/platform](terraform/platform) | Shared images and administrator-operated Proxmox/AWS access configuration, with separate states |
 | [terraform/modules](terraform/modules) | Reusable cloud-image, virtual-machine, and talos-cluster modules |
 | [ansible](ansible/README.md) | Dynamic Proxmox inventory, playbooks, and roles |
 | [.github/workflows](.github/workflows) | Terraform, Ansible, S3 bootstrap, and state unlock workflows |
 | [.github/actions](.github/actions) | Shared WireGuard, SSH, and Ansible actions |
 
-Enabled roots are `dev/sandbox`, `dev/vault`, `dev/talos`, and `prod/images`.
+Enabled deployment roots are `dev/sandbox`, `dev/vault`, `dev/talos`, and
+[`platform/images`](terraform/platform/images/README.md). `platform/access` is
+administrator-operated and excluded from deployment discovery, as is
+[`platform/state-access`](terraform/platform/state-access/README.md) for CI AWS
+state credentials.
 Talos is included in automatic discovery and manual deployments. See the
 [Talos module guide](terraform/modules/talos-cluster/README.md) for networking,
 deployment, and cluster lifecycle procedures.
@@ -74,8 +79,10 @@ commands still work. Remove the marker to include the root again.
 ## Deployments
 
 The [Terraform workflow](.github/workflows/terraform.yml) discovers roots from
-changes under `terraform/environments`. Changes to shared modules, workflow
-scripts, or the Terraform workflow select all enabled roots.
+changes under `terraform/workloads` and `terraform/platform/images`. Changes
+to shared modules, workflow scripts, or the Terraform workflow select all enabled
+deployment roots. Manual runs select the scope `dev`, `prod`, or `platform`;
+choose `platform` and target `images` for shared image publishing.
 
 | Trigger | Behavior |
 | --- | --- |
@@ -99,16 +106,26 @@ Terraform deployment jobs currently use version `1.15.8`.
 
 ### Approval and saved plans
 
-Configure these GitHub environments in repository settings:
+Configure these GitHub environments in repository settings. The
+[Proxmox access root](terraform/platform/access/README.md) documents the scoped
+users, token export, state IAM requirements, and migration from legacy access.
 
 | Environment | Access | Protection |
 | --- | --- | --- |
-| `proxmox-ro` | Credentials for planning | No required reviewers |
-| `proxmox-rw` | Write credentials and plan decryption key | Required reviewers; deployments restricted to `main` |
+| `proxmox-dev-plan` | Dev audit credentials plus pool-scoped disk permission required for refresh | No required reviewers |
+| `proxmox-prod-plan` | Prod audit credentials plus pool-scoped disk permission required for refresh | Required reviewers |
+| `proxmox-dev-apply`, `proxmox-prod-apply` | Environment-specific write/inventory credentials and plan decryption key | Required reviewers; deployments restricted to `main` |
+| `proxmox-platform-plan` | Audit credentials for shared image storage | No required reviewers |
+| `proxmox-platform-apply` | Shared image publishing credentials and plan decryption key | Required reviewers; deployments restricted to `main` |
 
 Approval depends on those GitHub settings. The workflow's `environment` field
 alone does not require review. Keep write credentials and the plan decryption
-key exclusively in `proxmox-rw` environment secrets.
+key exclusively in the apply environment secrets. Set the environment variable
+`PROXMOX_RBAC_READY=true` only after configuring each environment's credentials
+and protections; workflows stop before using credentials when it is absent.
+The `platform/images` root uses platform image credentials and state key
+`terraform/platform/images.tfstate`. The administrator-operated access root is
+excluded from deployment discovery and is applied separately.
 
 For pushes and manual runs on `main`, the plan job encrypts the saved plan and
 provider lock file and uploads the archive. After approval, apply or destroy
@@ -154,12 +171,14 @@ and variables → Actions → Variables**:
 Terraform and State Unlock use this variable during initialization and supply
 the state key separately as `terraform/<environment>/<target>.tfstate`. Use the
 same bucket and region you selected during bootstrap.
+Workload state keys retain this format even though source directories live
+under `terraform/workloads`; the directory rename does not move remote state.
 
 For local use, authenticate to AWS and export the variable:
 
 ```sh
 export TF_CLI_ARGS_init='-backend-config=bucket=YOUR_STATE_BUCKET -backend-config=region=YOUR_AWS_REGION'
-terraform -chdir=terraform/environments/dev/sandbox init \
+terraform -chdir=terraform/workloads/dev/sandbox init \
   -backend-config="key=terraform/dev/sandbox.tfstate"
 ```
 
@@ -185,7 +204,7 @@ gpg --homedir "$plan_key_dir" --batch --pinentry-mode loopback --passphrase '' \
 | GitHub setting | Value |
 | --- | --- |
 | Repository variable `TF_PLAN_PUBLIC_KEY` | Complete contents of `public.asc` |
-| `proxmox-rw` environment secret `TF_PLAN_PRIVATE_KEY` | Complete contents of `private.asc` |
+| Each apply environment secret `TF_PLAN_PRIVATE_KEY` | Complete contents of `private.asc` |
 
 The dedicated private key has no passphrase. Keep a secure backup, remove the
 temporary key directory after setup, and rotate the pair before its one-year
@@ -193,8 +212,10 @@ expiry. Do not commit the generated files.
 
 ## VM configuration with Ansible
 
-Ansible discovers VMs from Proxmox tags and connects over SSH as `ansible` with
-sudo access. Each run intersects the selected target with its environment tag.
+Ansible discovers VMs through the Proxmox inventory and connects over SSH as
+`ansible` with sudo access. Each run intersects the environment pool group
+(`proxmox_pool_dev` or `proxmox_pool_prod`) with the selected target tag.
+Environment tags are optional; pool membership determines the environment.
 
 | VM tags | Playbooks for a matching target run |
 | --- | --- |
@@ -217,8 +238,9 @@ bash ansible/run-playbook.sh dev vault --check
 
 ### Example VM
 
-The [sandbox variables](terraform/environments/dev/sandbox/terraform.auto.tfvars)
-include environment and target tags so the VM is selected by the runner:
+The [sandbox variables](terraform/workloads/dev/sandbox/terraform.auto.tfvars)
+include target tags, and the sandbox root assigns the VM to the `dev` pool.
+The existing `dev` tag is optional and is not used by the runner:
 
 ```hcl
 vms = {

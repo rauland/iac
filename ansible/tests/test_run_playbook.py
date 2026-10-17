@@ -39,8 +39,8 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
         result, calls = self.run_target('dev', 'vault', '--check')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([c['args'] for c in calls], [
-            ['./playbooks/managed.yml', '--limit', 'dev:&tag_vault', '--check'],
-            ['./playbooks/vault.yml', '--limit', 'dev:&tag_vault', '--check']])
+            ['./playbooks/managed.yml', '--limit', 'proxmox_pool_dev:&tag_vault', '--check'],
+            ['./playbooks/vault.yml', '--limit', 'proxmox_pool_dev:&tag_vault', '--check']])
         self.assertTrue(all(c['cwd'] == str(RUNNER.parent) for c in calls))
 
     def test_sandbox_has_its_own_playbook(self):
@@ -48,13 +48,13 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
         self.assertEqual(result.returncode, 0)
         self.assertEqual([c['args'][0] for c in calls],
                          ['./playbooks/managed.yml', './playbooks/sandbox.yml'])
-        self.assertTrue(all(c['args'][-1] == 'dev:&tag_sandbox' for c in calls))
+        self.assertTrue(all(c['args'][-1] == 'proxmox_pool_dev:&tag_sandbox' for c in calls))
 
     def test_managed_runs_baseline_once(self):
         result, calls = self.run_target('prod', 'managed')
         self.assertEqual(result.returncode, 0)
         self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0]['args'], ['./playbooks/managed.yml', '--limit', 'prod:&tag_managed'])
+        self.assertEqual(calls[0]['args'], ['./playbooks/managed.yml', '--limit', 'proxmox_pool_prod:&tag_managed'])
 
     def test_baseline_failure_stops_service_apply(self):
         self.env['FAIL_BASELINE'] = '1'
@@ -71,10 +71,10 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/managed.yml'):
 
 @unittest.skipUnless(shutil.which('ansible-playbook'), 'Ansible is not installed')
 class HostSelectionTests(unittest.TestCase):
-    def list_hosts(self, target):
+    def list_hosts(self, target, environment='dev'):
         with tempfile.TemporaryDirectory() as local_temp:
             env = dict(os.environ, ANSIBLE_LOCAL_TEMP=local_temp)
-            command = ['bash', str(RUNNER), 'dev', target]
+            command = ['bash', str(RUNNER), environment, target]
             result = subprocess.run(
                 command + ['-i', 'tests/inventory.yml', '--list-hosts'],
                 cwd=RUNNER.parent, env=env, capture_output=True, text=True)
@@ -94,6 +94,10 @@ class HostSelectionTests(unittest.TestCase):
     def test_managed_target_selects_only_managed_hosts(self):
         self.assertEqual(self.list_hosts('managed'), [
             {'dev-vault', 'dev-sandbox'}])
+
+    def test_prod_pool_overrides_stale_environment_groups_and_excludes_unpooled_hosts(self):
+        self.assertEqual(self.list_hosts('vault', 'prod'), [
+            {'prod-vault'}, {'prod-vault'}])
 
 
 if __name__ == '__main__':

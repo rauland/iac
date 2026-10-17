@@ -4,7 +4,8 @@ resource "proxmox_virtual_environment_vm" "node" {
   name                = each.value.node_name
   node_name           = each.value.pve_node
   vm_id               = each.value.vm_id
-  tags                = ["talos", var.cluster_name, each.value.node_type]
+  pool_id             = var.pool_id
+  tags                = ["talos", var.cluster_name, each.value.node_type, var.pool_id]
   bios                = "ovmf"
   machine             = "q35"
   scsi_hardware       = "virtio-scsi-pci"
@@ -52,7 +53,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   cdrom {
-    file_id   = proxmox_download_file.iso[each.value.pve_node].id
+    file_id   = proxmox_download_file.environment_iso[each.value.pve_node].id
     interface = "ide2"
   }
 

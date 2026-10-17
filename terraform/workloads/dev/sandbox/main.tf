@@ -7,4 +7,5 @@ module "virtual_machine" {
   }
 
   vm_config = each.value
+  pool_id   = "dev"
 }

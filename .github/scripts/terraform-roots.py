@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Discover affected Terraform roots or manual selections within an environment."""
+"""Discover workload roots and shared images, excluding privileged access roots."""
 
 import json
 import os
@@ -13,14 +13,17 @@ def select_roots(roots, paths):
            or p == ".github/workflows/terraform.yml" for p in paths):
         return roots
     return [root for root in roots
-            if any(p.startswith(f"terraform/environments/{root['environment']}/{root['target']}/")
+            if any(p.startswith(f"{root['directory']}/")
                    for p in paths)]
 
 
 def discover():
+    # Only images is deployable under platform. Access remains administrator-operated.
+    candidates = list(Path("terraform/workloads").glob("*/*"))
+    candidates.append(Path("terraform/platform/images"))
     roots = sorted(
-        ({"environment": p.parent.name, "target": p.name}
-         for p in Path("terraform/environments").glob("*/*")
+        ({"environment": p.parent.name, "target": p.name, "directory": p.as_posix()}
+         for p in candidates
          if p.is_dir() and any(p.glob("*.tf")) and not (p / ".disabled").exists()),
         key=lambda root: (root["environment"], root["target"]),
     )
@@ -34,11 +37,13 @@ def discover():
             return selected
         if mode != "single":
             raise SystemExit(f"Unsupported deployment mode: {mode}")
-        selected = {"environment": os.environ["SELECTED_ENV"],
-                    "target": os.environ["SELECTED_TARGET"]}
-        if selected not in roots:
-            raise SystemExit(f"No Terraform root found (or it is disabled) for {selected}")
-        return [selected]
+        selected = [root for root in roots
+                    if root["environment"] == os.environ["SELECTED_ENV"]
+                    and root["target"] == os.environ["SELECTED_TARGET"]]
+        if not selected:
+            raise SystemExit("No Terraform root found (or it is disabled) for "
+                             f"{os.environ['SELECTED_ENV']}/{os.environ['SELECTED_TARGET']}")
+        return selected
 
     base = os.environ.get("BASE_SHA", "")
     head = os.environ["HEAD_SHA"]
@@ -58,4 +63,6 @@ if __name__ == "__main__":
     with open(os.environ["GITHUB_OUTPUT"], "a") as output:
         output.write(f"matrix={matrix}\n")
         output.write(f"has-changes={str(bool(roots)).lower()}\n")
+        if len(roots) == 1:
+            output.write(f"directory={roots[0]['directory']}\n")
     print(f"Affected Terraform roots: {matrix}")

@@ -9,7 +9,7 @@ resources.
 
 ## Deploying the example environment
 
-`terraform/environments/dev/talos` is enabled for local and GitHub Actions
+`terraform/workloads/dev/talos` is enabled for local and GitHub Actions
 deployments. It participates in automatic discovery and manual `single` or `all`
 runs. Forks must adapt the example configuration to their own infrastructure.
 
@@ -27,7 +27,10 @@ runs. Forks must adapt the example configuration to their own infrastructure.
    `dns_servers` for static nodes (for example, your LAN resolver). A load-balanced
    `cluster_endpoint` must already exist; the module does not create a load
    balancer or a virtual IP.
-4. Ensure each selected Proxmox host has `iso_datastore_id` with ISO support and
+4. Apply the [platform access root](../../platform/access/README.md) to create
+   the dev pool and `dev-images` ISO storage. The example assigns all VMs to
+   `pool_id = "dev"` and uses `iso_datastore_id = "dev-images"`.
+   Ensure each selected Proxmox host has `iso_datastore_id` with ISO support and
    `disk_datastore_id` for VM disks. The defaults are `local` and `local-lvm`.
 5. Run the Terraform workflow on `main` with environment `dev`, mode `single`,
    and target `talos`. Review the plan before approving apply. Mode `all` for
@@ -124,8 +127,8 @@ After applying, retrieve credentials deliberately:
 
 ```sh
 umask 077
-terraform -chdir=terraform/environments/dev/talos output -raw talosconfig > /secure/path/talosconfig
-terraform -chdir=terraform/environments/dev/talos output -raw kubeconfig > /secure/path/kubeconfig
+terraform -chdir=terraform/workloads/dev/talos output -raw talosconfig > /secure/path/talosconfig
+terraform -chdir=terraform/workloads/dev/talos output -raw kubeconfig > /secure/path/kubeconfig
 ```
 
 The module does not write files or upload these credentials as workflow artifacts.

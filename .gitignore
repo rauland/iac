@@ -6,3 +6,11 @@
 **/talosconfig
 **/kubeconfig
 **/tfplan
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/.credentials/
+
+# Python test caches.
+__pycache__/
+*.py[cod]

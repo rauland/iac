@@ -12,12 +12,13 @@ on:
         default: single
         required: true
       environment:
-        description: "Environment to deploy (e.g., dev, prod)"
+        description: "Scope to deploy (dev, prod, platform)"
         required: true
         type: choice
         options:
           - dev
           - prod
+          - platform
       target:
         description: "Target to deploy in single mode (ignored in all mode)"
         required: true
@@ -37,7 +38,8 @@ on:
     branches: [main]
     paths: &paths
       - "terraform/modules/**"
-      - "terraform/environments/**"
+      - "terraform/workloads/**"
+      - "terraform/platform/**"
       - ".github/workflows/terraform.yml"
       - ".github/scripts/**"
 
@@ -49,6 +51,24 @@ permissions:
   contents: read
 
 jobs:
+  access_checks:
+    name: Proxmox RBAC tests (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
+      - name: Initialize access providers
+        run: terraform init -backend=false -input=false
+        working-directory: terraform/platform/access
+      - name: Validate access configuration
+        run: terraform validate -no-color
+        working-directory: terraform/platform/access
+      - name: Test environment boundaries
+        run: terraform test -no-color
+        working-directory: terraform/platform/access
+
   talos_checks:
     name: Talos module tests (offline)
     needs: discover
@@ -83,6 +103,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Test deployment discovery
+        run: python3 .github/scripts/test_terraform_roots.py
+
       - name: Discover deployment targets
         id: roots
         env:
@@ -99,28 +122,31 @@ jobs:
     if: >-
       !cancelled() &&
       needs.discover.result == 'success' &&
+      needs.access_checks.result == 'success' &&
       needs.discover.outputs.has-changes == 'true' &&
       (needs.talos_checks.result == 'success' || needs.talos_checks.result == 'skipped')
-    needs: [discover, talos_checks]
+    needs: [discover, talos_checks, access_checks]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
         include: ${{ fromJSON(needs.discover.outputs.matrix) }}
-    environment: proxmox-ro
+    environment: ${{ format('proxmox-{0}-plan', matrix.environment) }}
     env: &common-env
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
       TF_CLI_ARGS_init: ${{ vars.TF_CLI_ARGS_init }}
-      PROXMOX_USER: ${{ secrets.PROXMOX_USER }}
-      PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID }}
-      PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET }}
       PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
       TF_VAR_virtual_environment_endpoint: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT }}
       TF_VAR_virtual_environment_api_token: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN }}
     steps:
+      - name: Require configured RBAC environment
+        env:
+          RBAC_READY: ${{ vars.PROXMOX_RBAC_READY }}
+        run: test "$RBAC_READY" = true
+
       - uses: actions/checkout@v4
 
       - uses: hashicorp/setup-terraform@v3
@@ -140,24 +166,24 @@ jobs:
         run: |
           terraform init -input=false \
             -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
+        working-directory: ./${{ matrix.directory }}
 
       - name: Check Terraform formatting
         run: terraform fmt -check -recursive terraform
 
       - name: Validate Terraform configuration
         run: terraform validate -no-color
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
+        working-directory: ./${{ matrix.directory }}
 
       - name: Plan
         run: terraform plan -lock=false -input=false -out=tfplan ${{ inputs.destroy == true && '-destroy' || '' }}
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
+        working-directory: ./${{ matrix.directory }}
 
       - name: Encrypt saved plan
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         env:
           TF_PLAN_PUBLIC_KEY: ${{ vars.TF_PLAN_PUBLIC_KEY }}
-        run: bash .github/scripts/terraform-plan-artifact.sh encrypt "terraform/environments/${{ matrix.environment }}/${{ matrix.target }}" "$RUNNER_TEMP/tfplan.tar.gpg"
+        run: bash .github/scripts/terraform-plan-artifact.sh encrypt "${{ matrix.directory }}" "$RUNNER_TEMP/tfplan.tar.gpg"
 
       - name: Upload encrypted plan
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
@@ -181,10 +207,15 @@ jobs:
     concurrency:
       group: terraform-state-${{ matrix.environment }}-${{ matrix.target }}
       cancel-in-progress: false
-    environment: proxmox-rw
+    environment: ${{ format('proxmox-{0}-apply', matrix.environment) }}
     env: *common-env
 
     steps:
+      - name: Require configured RBAC environment
+        env:
+          RBAC_READY: ${{ vars.PROXMOX_RBAC_READY }}
+        run: test "$RBAC_READY" = true
+
       - uses: actions/checkout@v4
 
       - name: Download encrypted plan
@@ -196,7 +227,7 @@ jobs:
       - name: Decrypt saved plan
         env:
           TF_PLAN_PRIVATE_KEY: ${{ secrets.TF_PLAN_PRIVATE_KEY }}
-        run: bash .github/scripts/terraform-plan-artifact.sh decrypt "terraform/environments/${{ matrix.environment }}/${{ matrix.target }}" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
+        run: bash .github/scripts/terraform-plan-artifact.sh decrypt "${{ matrix.directory }}" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
 
       - uses: hashicorp/setup-terraform@v3
         with: *terraform-setup
@@ -209,11 +240,11 @@ jobs:
         run: |
           terraform init -input=false -lockfile=readonly \
             -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
+        working-directory: ./${{ matrix.directory }}
 
       - name: Apply
         run: terraform apply -input=false tfplan
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
+        working-directory: ./${{ matrix.directory }}
 
       - uses: ./.github/actions/ansible
         if: matrix.target != 'images' && matrix.target != 'talos'
@@ -242,10 +273,15 @@ jobs:
     concurrency:
       group: terraform-state-${{ matrix.environment }}-${{ matrix.target }}
       cancel-in-progress: false
-    environment: proxmox-rw
+    environment: ${{ format('proxmox-{0}-apply', matrix.environment) }}
     env: *common-env
 
     steps:
+      - name: Require configured RBAC environment
+        env:
+          RBAC_READY: ${{ vars.PROXMOX_RBAC_READY }}
+        run: test "$RBAC_READY" = true
+
       - uses: actions/checkout@v4
 
       - name: Download encrypted plan
@@ -257,7 +293,7 @@ jobs:
       - name: Decrypt saved plan
         env:
           TF_PLAN_PRIVATE_KEY: ${{ secrets.TF_PLAN_PRIVATE_KEY }}
-        run: bash .github/scripts/terraform-plan-artifact.sh decrypt "terraform/environments/${{ matrix.environment }}/${{ matrix.target }}" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
+        run: bash .github/scripts/terraform-plan-artifact.sh decrypt "${{ matrix.directory }}" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
 
       - uses: hashicorp/setup-terraform@v3
         with: *terraform-setup
@@ -270,8 +306,8 @@ jobs:
         run: |
           terraform init -input=false -lockfile=readonly \
             -backend-config="key=terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate"
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
+        working-directory: ./${{ matrix.directory }}
 
       - name: Destroy
         run: terraform apply -input=false tfplan
-        working-directory: ./terraform/environments/${{ matrix.environment }}/${{ matrix.target }}
+        working-directory: ./${{ matrix.directory }}

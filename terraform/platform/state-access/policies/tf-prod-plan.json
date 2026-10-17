@@ -1,0 +1,50 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::rauland-iac-homelab"
+      ],
+      "Sid": "ListBackendMetadata"
+    },
+    {
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::rauland-iac-homelab/terraform/prod/*.tfstate"
+      ],
+      "Sid": "ReadOwnState"
+    },
+    {
+      "Action": [
+        "s3:GetObject*",
+        "s3:PutObject*",
+        "s3:DeleteObject*"
+      ],
+      "Effect": "Deny",
+      "NotResource": [
+        "arn:aws:s3:::rauland-iac-homelab/terraform/prod/*.tfstate",
+        "arn:aws:s3:::rauland-iac-homelab/terraform/prod/*.tfstate.tflock"
+      ],
+      "Sid": "DenyObjectsOutsideOwnState"
+    },
+    {
+      "Action": [
+        "s3:PutObject*",
+        "s3:DeleteObject*"
+      ],
+      "Effect": "Deny",
+      "Resource": [
+        "*"
+      ],
+      "Sid": "DenyPlanWrites"
+    }
+  ],
+  "Version": "2012-10-17"
+}
