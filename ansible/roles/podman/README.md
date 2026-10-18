@@ -37,8 +37,11 @@ sudo podman ps
 curl --fail http://127.0.0.1/
 ```
 
-The Terraform sandbox replaces the old Cockpit VM with a new Podman VM. Its new
-SSH host key must be verified and enrolled as described in
-[SSH access](../../../ssh/README.md) before Ansible can configure it. After
-enrollment, use the workflow's `configuration` mode for `dev/sandbox` to finish
-configuration without recreating the VM.
+The sandbox provides a testing environment for the Podman-hosted Nginx site.
+The guest's SSH host key is enrolled automatically in CI through the
+authenticated Proxmox guest agent when the address is unpinned. The agent must
+already be running in the cloud image; existing committed pins remain
+authoritative. See [SSH access](../../../ssh/README.md#host-verification) for
+the trust checks and handling changed pins. If configuration fails after provisioning, use the
+workflow's `configuration` mode for `dev/sandbox` to finish without recreating
+the VM.

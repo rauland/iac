@@ -137,6 +137,16 @@ The guest agent must already run in the cloud image. Local runs still require
 verified host keys; changed committed pins require an explicit update. See
 [SSH access and rotation](../ssh/README.md) for enrollment boundaries and setup.
 
+Guests without an agent and VMs created outside Terraform can use the same
+manual `configuration` workflow with a verified committed host-key pin. They
+must belong to the selected Proxmox pool, carry the target tag, and already
+allow SSH and sudo as `ansible`. Set `ansible_host` in
+`inventory/host_vars/VM_NAME.yml` if the address cannot be discovered without
+an agent. Pinned guests need neither guest-agent calls nor Terraform state;
+unpinned guests still require the automatic enrollment checks. Follow
+[manual onboarding](../ssh/README.md#manual-onboarding-without-a-guest-agent)
+before running the workflow.
+
 Run offline selection tests and syntax checks without contacting Proxmox or hosts:
 
 ```sh
