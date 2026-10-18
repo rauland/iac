@@ -1,0 +1,12 @@
+[Unit]
+Description=Publish SSH host public key for authenticated enrollment
+After=cloud-final.service sshd.service
+ConditionPathExists=/etc/ssh/ssh_host_ed25519_key.pub
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ci-publish-host-key
+RemainAfterExit=yes
+
+[Install]
+WantedBy=cloud-init.target

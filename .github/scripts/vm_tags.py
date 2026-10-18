@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 
 
@@ -181,6 +182,29 @@ def file_hash(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def seed_files(directory, plan):
+    """Bind local NoCloud images referenced by the plan to their exact bytes."""
+    files = {}
+    resources = list(module_resources(plan.get("planned_values", {}).get("root_module", {})))
+    resources.extend(dict(resource, values=resource["change"].get("after"))
+                     for resource in plan.get("resource_changes", []))
+    for resource in resources:
+        values = resource.get("values") or {}
+        if resource.get("type") != "proxmox_virtual_environment_file":
+            continue
+        for source in values.get("source_file") or []:
+            path = source.get("path") or ""
+            if not path.startswith(".cloud-init/"):
+                continue
+            if not re.fullmatch(r"\.cloud-init/[0-9a-f]{64}\.iso", path):
+                raise ValueError("Invalid cloud-init seed path in saved plan")
+            digest = file_hash(Path(directory) / path)
+            if digest != source.get("checksum") or Path(path).stem != digest:
+                raise ValueError("Cloud-init seed differs from the reviewed checksum")
+            files[path] = digest
+    return files
+
+
 def write_manifest(directory, guests, context, environment, target, destroy, data_reads=(), reviewed_plan=None):
     directory = Path(directory)
     manifest = {"version": 1, "environment": environment, "target": target, "destroy": destroy,
@@ -188,6 +212,7 @@ def write_manifest(directory, guests, context, environment, target, destroy, dat
                 "run_attempt": context["GITHUB_RUN_ATTEMPT"], "guests": guests,
                 "data_reads": list(data_reads),
                 "intent_sha256": plan_intent_hash(reviewed_plan or {}),
+                "seed_files": seed_files(directory, reviewed_plan or {}),
                 "plan_sha256": file_hash(directory / "tfplan"),
                 "lock_sha256": file_hash(directory / ".terraform.lock.hcl")}
     (directory / MANIFEST).write_text(json.dumps(manifest) + "\n")
@@ -223,4 +248,13 @@ def read_manifest(directory, context, environment, target, destroy):
         raise ValueError("Invalid reviewed data-source manifest")
     if not isinstance(manifest.get("intent_sha256"), str) or len(manifest["intent_sha256"]) != 64:
         raise ValueError("Invalid reviewed configuration identity")
+    files = manifest.get("seed_files")
+    if not isinstance(files, dict):
+        raise ValueError("Missing cloud-init seed manifest")
+    for path, digest in files.items():
+        if (not re.fullmatch(r"\.cloud-init/[0-9a-f]{64}\.iso", path)
+                or (directory / path).is_symlink() or (directory / path).resolve().parent != (directory / ".cloud-init").resolve()
+                or (directory / ".cloud-init").is_symlink()
+                or digest != Path(path).stem or file_hash(directory / path) != digest):
+            raise ValueError("Cloud-init seed does not match the reviewed artifact")
     return manifest

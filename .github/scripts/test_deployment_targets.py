@@ -77,6 +77,12 @@ class DeploymentTargetTests(unittest.TestCase):
         self.assertEqual(self.change("ansible/roles/vault/tasks/common.yml"),
                          {("dev", "vault"): (False, True), ("prod", "vault"): (False, True)})
 
+    def test_seed_builder_and_boot_policy_changes_select_vm_infrastructure(self):
+        targets = self.change('terraform/modules/virtual-machine/cloud-init/agent-policy.py',
+                              'terraform/modules/virtual-machine/scripts/build-seed.py')
+        self.assertEqual(targets, {('dev', 'sandbox'): (True, False), ('dev', 'vault'): (True, False),
+                                   ('prod', 'vault'): (True, False)})
+
     def test_shared_baseline_change_selects_only_vm_targets(self):
         self.assertEqual(self.change("ansible/roles/automation_user/tasks/main.yml"),
                          {("dev", "sandbox"): (False, True), ("dev", "vault"): (False, True),

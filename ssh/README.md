@@ -62,9 +62,17 @@ inside the temporary SSH credential directory and removed with it, including
 after failures. It is not committed or uploaded as an artifact. Each CI run
 can obtain an unpinned guest's key again through the same trusted channel.
 
-The guest agent must already be installed and running in the cloud image;
-installing it later through Ansible cannot bootstrap the first SSH connection.
-Enrollment waits up to 36 file-read attempts for guest-agent readiness and
+The guest agent must already be installed in the cloud image; installing it
+later through Ansible cannot bootstrap the first SSH connection. Sandbox uses
+an [API-uploaded cloud-init ISO](../terraform/modules/virtual-machine/README.md#api-only-cloud-init-iso)
+to enable the required read commands and publish only the public host key at
+`/run/ci-ssh-host-key.pub` on every boot, with SELinux enforcing. Enrollment
+selects that path only when the trusted Terraform state identifies the guest's
+managed cloud-init ISO. Other managed guests retain the original public-key
+path. Inventory variables cannot select arbitrary guest files. Existing pins
+and manual onboarding continue to work without an agent.
+Enrollment reports progress and waits up to 36 file-read attempts for cloud-init
+and guest-agent readiness (five seconds between retries, plus API latency), and
 fails closed on permission, TLS, state or identity errors. It never falls back
 to trusting network scans. Configuration-only CI runs also install Terraform
 so enrollment can initialize the selected backend and read state without

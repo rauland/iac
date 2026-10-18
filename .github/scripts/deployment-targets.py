@@ -60,6 +60,8 @@ def configuration_path(path, root):
 
 
 def infrastructure_path(path, root):
+    if path.startswith(("terraform/modules/virtual-machine/cloud-init/", "terraform/modules/virtual-machine/scripts/")):
+        return root["target"] in VM_TARGETS
     if path in {".github/scripts/terraform-plan.py", ".github/scripts/terraform-apply.py",
                 ".github/scripts/vm_tags.py", ".github/scripts/terraform-plan-artifact.sh"}:
         return True

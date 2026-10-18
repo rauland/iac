@@ -15,7 +15,7 @@ case "$mode" in
   encrypt)
     : "${TF_PLAN_PUBLIC_KEY:?Set the TF_PLAN_PUBLIC_KEY repository variable}"
     printf '%s\n' "$TF_PLAN_PUBLIC_KEY" > "$scratch/public.asc"
-    tar -C "$root" -cf - tfplan .terraform.lock.hcl .tf-tags.json |
+    tar -C "$root" -cf - tfplan .terraform.lock.hcl .tf-tags.json .cloud-init |
       gpg --batch --yes --trust-model always \
         --recipient-file "$scratch/public.asc" \
         --output "$artifact" --encrypt
@@ -27,7 +27,7 @@ case "$mode" in
     # Verify the entire encrypted message before extracting any plaintext.
     gpg --batch --yes --pinentry-mode loopback --passphrase '' \
       --output "$scratch/plan.tar" --decrypt "$artifact"
-    tar -C "$root" -xf "$scratch/plan.tar" tfplan .terraform.lock.hcl .tf-tags.json
+    tar -C "$root" -xf "$scratch/plan.tar" tfplan .terraform.lock.hcl .tf-tags.json .cloud-init
     ;;
   *)
     echo "Unknown mode: $mode (expected encrypt or decrypt)" >&2

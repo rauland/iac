@@ -185,6 +185,10 @@ needed. Fork PRs do not publish a comment.
 
 Only changed plans from `main` are encrypted and uploaded together with their
 provider lock file and a manifest bound to the plan, target, commit and run.
+Sandbox's API-uploaded cloud-init seed ISO is included in that encrypted
+artifact and verified against its saved SHA256 before apply. It enables
+agent-based SSH enrollment with SELinux enforcing and needs no Proxmox-host
+SSH. Other VM roots retain their existing initialization path.
 Apply executes the saved infrastructure plan. For newly created VMs, tags are
 deferred until pool assignment so the existing pool-scoped token can set them.
 A follow-up saved plan is allowed to apply only the exact reviewed tags to

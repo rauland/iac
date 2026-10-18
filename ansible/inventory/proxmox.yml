@@ -13,7 +13,9 @@ keyed_groups:
     separator: "_"
 compose:
   ansible_host: >-
-    proxmox_ipconfig0.ip | default(proxmox_net0.ip)
+    ((proxmox_ipconfig0 | default({})).ip | default((proxmox_net0 | default({})).ip | default('')))
     | ansible.utils.ipaddr('address')
-    or proxmox_agent_interfaces[1]["ip-addresses"][0]
-    | ansible.utils.ipaddr('address')
+    or (proxmox_agent_interfaces | default([])
+        | rejectattr('name', 'equalto', 'lo') | map(attribute='ip-addresses')
+        | flatten | ansible.utils.ipv4('address') | reject('match', '^127[.]')
+        | reject('match', '^169[.]254[.]') | first | default(''))

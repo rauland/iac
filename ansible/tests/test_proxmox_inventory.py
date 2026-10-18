@@ -22,6 +22,7 @@ class ScopedInventoryTests(unittest.TestCase):
         self.requests = []
         self.deny_inventory = False
         self.agentless = False
+        self.seed_iso = False
         owner = self
 
         class ProxmoxHandler(BaseHTTPRequestHandler):
@@ -44,6 +45,9 @@ class ScopedInventoryTests(unittest.TestCase):
                 if owner.agentless:
                     config = dict(tags='common;vault', agent='0',
                                   net0='virtio=02:00:00:00:00:01,bridge=vmbr0')
+                if owner.seed_iso:
+                    config = dict(tags='common;vault', agent='enabled=1',
+                                  net0='virtio=02:00:00:00:00:01,bridge=vmbr0')
                 responses = {
                     '/nodes': [dict(node='pve', type='node', status='online')],
                     '/nodes/pve/lxc': [],
@@ -54,6 +58,12 @@ class ScopedInventoryTests(unittest.TestCase):
                     f'/nodes/pve/qemu/{vmid}/status/current': dict(status='running', qmpstatus='running'),
                     f'/nodes/pve/qemu/{vmid}/config': config,
                     f'/nodes/pve/qemu/{vmid}/snapshot': [],
+                    f'/nodes/pve/qemu/{vmid}/agent/network-get-interfaces': dict(result=[
+                        dict(name='ens18', **{'ip-addresses': [
+                            {'ip-address': 'fe80::1', 'prefix': 64},
+                            {'ip-address': '169.254.1.2', 'prefix': 16},
+                            {'ip-address': f'10.0.0.{vmid}', 'prefix': 24}]}),
+                        dict(name='lo', **{'ip-addresses': [{'ip-address': '127.0.0.1', 'prefix': 8}]})]),
                 }
                 if path not in responses:
                     self.send_error(403, 'Resource outside inventory scope')
@@ -124,6 +134,13 @@ class ScopedInventoryTests(unittest.TestCase):
         self.assertEqual(inventory['proxmox_pool_dev']['hosts'], ['dev-vault'])
         self.assertEqual(inventory['tag_vault']['hosts'], ['dev-vault'])
         self.assertFalse(any('/agent/' in path for path in self.requests))
+
+    def test_iso_guest_without_proxmox_ipconfig_uses_agent_ipv4(self):
+        self.seed_iso = True
+        inventory = self.inventory('dev')
+        self.assertIn(inventory['_meta']['hostvars']['dev-vault']['ansible_host'],
+                      ('10.0.0.103', {'__ansible_unsafe': '10.0.0.103'}))
+        self.assertIn('/nodes/pve/qemu/103/agent/network-get-interfaces', self.requests)
 
     def test_permission_failure_stops_playbooks_instead_of_skipping_hosts(self):
         self.deny_inventory = True

@@ -18,6 +18,8 @@ def main():
     parser.add_argument("--destroy", choices=("true", "false"), default="false")
     parser.add_argument("--result", required=True)
     args = parser.parse_args()
+    # Keep the artifact layout identical for targets without custom seeds too.
+    (Path(args.directory) / ".cloud-init").mkdir(mode=0o700, exist_ok=True)
     command = ["terraform", "plan", "-lock=false", "-input=false",
                "-detailed-exitcode", "-out=tfplan"]
     if args.destroy == "true":

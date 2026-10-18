@@ -5,6 +5,7 @@ locals {
     StorageRead    = ["Datastore.Audit"]
     NetworkRead    = ["SDN.Audit"]
     ImagePublisher = ["Datastore.Audit", "Datastore.AllocateTemplate"]
+    SeedPublisher  = ["Datastore.Audit", "Datastore.AllocateTemplate", "Datastore.Allocate"]
     DownloadAccess = ["Sys.AccessNetwork"]
     PlanDiskAccess = ["VM.Config.Disk"]
   }
@@ -45,7 +46,7 @@ locals {
         { path = "/sdn/zones/localnetwork/${var.bridge}", role = service.operation == "apply" ? "PVESDNUser" : "NetworkRead", name = name }
       ],
       service.environment == "dev" && service.operation != "ansible" ? [
-        { path = "/storage/dev-images", role = service.operation == "apply" ? "ImagePublisher" : "StorageRead", name = name }
+        { path = "/storage/dev-images", role = service.operation == "apply" ? "SeedPublisher" : "StorageRead", name = name }
       ] : [],
       service.operation == "apply" && contains(["dev", "platform"], service.environment) ? [
         { path = "/nodes/${var.node_name}", role = "DownloadAccess", name = name }

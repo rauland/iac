@@ -272,6 +272,29 @@ elif sys.argv[1] == 'show':
             self.assertNotEqual(result.returncode, 0)
             self.assertFalse(self.log.exists())
 
+    def test_seed_checksum_is_bound_to_the_plan_and_checked_before_apply(self):
+        content = b'exact reviewed cloud-init ISO'
+        import hashlib
+        digest = hashlib.sha256(content).hexdigest()
+        relative = '.cloud-init/' + digest + '.iso'
+        path = self.directory / relative
+        path.parent.mkdir()
+        path.write_bytes(content)
+        reviewed = {'planned_values': {'root_module': {'resources': [{
+            'type': 'proxmox_virtual_environment_file', 'values': {
+                'source_file': [{'path': relative, 'checksum': digest}]}}]}}}
+        vm_tags.write_manifest(self.directory, self.guests, self.context, 'dev', 'sandbox', False,
+                               reviewed_plan=reviewed)
+        self.assertEqual(vm_tags.read_manifest(self.directory, self.context, 'dev', 'sandbox', False)['seed_files'],
+                         {relative: digest})
+        path.write_bytes(b'tampered ISO')
+        result = self.apply()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.log.exists())
+        with self.assertRaises(ValueError):
+            vm_tags.write_manifest(self.directory, self.guests, self.context, 'dev', 'sandbox', False,
+                                   reviewed_plan=reviewed)
+
     def test_malformed_or_cross_pool_manifest_fails_before_any_mutation(self):
         original = json.loads((self.directory / vm_tags.MANIFEST).read_text())
         for mutation in ("pool", "tags", "selector", "duplicate", "version", "target"):

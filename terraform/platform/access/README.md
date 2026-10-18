@@ -75,7 +75,13 @@ these denials and rejects guest-agent file reads from both own and other pools.
 See [SSH enrollment](../../../ssh/README.md) for the state and identity checks.
 
 `dev-images` stores ISOs under `/var/lib/proxmox-dev-images`, outside the shared
-`local` directory. Dev apply can publish there but only read shared images.
+`local` directory. Dev apply receives `SeedPublisher` only on `/storage/dev-images`:
+`Datastore.Audit`, `Datastore.AllocateTemplate`, and `Datastore.Allocate`.
+The last privilege is required by the API to delete seed ISOs during Terraform
+replacement/destroy; upload permission alone does not allow cleanup. Both the
+privilege-separated token and its owner have matching grants. Plan identities
+remain audit-only on this storage, and dev apply can only read shared images.
+The shared `ImagePublisher` role does not receive the deletion privilege.
 Download permission is `Sys.AccessNetwork` on the selected node; it does not
 grant `Sys.Modify`. Directory storage shares the host filesystem's capacity;
 this does not introduce a quota or a separate disk.
