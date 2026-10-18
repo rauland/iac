@@ -162,7 +162,7 @@ jobs:
           PYCODE
 
   plan:
-    name: Terraform preview (${{ matrix.environment }}/${{ matrix.target }})
+    name: Terraform preview
     needs: [discover, ci]
     if: >-
       needs.discover.outputs.has-plans == 'true' &&
@@ -291,7 +291,7 @@ jobs:
             await commentPlans({ github, context, core });
 
   deploy:
-    name: Deploy (${{ matrix.environment }}/${{ matrix.target }})
+    name: Deploy
     needs: [ci, prepare]
     if: >-
       always() && needs.ci.result == 'success' && needs.prepare.result == 'success' &&
