@@ -25,7 +25,16 @@ repository_root=$(cd .. && pwd)
 export ANSIBLE_ENVIRONMENT="$ansible_environment"
 export ANSIBLE_HOST_KEY_CHECKING=True
 export ANSIBLE_PRIVATE_KEY_FILE="${ANSIBLE_PRIVATE_KEY_FILE:-$repository_root/ssh/.credentials/$ansible_environment/ansible-ci}"
-export ANSIBLE_SSH_COMMON_ARGS="-o IdentitiesOnly=yes -o IdentityAgent=none -o StrictHostKeyChecking=yes -o UserKnownHostsFile=\"$repository_root/ssh/known_hosts/$ansible_environment\""
+ansible_known_hosts_file=${ANSIBLE_KNOWN_HOSTS_FILE:-$repository_root/ssh/known_hosts/$ansible_environment}
+if [[ ! -f "$ansible_known_hosts_file" || ! -r "$ansible_known_hosts_file" ]]; then
+  echo 'The selected SSH host trust file must exist and be readable.' >&2
+  exit 2
+fi
+case "$ansible_known_hosts_file" in
+  *\"*|*\'*|*\\*|*%*|*'$'*|*$'\n'*|*$'\r'*) echo 'Unsupported characters in SSH host trust file path.' >&2; exit 2 ;;
+esac
+# Keep the inner quotes through Ansible's shlex split and SSH's filename-list parser.
+export ANSIBLE_SSH_COMMON_ARGS="-o IdentitiesOnly=yes -o IdentityAgent=none -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o GlobalKnownHostsFile=/dev/null -o 'UserKnownHostsFile=\"$ansible_known_hosts_file\"'"
 ansible_limit="proxmox_pool_$ansible_environment:&$ansible_group"
 # Apply the common baseline to opted-in hosts before their service playbook.
 if [[ "$ansible_target" != common ]]; then

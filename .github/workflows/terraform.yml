@@ -78,8 +78,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Test SSH credential handling
-        run: python3 ssh/test_setup_ci.py
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -87,6 +85,8 @@ jobs:
         run: |
           pip install ansible requests netaddr
           ansible-galaxy collection install -r ansible/requirements.yml --force
+      - name: Test SSH credentials and host enrollment
+        run: python3 -m unittest discover -s ssh -p 'test_*.py'
       - name: Test scoped inventory and playbook selection
         run: python3 -m unittest discover -s ansible/tests -p 'test_*.py'
       - uses: hashicorp/setup-terraform@v3
@@ -323,7 +323,7 @@ jobs:
           TARGET_DIRECTORY: ${{ matrix.directory }}
         run: bash .github/scripts/terraform-plan-artifact.sh decrypt "$TARGET_DIRECTORY" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
       - uses: hashicorp/setup-terraform@v3
-        if: matrix.terraform
+        if: matrix.terraform || matrix.ansible
         with:
           terraform_version: "1.15.8"
           terraform_wrapper: false

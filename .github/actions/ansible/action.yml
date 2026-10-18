@@ -24,6 +24,18 @@ runs:
       run: ansible-galaxy collection install -r ./ansible/requirements.yml --force
       shell: bash
 
+    - name: Enroll unpinned managed SSH hosts
+      env:
+        ANSIBLE_ENVIRONMENT: ${{ inputs.environment }}
+        ANSIBLE_TARGET: ${{ inputs.target }}
+        SSH_DIRECTORY: ${{ steps.ssh.outputs.directory }}
+      run: |
+        set -euo pipefail
+        python3 "$GITHUB_WORKSPACE/ssh/enroll-hosts.py" \
+          "$ANSIBLE_ENVIRONMENT" "$ANSIBLE_TARGET" "$SSH_DIRECTORY/known_hosts"
+        printf 'ANSIBLE_KNOWN_HOSTS_FILE=%s/known_hosts\n' "$SSH_DIRECTORY" >> "$GITHUB_ENV"
+      shell: bash
+
     - name: Run Ansible playbook
       working-directory: "${{ inputs.working-directory}}"
       env:
