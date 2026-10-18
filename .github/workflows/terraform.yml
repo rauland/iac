@@ -157,7 +157,7 @@ jobs:
           PYCODE
 
   plan:
-    name: Terraform preview (${{ matrix.environment }}/${{ matrix.target }})
+    name: Terraform preview
     needs: [discover, ci]
     if: >-
       needs.discover.outputs.has-plans == 'true' &&
@@ -267,7 +267,7 @@ jobs:
         run: python3 .github/scripts/prepare-deployments.py
 
   deploy:
-    name: Deploy (${{ matrix.environment }}/${{ matrix.target }})
+    name: Deploy
     needs: [ci, prepare]
     if: >-
       always() && needs.ci.result == 'success' && needs.prepare.result == 'success' &&
