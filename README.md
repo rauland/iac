@@ -120,6 +120,13 @@ root. All-scope configuration selects enabled VM workload roots. Use
 `platform/images` for shared cloud-image publishing. The separate Ansible
 workflow has been consolidated into this workflow.
 
+For guests without agents or VMs created outside Terraform, keep a verified
+entry in `ssh/known_hosts/ENVIRONMENT` and use `configuration` mode. Pinned
+guests do not require guest-agent enrollment or Terraform state. See the
+[manual onboarding procedure](ssh/README.md#manual-onboarding-without-a-guest-agent)
+for pool membership, inventory addresses, SSH access and optional Terraform
+import outside CI.
+
 ### Main branch protection
 
 The main ruleset requires a pull request, a successful **CI** result produced by
@@ -278,8 +285,9 @@ Environment tags are optional; pool membership determines the environment.
 The common baseline is optional and does not exclude service roles. `common`
 is the VM tag and runner target, and creates the `tag_common` inventory group.
 OS-family differences are handled inside roles; Vault currently
-supports RHEL-family guests with DNF and EPEL. Sandbox currently has no additional
-tasks. See [Ansible deployment targets](ansible/README.md)
+supports RHEL-family guests with DNF and EPEL. Sandbox guests also tagged
+`podman` run an Nginx site through the [Podman role](ansible/roles/podman/README.md).
+See [Ansible deployment targets](ansible/README.md)
 for credentials, inventory conventions, and offline checks.
 
 Preview a Vault run from the repository root:
@@ -297,10 +305,10 @@ The existing `dev` tag is optional and is not used by the runner:
 
 ```hcl
 vms = {
-  cockpit = {
-    vm_name         = "cockpit"
+  podman = {
+    vm_name         = "podman"
     node_name       = "pve"
-    tags            = ["dev", "common", "sandbox", "cockpit"]
+    tags            = ["dev", "common", "sandbox", "podman"]
     cpu             = 2
     memory          = 4096
     image_file_name = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
@@ -310,6 +318,17 @@ vms = {
 
 VM networking requires DHCP and dynamic DNS or explicitly configured static
 addresses. Talos requires the DHCP reservations described in its module guide.
+
+The sandbox is a testing environment that currently runs Nginx on Podman.
+CI enrolls an unpinned guest's SSH host key through the authenticated Proxmox
+guest agent before Ansible runs, so no manual key addition is needed. The agent
+must already be running in the cloud image. Existing entries in
+`ssh/known_hosts/dev` remain authoritative. If a VM reuses a pinned address with
+a different key, verify and update that pin explicitly. If configuration fails after provisioning,
+rerun `configuration` mode for `dev/sandbox` to finish without recreating the VM.
+See [SSH enrollment](ssh/README.md#host-verification) for the trust checks. The
+Nginx site will be available at `http://VM_ADDRESS/` on port 80 after
+configuration succeeds.
 
 ## Feature status
 

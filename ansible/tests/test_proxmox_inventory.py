@@ -21,6 +21,7 @@ class ScopedInventoryTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.requests = []
         self.deny_inventory = False
+        self.agentless = False
         owner = self
 
         class ProxmoxHandler(BaseHTTPRequestHandler):
@@ -39,6 +40,10 @@ class ScopedInventoryTests(unittest.TestCase):
                 vmid = 103 if environment == 'dev' else 203
                 guest = dict(vmid=vmid, name=f'{environment}-vault', status='running',
                              type='qemu', node='pve', tags='common;vault')
+                config = dict(tags='common;vault', ipconfig0=f'ip=10.0.0.{vmid}/24')
+                if owner.agentless:
+                    config = dict(tags='common;vault', agent='0',
+                                  net0='virtio=02:00:00:00:00:01,bridge=vmbr0')
                 responses = {
                     '/nodes': [dict(node='pve', type='node', status='online')],
                     '/nodes/pve/lxc': [],
@@ -47,7 +52,7 @@ class ScopedInventoryTests(unittest.TestCase):
                     '/pools': [dict(poolid=environment)],
                     f'/pools/{environment}': dict(members=[guest]),
                     f'/nodes/pve/qemu/{vmid}/status/current': dict(status='running', qmpstatus='running'),
-                    f'/nodes/pve/qemu/{vmid}/config': dict(tags='common;vault', ipconfig0=f'ip=10.0.0.{vmid}/24'),
+                    f'/nodes/pve/qemu/{vmid}/config': config,
                     f'/nodes/pve/qemu/{vmid}/snapshot': [],
                 }
                 if path not in responses:
@@ -102,6 +107,23 @@ class ScopedInventoryTests(unittest.TestCase):
         self.assertEqual(inventory['_meta']['hostvars']['prod-vault']['system_packages_base'],
                          ['qemu-guest-agent'])
         self.assertNotIn('dev-vault', inventory['_meta']['hostvars'])
+
+    def test_agentless_guest_address_can_be_supplied_through_host_variables(self):
+        self.agentless = True
+        source = Path(self.temp.name) / 'proxmox.yml'
+        shutil.copy(ANSIBLE / 'inventory/proxmox.yml', source)
+        host_vars = source.parent / 'host_vars'
+        host_vars.mkdir()
+        (host_vars / 'dev-vault.yml').write_text('---\nansible_host: 10.0.0.50\n')
+        result = subprocess.run(['ansible-inventory', '-i', str(source), '--list'],
+                                cwd=ANSIBLE, env=self.environment('dev'), text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        inventory = json.loads(result.stdout)
+        self.assertIn(inventory['_meta']['hostvars']['dev-vault']['ansible_host'],
+                      ('10.0.0.50', {'__ansible_unsafe': '10.0.0.50'}))
+        self.assertEqual(inventory['proxmox_pool_dev']['hosts'], ['dev-vault'])
+        self.assertEqual(inventory['tag_vault']['hosts'], ['dev-vault'])
+        self.assertFalse(any('/agent/' in path for path in self.requests))
 
     def test_permission_failure_stops_playbooks_instead_of_skipping_hosts(self):
         self.deny_inventory = True

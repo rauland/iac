@@ -48,6 +48,9 @@ def configuration_path(path, root):
             or path in {"ansible/.ansible-lint", "ansible/.yamllint",
                         "ansible/requirements-lint.txt"}):
         return False
+    if (path.startswith("ansible/roles/podman/")
+            or path == "ansible/inventory/group_vars/tag_podman.yml"):
+        return root["target"] == "sandbox"
     for target in VM_TARGETS:
         if (path.startswith(f"ansible/roles/{target}/")
                 or path == f"ansible/playbooks/{target}.yml"

@@ -1,8 +1,8 @@
 ---
-# Add sandbox-specific roles or tasks here as they are introduced.
 - name: Configure sandbox
   hosts: tag_sandbox
   remote_user: ansible
   become: true
-  gather_facts: false
-  tasks: []
+  roles:
+    - role: podman
+      when: "'tag_podman' in group_names"

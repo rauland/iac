@@ -69,6 +69,15 @@ class EnrollmentTests(unittest.TestCase):
         self.api_factory.assert_not_called()
         self.load_guests.assert_not_called()
 
+    def test_pinned_external_guest_without_agent_or_terraform_metadata_is_supported(self):
+        self.inventory["_meta"]["hostvars"]["sandbox"] = {"ansible_host": "10.0.0.10"}
+        self.trust.write_text(f"10.0.0.10 {KEY}\n")
+        self.load_guests.side_effect = AssertionError("External guest has no Terraform state")
+        self.api_factory.side_effect = AssertionError("Guest-agent access is unavailable")
+        self.assertEqual(self.enroll(), 0)
+        self.assertEqual(self.output.read_text(), self.trust.read_text())
+        self.assertEqual(stat.S_IMODE(self.output.stat().st_mode), 0o600)
+
     def test_hashed_and_wildcard_pins_are_preserved(self):
         self.trust.write_text(f"10.0.0.10 {KEY}\n")
         subprocess.run(["ssh-keygen", "-H", "-f", str(self.trust)],

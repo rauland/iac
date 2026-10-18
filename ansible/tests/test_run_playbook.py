@@ -183,5 +183,36 @@ class VaultOSFamilyTests(unittest.TestCase):
                     self.assertNotIn('TASK [vault : Create Vault system user]', result.stdout)
 
 
+@unittest.skipUnless(shutil.which('ansible-playbook'), 'Ansible is not installed')
+class PodmanScopeTests(unittest.TestCase):
+    def test_only_tagged_sandbox_hosts_run_podman_and_unsupported_os_fails_before_packages(self):
+        with tempfile.TemporaryDirectory() as local_temp:
+            inventory = Path(local_temp) / 'inventory.yml'
+            inventory.write_text('''---
+all:
+  vars:
+    ansible_connection: local
+  children:
+    tag_sandbox:
+      hosts:
+        podman-host:
+        generic-sandbox:
+    tag_podman:
+      hosts:
+        podman-host:
+''')
+            env = dict(os.environ, ANSIBLE_LOCAL_TEMP=local_temp,
+                       ANSIBLE_ROLES_PATH=str(RUNNER.parent / 'roles'))
+            result = subprocess.run(
+                ['ansible-playbook', str(RUNNER.parent / 'playbooks/sandbox.yml'),
+                 '-i', str(inventory), '--check',
+                 '-e', json.dumps({'ansible_facts': {'os_family': 'Unsupported'}})],
+                cwd=RUNNER.parent, env=env, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0, result.stderr)
+            self.assertIn('The Podman role requires a RHEL-family host', result.stdout)
+            self.assertRegex(result.stdout, r'podman-host\s+:.*changed=0.*failed=1')
+            self.assertRegex(result.stdout, r'generic-sandbox\s+:.*changed=0.*failed=0')
+
+
 if __name__ == '__main__':
     unittest.main()

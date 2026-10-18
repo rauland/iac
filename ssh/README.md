@@ -97,6 +97,93 @@ when needed; strict host checking remains enabled. Relative paths resolve from
 the `ansible` directory. Paths containing quotes, backslashes, newlines, `$` or
 `%` are rejected to prevent parser ambiguity and SSH path expansion.
 
+## Manual onboarding without a guest agent
+
+Use this path for a guest without an agent or a VM created outside Terraform.
+The existing deployment workflow's `configuration` mode runs Ansible against
+pinned guests without requiring those guests in Terraform state or reading
+their keys through the guest agent. Keep `ssh/known_hosts/dev` and `prod` for
+these pins as well as local runs.
+
+1. Assign the VM to its intended Proxmox pool (`dev` or `prod`) using an
+   authorized administrator. Add its service tag (`sandbox` or `vault`); add
+   `common` only if it should receive the shared baseline. The baseline
+   currently installs `qemu-guest-agent`; omit `common` to skip that baseline.
+2. Through the guest console or an already verified connection, install the
+   environment's public key for the `ansible` account and arrange noninteractive
+   sudo access. Ansible can maintain this access after the first connection.
+3. Obtain the SSH host public key through that trusted channel as described
+   above and add its verified address/key entry to `ssh/known_hosts/ENVIRONMENT`.
+   Do not trust a network scan without checking its fingerprint.
+4. If Proxmox has no usable cloud-init address and no agent-reported address,
+   create `ansible/inventory/host_vars/VM_NAME.yml`, using the VM's exact
+   inventory name. For example:
+
+   ```yaml
+   ---
+   ansible_host: 10.0.0.50
+   ```
+
+   Use that same address in the host-key pin. For a nonstandard port, set
+   `ansible_port` and pin `[ADDRESS]:PORT` instead.
+5. Review and merge the pin and inventory variables. These files are deployment
+   inputs: merging them may also schedule automatic configuration for enabled
+   targets. To request a manual run, select the **Infrastructure and
+   configuration** workflow on `main`, mode `configuration`, scope `single`,
+   the environment, and target `sandbox`, `vault` or `common`. The existing
+   manual apply-environment approvals still apply. This mode runs no Terraform
+   plan or apply and does not import the VM into Terraform state.
+
+Preview or configure locally with the same verified pins and scoped inventory
+credentials:
+
+```sh
+bash ansible/run-playbook.sh dev sandbox --list-hosts
+bash ansible/run-playbook.sh dev sandbox
+```
+
+The target selects every matching host in its environment pool. For one local
+guest, add an inventory pattern that preserves the pool and target, for example
+`--limit 'proxmox_pool_dev:&tag_sandbox:&legacy-sandbox'`. Do not use an
+unrestricted limit that replaces the runner's environment boundary.
+
+Pinned hosts keep strict SSH verification. Unknown hosts still require the
+automatic state and guest-agent checks; a failed enrollment never becomes
+trust-on-first-use. No additional Proxmox permissions are needed for the
+inventory identity.
+
+## Optional Terraform import outside CI
+
+Ansible onboarding does not require Terraform import. If Terraform should also
+own the VM's lifecycle, declare a resource matching its existing hardware and
+pool before importing. The current shared VM module assumes an EFI cloud-image
+guest; match its settings to the existing VM or use a suitable resource rather
+than assuming every existing VM fits that module. Keep agent configuration
+disabled when the guest has no agent.
+
+Use the intended environment's apply identity and state-backend credentials in
+a local shell. Initialize that workload root with its existing backend settings
+and exact state key, then import into the declared address. For example, if the
+declared resource is `proxmox_virtual_environment_vm.existing` in `dev/sandbox`
+and the VM is `pve/113`:
+
+```sh
+terraform -chdir=terraform/workloads/dev/sandbox init \
+  -backend-config=key=terraform/dev/sandbox.tfstate
+terraform -chdir=terraform/workloads/dev/sandbox import \
+  proxmox_virtual_environment_vm.existing pve/113
+terraform -chdir=terraform/workloads/dev/sandbox plan
+```
+
+Use the actual resource address, including module and `for_each` keys where
+applicable, and the existing VM's node/ID. The provider documents the
+`NODE/VMID` import format in its
+[VM import reference](https://github.com/bpg/terraform-provider-proxmox/blob/v0.109.0/docs/resources/virtual_environment_vm.md#import).
+Import records the existing VM in state; it does not create the SSH account,
+install keys or enroll host trust. Review the resulting plan and reconcile the
+configuration with the guest before merging the declaration, since dev changes
+on `main` can apply automatically. Keep the committed pin for an agentless VM.
+
 ## Rotation
 
 The Ansible-user role installs the environment's public key, removes the retired

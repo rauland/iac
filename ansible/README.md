@@ -14,8 +14,9 @@ The `common` tag adds timezone, automation-user, and package configuration from
 `common.yml` before the selected service playbook. All VMs with the selected
 target tag receive `vault.yml` or `sandbox.yml`, including VMs tagged `common`. VMs
 without `common` skip the baseline; VMs without any matching tag receive no
-playbook. A baseline failure stops the service playbook. `sandbox.yml` currently
-has no additional tasks. Use the runner to select the environment and target.
+playbook. A baseline failure stops the service playbook. `sandbox.yml` installs
+Podman and an Nginx site on sandbox guests also tagged `podman`. Use the runner
+to select the environment and target.
 
 `common` identifies the shared baseline consistently across the VM tag,
 `tag_common` inventory group, runner target, and `common.yml` playbook. Run only
@@ -29,6 +30,7 @@ variables live in `inventory/group_vars/tag_common.yml`.
 | [`system_timezone`](roles/system_timezone/README.md) | Set the system timezone. |
 | [`automation_user`](roles/automation_user/README.md) | Maintain the automation account and environment-specific SSH keys. |
 | [`system_packages`](roles/system_packages/README.md) | Install baseline and additional packages using the host's package manager. |
+| [`podman`](roles/podman/README.md) | Run the sandbox Nginx site with Podman and a systemd Quadlet. |
 | [`vault`](roles/vault/README.md) | Install Vault, obtain Cloudflare DNS TLS certificates, and configure storage and systemd. |
 
 Playbooks select baseline or service responsibilities. Roles handle OS differences
@@ -134,6 +136,16 @@ existing scoped apply token. Inventory identities retain audit-only API access.
 The guest agent must already run in the cloud image. Local runs still require
 verified host keys; changed committed pins require an explicit update. See
 [SSH access and rotation](../ssh/README.md) for enrollment boundaries and setup.
+
+Guests without an agent and VMs created outside Terraform can use the same
+manual `configuration` workflow with a verified committed host-key pin. They
+must belong to the selected Proxmox pool, carry the target tag, and already
+allow SSH and sudo as `ansible`. Set `ansible_host` in
+`inventory/host_vars/VM_NAME.yml` if the address cannot be discovered without
+an agent. Pinned guests need neither guest-agent calls nor Terraform state;
+unpinned guests still require the automatic enrollment checks. Follow
+[manual onboarding](../ssh/README.md#manual-onboarding-without-a-guest-agent)
+before running the workflow.
 
 Run offline selection tests and syntax checks without contacting Proxmox or hosts:
 

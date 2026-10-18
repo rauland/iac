@@ -77,6 +77,17 @@ class DeploymentTargetTests(unittest.TestCase):
                          {("dev", "sandbox"): (False, True), ("dev", "vault"): (False, True),
                           ("prod", "vault"): (False, True)})
 
+    def test_podman_role_change_selects_only_sandbox_configuration(self):
+        self.assertEqual(self.change("ansible/roles/podman/tasks/main.yml",
+                                     "ansible/inventory/group_vars/tag_podman.yml"),
+                         {("dev", "sandbox"): (False, True)})
+
+    def test_sandbox_vm_replacement_and_podman_role_select_both_tools(self):
+        self.assertEqual(self.change("terraform/workloads/dev/sandbox/terraform.auto.tfvars",
+                                     "ansible/roles/podman/tasks/main.yml",
+                                     "ansible/playbooks/sandbox.yml"),
+                         {("dev", "sandbox"): (True, True)})
+
     def test_service_inventory_variables_are_scoped(self):
         self.assertEqual(self.change("ansible/inventory/group_vars/tag_sandbox.yml"),
                          {("dev", "sandbox"): (False, True)})
