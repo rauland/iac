@@ -24,8 +24,13 @@ def main():
     if result.returncode not in (0, 2):
         raise SystemExit(result.returncode or 1)
     changes = result.returncode == 2
+    # The human-readable renderer hides sensitive values; show -json does not.
+    plan_text = subprocess.run(
+        ["terraform", "show", "-no-color", "tfplan"], cwd=args.directory,
+        check=True, capture_output=True, text=True).stdout
     metadata = {"environment": args.environment, "target": args.target,
                 "changes": changes, "destroy": args.destroy == "true",
+                "plan_text": plan_text,
                 "sha": os.environ["GITHUB_SHA"], "run_id": os.environ["GITHUB_RUN_ID"],
                 "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"]}
     path = Path(args.result)
