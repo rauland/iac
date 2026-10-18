@@ -69,6 +69,21 @@ class EnrollmentTests(unittest.TestCase):
         self.api_factory.assert_not_called()
         self.load_guests.assert_not_called()
 
+    def test_iso_backed_state_selects_public_export_and_inventory_cannot_override_it(self):
+        self.load_guests.return_value = {('pve', 113, 'sandbox'): {
+            'cdrom': [{'file_id': 'dev-images:iso/cloud-init-dev-sandbox-0123456789abcdef.iso'}]}}
+        self.values['host_key_path'] = '/etc/shadow'
+        self.assertEqual(self.enroll(), 1)
+        self.api.get.assert_any_call('/nodes/pve/qemu/113/agent/file-read',
+            params={'file': '/run/ci-ssh-host-key.pub', 'decode': 1}, retry_agent=True)
+
+    def test_unrelated_iso_does_not_change_the_trusted_key_path(self):
+        self.load_guests.return_value = {('pve', 113, 'sandbox'): {
+            'cdrom': [{'file_id': 'dev-images:iso/cloud-init-prod-other-0123456789abcdef.iso'}]}}
+        self.assertEqual(self.enroll(), 1)
+        self.api.get.assert_any_call('/nodes/pve/qemu/113/agent/file-read',
+            params={'file': '/etc/ssh/ssh_host_ed25519_key.pub', 'decode': 1}, retry_agent=True)
+
     def test_pinned_external_guest_without_agent_or_terraform_metadata_is_supported(self):
         self.inventory["_meta"]["hostvars"]["sandbox"] = {"ansible_host": "10.0.0.10"}
         self.trust.write_text(f"10.0.0.10 {KEY}\n")

@@ -4,6 +4,51 @@ Create cloud-image guests in an explicit Proxmox pool with environment-specific
 SSH public keys. The caller supplies the VM name, node, hardware, image and tags
 through `vm_config`. Sandbox and Vault use this module.
 
+## API-only cloud-init ISO
+
+Sandbox opts into `cloud_init_iso = { datastore_id = "dev-images" }`. Other
+callers retain Proxmox-generated initialization unless they explicitly opt in.
+The ISO path is tested with AlmaLinux 10 GenericCloud, which already includes
+cloud-init and qemu-guest-agent. It needs no SSH access to the Proxmox host and
+does not use snippets. Install the pinned local builder dependency before
+planning: `pip install -r scripts/requirements.txt` from this module directory.
+CI installs it automatically.
+
+The external data source builds a deterministic NoCloud ISO from the VM name,
+automation account, environment public SSH keys, DHCP or static IPv4 settings,
+and guest bootstrap scripts. Timestamps and timezone are fixed. The resulting
+`.cloud-init/SHA256.iso` is uploaded through the HTTP API and attached at
+`ide2`, replacing the generated initialization drive. Terraform boots the OS
+disk explicitly. Seed changes replace an ISO-backed guest so first-boot
+configuration is applied; changing only a seed on an existing disk would not
+rerun cloud-init. The small `terraform_data.bootstrap` trigger has no guest-side
+effect for callers using the original initialization path.
+
+Cloud-init preserves the AlmaLinux agent's existing RPC policy and adds only
+`guest-file-open`, `guest-file-read`, and `guest-file-close`. File-write and
+guest-exec stay disabled. A root-owned boot service exports the public Ed25519
+host key to `/run/ci-ssh-host-key.pub` with an agent-readable SELinux label.
+The original public/private SSH key labels remain unchanged; SELinux stays
+enforcing. The service runs after cloud-init under `cloud-init.target`, and
+republishes the key after every reboot. Restart `ci-ssh-host-key.service` after
+an intentional host-key rotation. No broad SELinux boolean is enabled.
+
+The reviewed seed bytes travel inside the encrypted plan artifact. The manifest
+checks their content-addressed paths and SHA256 values before the first apply.
+Apply does not generate a replacement image from current inputs. Relative paths
+allow another runner to use the same artifact. The tag-only follow-up sees the
+same deterministic configuration and cannot change the ISO or other resources.
+
+`dev-images` is dedicated storage, separate from shared `local` images. Only
+dev apply receives `SeedPublisher` there: audit, ISO upload and
+`Datastore.Allocate` for ISO deletion. Matching user/token grants preserve
+privilege separation. Plan and inventory permissions are unchanged. Provision
+the [access root](../../platform/access/README.md) before using this path.
+
+For an existing guest, opt-in requires a reviewed replacement. The manual
+[pinned-host workflow](../../../ssh/README.md#manual-onboarding-without-a-guest-agent) remains
+available for existing or agentless guests.
+
 ## Pool-scoped creation and tags
 
 Some Proxmox releases check create-time tags on `/vms/ID` before assigning the

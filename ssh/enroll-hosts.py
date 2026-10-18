@@ -124,6 +124,8 @@ class Proxmox:
             if response.status_code == 200:
                 return response.json()["data"]
             if retry_agent and response.status_code in (500, 503) and attempt < 35:
+                if attempt % 6 == 0:
+                    print(f"Waiting for cloud-init and guest-agent host-key publication (attempt {attempt + 1}/36).", flush=True)
                 time.sleep(5)
                 continue
             # Never fall back to network discovery, another token or disabled TLS verification.
@@ -167,8 +169,15 @@ def enroll(inventory, repository, environment, target, trust, output, load_guest
             config = api.get(path + "/config")
             if config.get("name") != name or target not in config.get("tags", "").split(";"):
                 raise EnrollmentError("Live guest identity differs from the selected deployment")
+            # ISO-backed guests export a SELinux-readable public key on every boot.
+            # The choice comes from trusted Terraform state, never inventory overrides.
+            seed = any(re.fullmatch(r"[^:]+:iso/cloud-init-" + re.escape(environment) + "-"
+                                   + re.escape(name) + r"-[0-9a-f]{16}\.iso", drive.get("file_id") or "")
+                       for drive in managed[(node, vmid, name)].get("cdrom") or [])
+            key_path = "/run/ci-ssh-host-key.pub" if seed else "/etc/ssh/ssh_host_ed25519_key.pub"
+            print(f"Enrolling managed guest {name} (VM {vmid}).", flush=True)
             data = api.get(path + "/agent/file-read",
-                           params={"file": "/etc/ssh/ssh_host_ed25519_key.pub", "decode": 1},
+                           params={"file": key_path, "decode": 1},
                            retry_agent=True)
             key = host_public_key(data["content"])
             additions.append(f"{address} {key}\n")

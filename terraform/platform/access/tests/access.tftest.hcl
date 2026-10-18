@@ -51,6 +51,14 @@ run "environment_boundaries" {
   }
   assert {
     condition = (
+      toset(local.roles.SeedPublisher) == toset(["Datastore.Audit", "Datastore.AllocateTemplate", "Datastore.Allocate"]) &&
+      alltrue([for grant in local.service_grants : grant.name == "tf-dev-apply" && grant.path == "/storage/dev-images" if grant.role == "SeedPublisher"]) &&
+      !contains(local.roles.ImagePublisher, "Datastore.Allocate")
+    )
+    error_message = "ISO cleanup belongs only to dev apply on dedicated dev-images storage, never shared images or read identities."
+  }
+  assert {
+    condition = (
       !contains(local.roles.DownloadAccess, "Sys.Modify") &&
       alltrue([for grant in local.service_grants : local.services[grant.name].operation == "apply" if grant.role == "DownloadAccess"])
     )

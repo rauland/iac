@@ -8,6 +8,7 @@
 **/tfplan
 **/tfplan.tags
 **/.tf-tags.json
+**/.cloud-init/
 **/.terraform/
 **/*.tfstate
 **/*.tfstate.*

@@ -83,8 +83,10 @@ jobs:
           python-version: "3.12"
       - name: Install Ansible inventory test dependencies
         run: |
-          pip install ansible requests netaddr
+          pip install ansible requests netaddr -r terraform/modules/virtual-machine/scripts/requirements.txt
           ansible-galaxy collection install -r ansible/requirements.yml --force
+      - name: Test cloud-init seed generation and agent policy
+        run: python3 -m unittest discover -s terraform/modules/virtual-machine/tests -p 'test_*.py'
       - name: Test SSH credentials and host enrollment
         run: python3 -m unittest discover -s ssh -p 'test_*.py'
       - name: Test scoped inventory and playbook selection
@@ -196,6 +198,11 @@ jobs:
       TF_VAR_virtual_environment_api_token: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install cloud-init ISO builder
+        run: pip install -r terraform/modules/virtual-machine/scripts/requirements.txt
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.15.8"
@@ -316,6 +323,13 @@ jobs:
     env: *terraform-env
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        if: matrix.terraform
+        with:
+          python-version: "3.12"
+      - name: Install cloud-init ISO builder
+        if: matrix.terraform
+        run: pip install -r terraform/modules/virtual-machine/scripts/requirements.txt
       - name: Download encrypted saved plan
         if: matrix.terraform
         uses: actions/download-artifact@v4

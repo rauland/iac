@@ -10,4 +10,5 @@ module "virtual_machine" {
   deferred_vm_tags = var.deferred_vm_tags
   pool_id          = "dev"
   ssh_public_keys  = [file("${path.root}/../../../../ssh/public_keys/dev/ansible-ci.pub")]
+  cloud_init_iso   = { datastore_id = "dev-images" }
 }
