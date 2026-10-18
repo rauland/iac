@@ -91,7 +91,7 @@ infrastructure secrets and reports even for documentation-only pull requests.
 | Shared Terraform modules | Plan all enabled roots conservatively. |
 | Ansible role, playbook, inventory, or runtime requirements | Configure affected VM targets without requiring Terraform. |
 | Environment SSH public keys | Plan that environment's roots and configure its VM targets. |
-| Verified SSH host keys | Configure VM targets in that environment. |
+| Verified SSH host keys or a running guest agent for managed guests | Configure VM targets; CI can enroll unpinned guests through the scoped Proxmox apply identity. |
 | Documentation, tests, lint policy, or pipeline implementation only | Run CI; no deployment. |
 
 Shared baseline roles select enabled VM targets. Vault-specific files select

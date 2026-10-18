@@ -106,6 +106,11 @@ class DeploymentTargetTests(unittest.TestCase):
         self.assertEqual(self.change("ssh/known_hosts/prod"),
                          {("prod", "vault"): (False, True)})
 
+    def test_enrollment_code_change_selects_configuration_in_both_environments(self):
+        self.assertEqual(self.change("ssh/enroll-hosts.py", "ssh/setup-ci.sh"),
+                         {("dev", "sandbox"): (False, True), ("dev", "vault"): (False, True),
+                          ("prod", "vault"): (False, True)})
+
     def test_docs_lint_tests_and_workflow_changes_do_not_deploy(self):
         self.assertEqual(self.change(
             "README.md", "ansible/roles/vault/README.md", "ansible/tests/test_new.py",

@@ -33,6 +33,8 @@ def configuration_path(path, root):
     if root["environment"] not in {"dev", "prod"} or root["target"] not in VM_TARGETS:
         return False
     if path.startswith("ssh/"):
+        if path in {"ssh/setup-ci.sh", "ssh/enroll-hosts.py"}:
+            return True
         if not path.startswith(("ssh/public_keys/", "ssh/known_hosts/")):
             return False
         parts = path.split("/")

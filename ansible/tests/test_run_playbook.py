@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -85,7 +86,41 @@ if os.environ.get('FAIL_BASELINE') and sys.argv[1].endswith('/common.yml'):
             self.assertIn('StrictHostKeyChecking=yes', call['ssh_args'])
             self.assertIn('IdentitiesOnly=yes', call['ssh_args'])
             self.assertIn('IdentityAgent=none', call['ssh_args'])
+            self.assertIn('GlobalKnownHostsFile=/dev/null', call['ssh_args'])
+            self.assertIn('UpdateHostKeys=no', call['ssh_args'])
             self.assertIn(f'/ssh/known_hosts/{environment}', call['ssh_args'])
+
+    def test_runtime_host_trust_file_preserves_strict_verification(self):
+        trust = self.root / 'runtime known_hosts'
+        trust.write_text('# Host keys verified during provisioning\n')
+        self.env['ANSIBLE_KNOWN_HOSTS_FILE'] = str(trust)
+        result, calls = self.run_target('dev', 'sandbox')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for call in calls:
+            self.assertIn(f'UserKnownHostsFile="{trust}"', call['ssh_args'])
+            # SSH must receive quotes as part of its -o value, after Ansible splits arguments.
+            self.assertIn(f'UserKnownHostsFile="{trust}"', shlex.split(call['ssh_args']))
+            self.assertIn('StrictHostKeyChecking=yes', call['ssh_args'])
+            self.assertIn('GlobalKnownHostsFile=/dev/null', call['ssh_args'])
+            self.assertEqual(call['host_key_checking'], 'True')
+
+    def test_missing_runtime_host_trust_file_fails_before_playbooks(self):
+        self.env['ANSIBLE_KNOWN_HOSTS_FILE'] = str(self.root / 'missing')
+        result, calls = self.run_target('dev', 'sandbox')
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('must exist and be readable', result.stderr)
+        self.assertEqual(calls, [])
+
+    def test_unsupported_trust_paths_fail_before_playbooks(self):
+        for character in ("'", '"', '\\', '%', '$', '\n', '\r'):
+            with self.subTest(character=character):
+                trust = self.root / f'trust{character}file'
+                trust.touch()
+                self.env['ANSIBLE_KNOWN_HOSTS_FILE'] = str(trust)
+                result, calls = self.run_target('dev', 'common')
+                self.assertEqual(result.returncode, 2)
+                self.assertIn('Unsupported characters', result.stderr)
+                self.assertEqual(calls, [])
 
 
 @unittest.skipUnless(shutil.which('ansible-playbook'), 'Ansible is not installed')

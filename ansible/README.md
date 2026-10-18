@@ -128,10 +128,14 @@ Dev and prod have separate CI SSH key pairs. Public keys are shared with
 Terraform under `ssh/public_keys/ENVIRONMENT/ansible-ci.pub`; private keys live
 in their matching GitHub apply environments. For local runs, the runner uses
 `ssh/.credentials/ENVIRONMENT/ansible-ci` unless `ANSIBLE_PRIVATE_KEY_FILE` is
-set. It selects `ssh/known_hosts/ENVIRONMENT`, enforces host verification and
-disables SSH agent fallback. New or rebuilt guests need verified host keys added
-before deployment. See [SSH access and rotation](../ssh/README.md) for setup and
-the dedicated `ssh-access.yml` migration playbook.
+set. It selects `ssh/known_hosts/ENVIRONMENT` or `ANSIBLE_KNOWN_HOSTS_FILE`,
+enforces host verification and disables SSH agent fallback. CI creates a
+temporary trust file by preserving committed pins and enrolling unpinned
+Terraform-managed guests through the authenticated Proxmox guest agent with the
+existing scoped apply token. Inventory identities retain audit-only API access.
+The guest agent must already run in the cloud image. Local runs still require
+verified host keys; changed committed pins require an explicit update. See
+[SSH access and rotation](../ssh/README.md) for enrollment boundaries and setup.
 
 Run offline selection tests and syntax checks without contacting Proxmox or hosts:
 
