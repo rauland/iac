@@ -7,48 +7,45 @@ and GitHub Actions runs deployments over WireGuard.
 ## Architecture
 
 ```mermaid
----
-config:
-  flowchart:
-    curve: basis
-    nodeSpacing: 130
-    rankSpacing: 35
----
-flowchart TB
-    repo["IaC Repository"] --> actions["GitHub Actions<br/>CI/CD Automation"]
-    actions --> terraform["Terraform<br/>Infrastructure Provisioning"]
-    actions --> ansible["Ansible"]
-    state[("AWS S3")] <-->|Remote State Backend| terraform
-    terraform -->|Plan / Apply| proxmox["Proxmox VE<br/>Virtualisation Platform"]
-    proxmox --> talos["Talos Kubernetes"]
-    proxmox --> vms["Virtual Machines"]
-    proxmox -.->|Inventory| ansible["Ansible<br/>Configuration Management"]
-    ansible -->|Apply Roles| vms
+flowchart LR
+    repo["IaC repository"] --> actions["GitHub Actions"]
+    actions --> terraform["Terraform"]
+    actions --> ansible["SSH enrollment<br/>and Ansible"]
+    terraform <-->|Remote state| state[("AWS S3")]
 
-    classDef cloud fill:#1E293B,stroke:#94A3B8,color:#F8FAFC,stroke-width:2px
-    classDef cicd fill:#172554,stroke:#60A5FA,color:#DBEAFE,stroke-width:2px
-    classDef terraform fill:#3B1D66,stroke:#A78BFA,color:#F3E8FF,stroke-width:2px
-    classDef ansible fill:#5F1212,stroke:#EF4444,color:#FEE2E2,stroke-width:2px
-    classDef infra fill:#5C2E0B,stroke:#F97316,color:#FFEDD5,stroke-width:2px
+    subgraph private["Private network · WireGuard"]
+        proxmox["Proxmox VE API"]
+        vms["AlmaLinux service VMs"]
+        talos["Talos Kubernetes"]
+        proxmox -->|VM lifecycle| vms
+        proxmox -->|VM lifecycle| talos
+    end
 
-    class repo,state cloud
-    class actions cicd
-    class terraform terraform
-    class ansible ansible
-    class proxmox,vms,talos infra
+    terraform -->|Provision via HTTPS| proxmox
+    terraform -->|Talos API| talos
+    ansible -.->|Enroll via HTTPS| proxmox
+    ansible -->|Verified SSH| vms
 
-    linkStyle 0 stroke:#60A5FA,stroke-width:2px,stroke-dasharray:5 5
-    linkStyle 1,2 stroke:#60A5FA,stroke-width:2.5px
-    linkStyle 3 stroke:#A78BFA,stroke-width:2px,stroke-dasharray:5 5
-    linkStyle 4 stroke:#A78BFA,stroke-width:2.5px
-    linkStyle 5,6 stroke:#F97316,stroke-width:2.5px
-    linkStyle 7 stroke:#EF4444,stroke-width:2px,stroke-dasharray:5 5
-    linkStyle 8 stroke:#EF4444,stroke-width:2.5px
+    classDef automation fill:#172554,stroke:#60A5FA,color:#DBEAFE
+    classDef provisioning fill:#3B1D66,stroke:#A78BFA,color:#F3E8FF
+    classDef configuration fill:#5F1212,stroke:#EF4444,color:#FEE2E2
+    classDef storage fill:#1E293B,stroke:#94A3B8,color:#F8FAFC
+    classDef infrastructure fill:#5C2E0B,stroke:#F97316,color:#FFEDD5
+
+    class repo,actions automation
+    class terraform provisioning
+    class ansible configuration
+    class state storage
+    class proxmox,vms,talos infrastructure
 ```
 
-GitHub-hosted runners reach the private network through WireGuard. Service VMs
-use AlmaLinux 10; Kubernetes nodes use Talos Linux and are configured through the
-Talos API.
+GitHub-hosted runners reach the private network through WireGuard. Terraform
+manages VMs, images and seed ISOs through the Proxmox HTTPS API. Service VMs use
+AlmaLinux 10; Kubernetes nodes use Talos Linux and are configured through the
+Talos API. Inventory discovery and host-key enrollment also use the Proxmox API.
+Sandbox boots from an API-uploaded cloud-init ISO and publishes its public SSH
+host key through the guest agent. Enrollment verifies the managed VM identity
+before Ansible connects with strict host-key checking.
 
 ## Repository layout
 
