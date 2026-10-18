@@ -7,37 +7,27 @@ and GitHub Actions runs deployments over WireGuard.
 ## Architecture
 
 ```mermaid
-flowchart LR
+flowchart TB
     repo["IaC repository"] --> actions["GitHub Actions"]
     actions --> terraform["Terraform"]
     actions --> ansible["SSH enrollment<br/>and Ansible"]
-    terraform <-->|Remote state| state[("AWS S3")]
-
-    subgraph private["Private network · WireGuard"]
-        proxmox["Proxmox VE API"]
-        vms["AlmaLinux service VMs"]
-        talos["Talos Kubernetes"]
-        proxmox -->|VM lifecycle| vms
-        proxmox -->|VM lifecycle| talos
-    end
-
-    terraform -->|Provision via HTTPS| proxmox
-    terraform -->|Talos API| talos
-    ansible -.->|Enroll via HTTPS| proxmox
-    ansible -->|Verified SSH| vms
-
-    classDef automation fill:#172554,stroke:#60A5FA,color:#DBEAFE
-    classDef provisioning fill:#3B1D66,stroke:#A78BFA,color:#F3E8FF
-    classDef configuration fill:#5F1212,stroke:#EF4444,color:#FEE2E2
-    classDef storage fill:#1E293B,stroke:#94A3B8,color:#F8FAFC
-    classDef infrastructure fill:#5C2E0B,stroke:#F97316,color:#FFEDD5
-
-    class repo,actions automation
-    class terraform provisioning
-    class ansible configuration
-    class state storage
-    class proxmox,vms,talos infrastructure
+    terraform <--> state[("S3 remote state")]
+    terraform --> proxmox["Proxmox VE API"]
+    ansible -.-> proxmox
+    proxmox --> vms["AlmaLinux service VMs"]
+    proxmox --> talos["Talos Kubernetes"]
+    terraform --> talos
+    ansible --> vms
 ```
+
+| Connection | Purpose |
+| --- | --- |
+| Terraform → S3 | Remote state storage |
+| Terraform → Proxmox API | Manage VMs, images and seed ISOs over HTTPS |
+| SSH enrollment and Ansible → Proxmox API | Discover inventory and enroll SSH host keys over HTTPS |
+| Proxmox → service VMs and Talos | VM lifecycle |
+| Terraform → Talos | Configure Kubernetes through the Talos API |
+| Ansible → service VMs | Configure services over verified SSH |
 
 GitHub-hosted runners reach the private network through WireGuard. Terraform
 manages VMs, images and seed ISOs through the Proxmox HTTPS API. Service VMs use
