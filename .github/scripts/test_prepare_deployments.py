@@ -2,7 +2,9 @@
 
 import importlib.util
 import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 
@@ -19,7 +21,8 @@ class PrepareDeploymentTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.directory = Path(self.temp.name)
         self.context = dict(GITHUB_SHA="abc123", GITHUB_RUN_ID="42", GITHUB_RUN_ATTEMPT="2",
-                            GITHUB_EVENT_NAME="push", GITHUB_REF="refs/heads/main")
+                            GITHUB_EVENT_NAME="push", GITHUB_REF="refs/heads/main",
+                            GITHUB_SERVER_URL="https://github.com", GITHUB_REPOSITORY="owner/iac")
 
     def target(self, environment="dev", name="vault", terraform=True, ansible=False, destroy=False):
         return dict(environment=environment, target=name,
@@ -30,7 +33,8 @@ class PrepareDeploymentTests(unittest.TestCase):
     def result(self, entry, changes=True, **overrides):
         result = dict(environment=entry["environment"], target=entry["target"],
                       changes=changes, destroy=entry["destroy"], sha=self.context["GITHUB_SHA"],
-                      run_id=self.context["GITHUB_RUN_ID"], run_attempt=self.context["GITHUB_RUN_ATTEMPT"])
+                      run_id=self.context["GITHUB_RUN_ID"], run_attempt=self.context["GITHUB_RUN_ATTEMPT"],
+                      plan_text="Plan: 1 to add, 0 to change, 0 to destroy.\n")
         result.update(overrides)
         (self.directory / f"{entry['environment']}--{entry['target']}.json").write_text(json.dumps(result))
 
@@ -119,6 +123,72 @@ class PrepareDeploymentTests(unittest.TestCase):
         target = self.target(terraform=False, ansible=True)
         with self.assertRaises(ValueError):
             self.prepare(target, target)
+
+    def preview(self, *targets):
+        _, rows = MODULE.prepare(list(targets), self.directory, self.context)
+        return MODULE.preview(list(targets), self.directory, rows, self.context)
+
+    def test_combined_preview_includes_changed_and_noop_target_plans(self):
+        dev, prod = self.target(), self.target(environment="prod")
+        self.result(dev, plan_text='~ memory = 1024 -> 2048\nPlan: 0 to add, 1 to change, 0 to destroy.')
+        self.result(prod, changes=False, plan_text="No changes. Your infrastructure matches the configuration.")
+        self.context["PR_HEAD_SHA"] = "pr-head"
+        body = self.preview(dev, prod)
+        self.assertIn("Commit: `pr-head`", body)
+        self.assertIn("dev/vault — changes", body)
+        self.assertIn("memory = 1024 -&gt; 2048", body)
+        self.assertIn("prod/vault — no changes", body)
+        self.assertIn("No changes. Your infrastructure", body)
+        self.assertIn("https://github.com/owner/iac/actions/runs/42/attempts/2", body)
+
+    def test_configuration_only_preview_explains_no_plans(self):
+        body = self.preview(self.target(terraform=False, ansible=True))
+        self.assertIn("No Terraform plans were needed", body)
+        self.assertIn("| dev/vault | skip | run |", body)
+
+    def test_preview_escapes_markup_in_resource_values(self):
+        target = self.target()
+        self.result(target, plan_text='</pre></details><script>alert("test")</script>\n```')
+        body = self.preview(target)
+        self.assertNotIn("<script>", body)
+        self.assertIn("&lt;/pre&gt;&lt;/details&gt;", body)
+        self.assertEqual(body.count("</details>"), 1)
+
+    def test_oversized_plans_keep_every_target_and_link_to_full_logs(self):
+        targets = [self.target(), self.target(environment="prod"),
+                   self.target(environment="platform", name="images")]
+        for target in targets:
+            self.result(target, plan_text="resource change 🌏 <value>\n" * 10000)
+        body = self.preview(*targets)
+        self.assertLess(len(body.encode("utf-8")), 60000)
+        self.assertEqual(body.count("Plan text truncated"), len(targets))
+        self.assertEqual(body.count("<details open>"), len(targets))
+        self.assertEqual(body.count("</details>"), len(targets))
+        for target in targets:
+            self.assertIn(f"{target['environment']}/{target['target']} — changes", body)
+
+    def test_missing_readable_plan_is_rejected(self):
+        target = self.target()
+        for text in (None, "", " \n"):
+            self.result(target, plan_text=text)
+            with self.assertRaises(ValueError):
+                self.preview(target)
+
+    def test_main_writes_same_preview_to_summary_and_comment_file(self):
+        target = self.target()
+        self.result(target)
+        comment = self.directory / "comment.md"
+        summary = self.directory / "summary.md"
+        output = self.directory / "output"
+        env = dict(os.environ, **self.context, TARGETS_JSON=json.dumps([target]),
+                   PLAN_RESULTS_DIRECTORY=str(self.directory), PLAN_COMMENT_PATH=str(comment),
+                   GITHUB_STEP_SUMMARY=str(summary), GITHUB_OUTPUT=str(output))
+        result = subprocess.run(["python3", str(Path(MODULE.__file__))], env=env,
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(comment.read_text(), summary.read_text())
+        self.assertIn("Plan: 1 to add", comment.read_text())
+        self.assertIn("has-deployments=true", output.read_text())
 
 
 if __name__ == "__main__":

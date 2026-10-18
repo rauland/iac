@@ -47,8 +47,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
       - name: Test deployment routing and saved plans
-        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+        run: |
+          python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+          node --test .github/scripts/test_comment_plans.js
       - name: Select infrastructure and configuration targets
         id: targets
         env:
@@ -241,6 +246,12 @@ jobs:
 
   prepare:
     name: Prepare deployment approval summary
+    concurrency:
+      group: iac-plan-comment-${{ github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: write
     needs: [discover, ci, plan]
     if: >-
       always() && needs.ci.result == 'success' && needs.discover.result == 'success' &&
@@ -263,8 +274,21 @@ jobs:
         env:
           TARGETS_JSON: ${{ needs.discover.outputs.matrix }}
           PLAN_RESULTS_DIRECTORY: ${{ runner.temp }}/plan-results
+          PLAN_COMMENT_PATH: ${{ runner.temp }}/plan-comment.md
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           DEPLOYMENT_MODE: ${{ inputs.mode }}
         run: python3 .github/scripts/prepare-deployments.py
+      - name: Update pull request plan preview
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v8
+        env:
+          PLAN_COMMENT_PATH: ${{ runner.temp }}/plan-comment.md
+        with:
+          script: |
+            const commentPlans = require('./.github/scripts/comment-plans.js');
+            await commentPlans({ github, context, core });
 
   deploy:
     name: Deploy

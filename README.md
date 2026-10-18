@@ -169,12 +169,21 @@ summary before any deployment approval is requested. Missing or mismatched
 results fail closed. No-op targets with no Ansible work do not create deployment
 jobs or request deployment approval.
 
+Same-repository PRs receive one deployment preview comment with the readable
+Terraform plan for every selected target, including no-change plans. Later runs
+update the comment and identify the PR commit and workflow run. Large plans are
+truncated with a link to the full job logs. The same preview appears in the
+workflow run summary; configuration-only changes explicitly say no plans were
+needed. Fork PRs do not publish a comment.
+
 Only changed plans from `main` are encrypted and uploaded together with their
 provider lock file. Apply executes that exact saved plan; it never creates a
 replacement plan. The Terraform API token remains ephemeral and is supplied
-by the job's selected environment. Metadata artifacts contain routing flags and
-commit/run identifiers, not plan contents. Plan logs remain visible in this
-public repository; saved plan archives are encrypted.
+by the job's selected environment. Result artifacts contain routing flags,
+commit/run identifiers, and the human-readable output of `terraform show
+-no-color tfplan`, which hides values marked sensitive by Terraform. Raw JSON
+plans are not published. Plan text and logs remain visible in this public
+repository; saved plan archives are encrypted.
 
 Artifacts are unique to each run attempt and target and expire after seven
 days. If a plan becomes stale, an artifact expires, or a deployment fails,
