@@ -6,6 +6,8 @@
 **/talosconfig
 **/kubeconfig
 **/tfplan
+**/tfplan.tags
+**/.tf-tags.json
 **/.terraform/
 **/*.tfstate
 **/*.tfstate.*

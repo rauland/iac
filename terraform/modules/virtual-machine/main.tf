@@ -1,6 +1,7 @@
+# CI defers tags on new guests until Proxmox has assigned their pool ACLs.
 resource "proxmox_virtual_environment_vm" "node" {
   name      = var.vm_config.vm_name
-  tags      = var.vm_config.tags
+  tags      = contains(var.deferred_vm_tags, "${var.vm_config.node_name}/${var.vm_config.vm_name}") ? [] : var.vm_config.tags
   node_name = var.vm_config.node_name
   pool_id   = var.pool_id
 

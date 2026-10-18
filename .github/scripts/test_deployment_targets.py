@@ -68,6 +68,11 @@ class DeploymentTargetTests(unittest.TestCase):
         self.assertEqual(self.change("terraform/workloads/dev/vault/main.tf"),
                          {("dev", "vault"): (True, False)})
 
+    def test_tag_staging_and_plan_helpers_select_infrastructure_validation(self):
+        targets = self.change(".github/scripts/vm_tags.py", ".github/scripts/terraform-apply.py")
+        self.assertEqual(len(targets), 5)
+        self.assertTrue(all(signals == (True, False) for signals in targets.values()))
+
     def test_service_role_change_needs_no_terraform(self):
         self.assertEqual(self.change("ansible/roles/vault/tasks/common.yml"),
                          {("dev", "vault"): (False, True), ("prod", "vault"): (False, True)})

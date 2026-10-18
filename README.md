@@ -184,9 +184,18 @@ workflow run summary; configuration-only changes explicitly say no plans were
 needed. Fork PRs do not publish a comment.
 
 Only changed plans from `main` are encrypted and uploaded together with their
-provider lock file. Apply executes that exact saved plan; it never creates a
-replacement plan. The Terraform API token remains ephemeral and is supplied
-by the job's selected environment. Result artifacts contain routing flags,
+provider lock file and a manifest bound to the plan, target, commit and run.
+Apply executes the saved infrastructure plan. For newly created VMs, tags are
+deferred until pool assignment so the existing pool-scoped token can set them.
+A follow-up saved plan is allowed to apply only the exact reviewed tags to
+those new VM IDs; unrelated changes fail validation before that plan is applied.
+The preview shows the intended final tags and identifies staged resources.
+Existing VM updates and destroy plans use their original saved plan directly.
+See [VM tag staging](terraform/modules/virtual-machine/README.md#pool-scoped-creation-and-tags)
+for the validation boundaries and recovery procedure.
+
+The Terraform API token remains ephemeral and is supplied by the job's selected
+environment. Result artifacts contain routing flags,
 commit/run identifiers, and the human-readable output of `terraform show
 -no-color tfplan`, which hides values marked sensitive by Terraform. Raw JSON
 plans are not published. Plan text and logs remain visible in this public

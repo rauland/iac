@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import subprocess
 
+from vm_tags import deferred_guests, reviewed_data_reads, terraform_json, validate_infrastructure_plan, write_manifest
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -28,6 +30,20 @@ def main():
     plan_text = subprocess.run(
         ["terraform", "show", "-no-color", "tfplan"], cwd=args.directory,
         check=True, capture_output=True, text=True).stdout
+    reviewed = terraform_json(args.directory, "show", "-json", "tfplan")
+    guests = [] if args.destroy == "true" else deferred_guests(reviewed, args.environment)
+    if guests:
+        selectors = sorted(guest["selector"] for guest in guests)
+        staged_command = command + ["-var=deferred_vm_tags=" + json.dumps(selectors)]
+        staged = subprocess.run(staged_command, cwd=args.directory)
+        if staged.returncode != 2:
+            raise ValueError("Failed to save the infrastructure stage with deferred VM tags")
+        validate_infrastructure_plan(reviewed, terraform_json(args.directory, "show", "-json", "tfplan"), guests)
+        plan_text += ("\nVM tag staging: the intended tags above are deferred on newly created VMs "
+                      "until pool assignment. The follow-up saved plan may apply only these tags:\n"
+                      + "\n".join("  " + guest["address"] for guest in guests) + "\n")
+    write_manifest(args.directory, guests, os.environ, args.environment, args.target,
+                   args.destroy == "true", reviewed_data_reads(reviewed), reviewed)
     metadata = {"environment": args.environment, "target": args.target,
                 "changes": changes, "destroy": args.destroy == "true",
                 "plan_text": plan_text,

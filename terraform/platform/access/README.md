@@ -53,6 +53,12 @@ inventory users for dev/prod, and plan/apply shared image publishers. Every toke
 has privilege separation enabled and matching explicit user/token ACLs. No
 automation identity created here has a global `/` or `/vms` grant.
 
+VM creation stages tags after pool assignment to handle Proxmox's create-time
+tag permission check. Both stages use the existing environment apply token;
+no additional ACLs are needed. The tag-only follow-up plan is validated against
+the original reviewed intent. See [VM tag staging](../../modules/virtual-machine/README.md#pool-scoped-creation-and-tags)
+for the plan/artifact checks and recovery procedure.
+
 Dev/prod plan identities additionally receive `PlanDiskAccess`
 (`VM.Config.Disk`) only on their own pool. The pinned provider reads disk
 metadata through an endpoint that requires this permission. These plan tokens

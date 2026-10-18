@@ -50,6 +50,12 @@ def verify(endpoint, credentials, node):
             created.append((owner, vm_id))
             wait(owner, task)
             guests[environment] = vm_id
+            # Tagged create is checked before pool membership on affected PVE releases.
+            # Exercise the supported sequence with the exact same scoped identity.
+            wait(owner, call(owner, "POST", f"/nodes/{node}/qemu/{vm_id}/config",
+                             data={"tags": f"rbac-check;{environment}"}))
+            config = call(owner, "GET", f"/nodes/{node}/qemu/{vm_id}/config")
+            assert set(config.get("tags", "").split(";")) == {"rbac-check", environment}
 
         for environment, other in [("dev", "prod"), ("prod", "dev")]:
             own_path = f"/nodes/{node}/qemu/{guests[environment]}/config"
@@ -75,7 +81,7 @@ def verify(endpoint, credentials, node):
             for identity in ["tf-platform-images-plan", "tf-platform-images-apply"]:
                 call(identity, "GET", own_path, expected=403)
                 call(identity, "POST", own_path, expected=403, data={"memory": 256})
-        print("PASS: owner lifecycle access works; plan tokens have only the approved disk-write exception; memory changes, cross-environment access and image-publisher VM access are denied to read identities.")
+        print("PASS: pool-scoped creation then tagging and owner lifecycle access work; plan tokens have only the approved disk-write exception; memory changes, cross-environment access and image-publisher VM access are denied to read identities.")
     finally:
         failures = []
         for owner, vm_id in reversed(created):

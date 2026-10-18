@@ -101,6 +101,12 @@ jobs:
       - name: Test environment boundaries
         run: terraform test -no-color
         working-directory: terraform/platform/access
+      - name: Initialize VM module providers
+        run: terraform init -backend=false -input=false
+        working-directory: terraform/modules/virtual-machine
+      - name: Test pool-scoped VM tag staging
+        run: terraform test -no-color
+        working-directory: terraform/modules/virtual-machine
 
   talos_checks:
     name: Talos module tests (offline)
@@ -337,8 +343,15 @@ jobs:
         working-directory: ./${{ matrix.directory }}
       - name: Apply the saved infrastructure or destroy plan
         if: matrix.terraform
-        run: terraform apply -input=false tfplan
-        working-directory: ./${{ matrix.directory }}
+        env:
+          TARGET_DIRECTORY: ${{ matrix.directory }}
+          TARGET_ENVIRONMENT: ${{ matrix.environment }}
+          TARGET_NAME: ${{ matrix.target }}
+          DESTROY: ${{ matrix.destroy }}
+        run: |
+          python3 .github/scripts/terraform-apply.py \
+            --directory "$TARGET_DIRECTORY" --environment "$TARGET_ENVIRONMENT" \
+            --target "$TARGET_NAME" --destroy "$DESTROY"
       - name: Configure selected guests
         if: matrix.ansible
         uses: ./.github/actions/ansible
