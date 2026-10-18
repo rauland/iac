@@ -198,6 +198,9 @@ jobs:
       TF_VAR_virtual_environment_api_token: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Install cloud-init ISO builder
         run: pip install -r terraform/modules/virtual-machine/scripts/requirements.txt
       - uses: hashicorp/setup-terraform@v3
@@ -320,6 +323,10 @@ jobs:
     env: *terraform-env
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        if: matrix.terraform
+        with:
+          python-version: "3.12"
       - name: Install cloud-init ISO builder
         if: matrix.terraform
         run: pip install -r terraform/modules/virtual-machine/scripts/requirements.txt
