@@ -39,8 +39,45 @@ environment's `known_hosts` file. It also disables SSH agent fallback and uses
 the explicitly selected private key. Unknown or changed host keys stop the
 connection. Prod currently has no SSH guests, so its trust file has no host keys.
 
-Before adding a new guest, obtain its host public key or fingerprint through a
-trusted console or an existing verified SSH connection:
+CI keeps committed host pins and enrolls unpinned managed guests through the
+authenticated Proxmox API and QEMU guest agent. It reads only
+`/etc/ssh/ssh_host_ed25519_key.pub`, verifies TLS, and refuses API redirects.
+The guest must match the selected environment and target in Ansible inventory,
+the selected Terraform backend state (node, VM ID, name, pool and tag), and live
+Proxmox pool membership and configuration. Deposed instances and disabled roots
+cannot supply new trust. For `common`, the enabled sandbox and Vault states in
+the selected environment supply the managed guest identities.
+
+Enrollment uses the existing `tf-ENVIRONMENT-apply@pve!ci` token; its VM admin
+role already grants guest-agent file access within its own pool. The
+`ansible-ENVIRONMENT` inventory token stays audit-only. No file-read, file-write
+or unrestricted guest-agent permissions are added to it. Proxmox's file-read
+permission can read arbitrary guest files, so it must not be added to an
+inventory token just to obtain a public key. Enrollment never uses guest-exec.
+
+Only guests without a committed pin use this bootstrap path. Existing pins
+(including hashed entries) remain authoritative: changed keys still stop SSH
+and require an explicit pin update. Runtime trust is written with mode `0600`
+inside the temporary SSH credential directory and removed with it, including
+after failures. It is not committed or uploaded as an artifact. Each CI run
+can obtain an unpinned guest's key again through the same trusted channel.
+
+The guest agent must already be installed and running in the cloud image;
+installing it later through Ansible cannot bootstrap the first SSH connection.
+Enrollment waits up to 36 file-read attempts for guest-agent readiness and
+fails closed on permission, TLS, state or identity errors. It never falls back
+to trusting network scans. Configuration-only CI runs also install Terraform
+so enrollment can initialize the selected backend and read state without
+refreshing or applying infrastructure. The existing apply identity's state
+credentials are used; no additional state permissions are granted.
+
+The deploy job already makes its apply token available at job scope. These
+steps share that trusted deployment boundary; separate steps do not isolate
+the apply credential from Ansible. This change does not create a separate
+credential boundary.
+
+For local runs, or to pin a guest explicitly, obtain its host public key or
+fingerprint through a trusted console or an existing verified SSH connection:
 
 ```sh
 # Run inside the guest, not on the Proxmox host.
@@ -54,10 +91,11 @@ console output before adding it. Update the entry when a DHCP address changes;
 rebuilding a VM also requires verifying its new host key. Review these files as
 access configuration even though their contents are public.
 
-For a newly provisioned VM, Terraform can finish before the first Ansible run
-stops on an unknown host key. Verify and commit that host key, then run the
-Ansible workflow again. This setup deliberately requires host enrollment; it
-does not automatically trust keys reported by the network.
+Local runs use the committed environment trust file by default. Set
+`ANSIBLE_KNOWN_HOSTS_FILE` to an existing, separately verified runtime trust file
+when needed; strict host checking remains enabled. Relative paths resolve from
+the `ansible` directory. Paths containing quotes, backslashes, newlines, `$` or
+`%` are rejected to prevent parser ambiguity and SSH path expansion.
 
 ## Rotation
 
@@ -111,5 +149,6 @@ the bootstrap public key does not rotate SSH access in those guests; use the
 Ansible migration above. Retired public keys under `public_keys/retired/` are
 revocation records, not trusted credentials.
 
-Run `python3 ssh/test_setup_ci.py` for credential handling tests and
+Run `python3 -m unittest discover -s ssh -p 'test_*.py'` for credential handling
+and offline host enrollment tests (requires `requests`), and
 `python3 ansible/tests/test_run_playbook.py` for environment selection tests.

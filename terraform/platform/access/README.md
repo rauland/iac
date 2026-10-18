@@ -60,6 +60,14 @@ can modify disks in their own environment; they are not strictly read-only.
 They cannot change memory, power, CPU or access another environment's guests.
 Ansible inventory and shared-image plan tokens remain strictly read-only.
 
+CI SSH host enrollment uses the existing environment apply identity's
+guest-agent file access; inventory identities receive no additional privileges.
+File-read grants cover arbitrary guest files, not just public host keys. Keep
+`VM.GuestAgent.FileRead`, `VM.GuestAgent.FileWrite` and
+`VM.GuestAgent.Unrestricted` off inventory identities. The live verifier checks
+these denials and rejects guest-agent file reads from both own and other pools.
+See [SSH enrollment](../../../ssh/README.md) for the state and identity checks.
+
 `dev-images` stores ISOs under `/var/lib/proxmox-dev-images`, outside the shared
 `local` directory. Dev apply can publish there but only read shared images.
 Download permission is `Sys.AccessNetwork` on the selected node; it does not

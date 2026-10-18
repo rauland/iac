@@ -66,7 +66,11 @@ def verify(endpoint, credentials, node):
                 # Values indicate ACL propagation; presence means access is granted.
                 vm_privileges = privileges[f"/vms/{guests[environment]}"]
                 assert "VM.GuestAgent.Audit" in vm_privileges
-                assert not {"VM.PowerMgmt", "VM.Config.Memory", "VM.GuestAgent.FileWrite"}.intersection(vm_privileges)
+                assert not {"VM.PowerMgmt", "VM.Config.Memory", "VM.GuestAgent.FileRead",
+                            "VM.GuestAgent.FileWrite", "VM.GuestAgent.Unrestricted"}.intersection(vm_privileges)
+                for vm_id in (guests[environment], guests[other]):
+                    call(identity, "GET", f"/nodes/{node}/qemu/{vm_id}/agent/file-read",
+                         expected=403, params={"file": "/etc/ssh/ssh_host_ed25519_key.pub"})
                 assert ("VM.Config.Disk" in vm_privileges) == identity.startswith("tf-")
             for identity in ["tf-platform-images-plan", "tf-platform-images-apply"]:
                 call(identity, "GET", own_path, expected=403)
