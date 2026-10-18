@@ -1,0 +1,19 @@
+{{ ansible_managed | comment }}
+[Unit]
+Description=Nginx site on Podman
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+Image={{ podman_nginx_image }}
+ContainerName=podman-nginx
+PublishPort={{ podman_nginx_port }}:80
+Volume={{ podman_nginx_site_directory }}:/usr/share/nginx/html:ro,Z
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

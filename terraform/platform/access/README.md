@@ -32,7 +32,7 @@ revoked by this root.
 
 | Pool | Initial guests | Owner |
 | --- | --- | --- |
-| `dev` | Vault 103, Talos 104/106/107, cockpit 113 | Dev workload roots |
+| `dev` | Vault 103, Talos 104/106/107, sandbox Podman VM (replaces Cockpit 113) | Dev workload roots |
 | `prod` | Initially empty | Future prod workload roots |
 | `infra` | PBS 100, Ansible 101, PDM 105, NFS 116 | This root |
 

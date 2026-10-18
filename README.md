@@ -278,8 +278,9 @@ Environment tags are optional; pool membership determines the environment.
 The common baseline is optional and does not exclude service roles. `common`
 is the VM tag and runner target, and creates the `tag_common` inventory group.
 OS-family differences are handled inside roles; Vault currently
-supports RHEL-family guests with DNF and EPEL. Sandbox currently has no additional
-tasks. See [Ansible deployment targets](ansible/README.md)
+supports RHEL-family guests with DNF and EPEL. Sandbox guests also tagged
+`podman` run an Nginx site through the [Podman role](ansible/roles/podman/README.md).
+See [Ansible deployment targets](ansible/README.md)
 for credentials, inventory conventions, and offline checks.
 
 Preview a Vault run from the repository root:
@@ -297,10 +298,10 @@ The existing `dev` tag is optional and is not used by the runner:
 
 ```hcl
 vms = {
-  cockpit = {
-    vm_name         = "cockpit"
+  podman = {
+    vm_name         = "podman"
     node_name       = "pve"
-    tags            = ["dev", "common", "sandbox", "cockpit"]
+    tags            = ["dev", "common", "sandbox", "podman"]
     cpu             = 2
     memory          = 4096
     image_file_name = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
@@ -310,6 +311,12 @@ vms = {
 
 VM networking requires DHCP and dynamic DNS or explicitly configured static
 addresses. Talos requires the DHCP reservations described in its module guide.
+
+The sandbox replaces the Cockpit VM with a fresh Podman VM; Terraform destroys
+the old guest and its disks and creates the new guest. Verify the new SSH host
+key and add it to `ssh/known_hosts/dev`, then rerun `configuration` mode for
+`dev/sandbox` if the first Ansible run stops at host verification. The Nginx site
+will be available at `http://VM_ADDRESS/` on port 80 after configuration succeeds.
 
 ## Feature status
 

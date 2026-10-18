@@ -1,0 +1,80 @@
+---
+- name: Require a supported OS family for Podman
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'RedHat'
+      - podman_nginx_port | int >= 1
+      - podman_nginx_port | int <= 65535
+    fail_msg: The Podman role requires a RHEL-family host and an HTTP port between 1 and 65535.
+
+- name: Install Podman and container SELinux policy
+  ansible.builtin.package:
+    name:
+      - podman
+      - container-selinux
+    state: present
+
+- name: Create the Quadlet and site directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/containers/systemd
+    - "{{ podman_nginx_site_directory }}"
+
+- name: Publish the Nginx site
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: "{{ podman_nginx_site_directory }}/index.html"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure the Nginx container with Quadlet
+  ansible.builtin.template:
+    src: podman-nginx.container.j2
+    dest: /etc/containers/systemd/podman-nginx.container
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart Podman Nginx
+
+- name: Gather firewall service state
+  ansible.builtin.service_facts:
+
+- name: Allow HTTP through the active host firewall
+  ansible.posix.firewalld:
+    port: "{{ podman_nginx_port }}/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+  when:
+    - "'firewalld.service' in ansible_facts['services']"
+    - ansible_facts['services']['firewalld.service']['state'] == 'running'
+
+- name: Apply pending container changes before checking the site
+  ansible.builtin.meta: flush_handlers
+
+# Quadlet applies WantedBy during generation; its generated service cannot be enabled directly.
+- name: Start the Nginx container service
+  ansible.builtin.systemd_service:
+    name: podman-nginx.service
+    daemon_reload: true
+    state: started
+  when: not ansible_check_mode
+
+- name: Verify that Nginx serves the managed site
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ podman_nginx_port }}/"
+    return_content: true
+    status_code: 200
+  register: podman_nginx_response
+  until:
+    - podman_nginx_response.status | default(0) == 200
+    - "'data-service=\"podman-nginx\"' in podman_nginx_response.content | default('')"
+  retries: 10
+  delay: 3
+  when: not ansible_check_mode
