@@ -7,6 +7,11 @@ and exposes sensitive client configurations.
 It does not use cloud-init, snippets, Proxmox-host SSH, or runner-local credential
 resources.
 
+CI uses the shared [VM tag staging](../virtual-machine/README.md#pool-scoped-creation-and-tags)
+path when creating or replacing nodes: create each guest in its pool, then
+apply only its reviewed tags after pool-scoped permissions take effect. The
+internal `deferred_vm_tags` input defaults to an empty set.
+
 ## Deploying the example environment
 
 `terraform/workloads/dev/talos` is enabled for local and GitHub Actions

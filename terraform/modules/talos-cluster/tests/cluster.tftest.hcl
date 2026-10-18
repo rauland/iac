@@ -138,6 +138,21 @@ run "reject_worker_bootstrap" {
   expect_failures = [var.bootstrap_node]
 }
 
+run "defer_only_selected_vm_tags" {
+  command = plan
+  variables {
+    deferred_vm_tags = ["pve-a/cp-01"]
+  }
+  assert {
+    condition = (
+      length(proxmox_virtual_environment_vm.node["cp-01"].tags) == 0 &&
+      proxmox_virtual_environment_vm.node["cp-01"].pool_id == "dev" &&
+      contains(proxmox_virtual_environment_vm.node["worker-01"].tags, "dev")
+    )
+    error_message = "Stage only the selected node's tags while preserving pool assignment and other nodes."
+  }
+}
+
 run "reject_unknown_bootstrap" {
   command = plan
   variables {

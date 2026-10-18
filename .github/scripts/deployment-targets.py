@@ -60,6 +60,9 @@ def configuration_path(path, root):
 
 
 def infrastructure_path(path, root):
+    if path in {".github/scripts/terraform-plan.py", ".github/scripts/terraform-apply.py",
+                ".github/scripts/vm_tags.py", ".github/scripts/terraform-plan-artifact.sh"}:
+        return True
     if path.startswith("ssh/public_keys/"):
         parts = path.split("/")
         return len(parts) > 2 and parts[2] == root["environment"]
