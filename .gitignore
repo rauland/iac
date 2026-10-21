@@ -1,5 +1,5 @@
 .vscode/
-.env
+*.env
 .config
 
 # Generated cluster credentials and saved Terraform plans.

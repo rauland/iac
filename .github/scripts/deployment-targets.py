@@ -44,6 +44,10 @@ def configuration_path(path, root):
         return True
     if not path.startswith("ansible/"):
         return False
+    # The replacement development host is bootstrapped against explicit inventory.
+    if (path.startswith("ansible/roles/agent_host/")
+            or path == "ansible/playbooks/agent-host.yml"):
+        return False
     if (path.startswith("ansible/tests/") or "/tests/" in path
             or path in {"ansible/.ansible-lint", "ansible/.yamllint",
                         "ansible/requirements-lint.txt"}):

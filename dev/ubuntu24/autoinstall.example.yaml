@@ -1,0 +1,32 @@
+autoinstall:
+  version: 1
+  locale: en_AU.UTF-8
+  keyboard:
+    layout: us
+  timezone: Australia/Melbourne
+  identity:
+    hostname: agent-host
+    username: ubuntu
+    password: "REPLACE_WITH_SHA512_PASSWORD_HASH"
+  ssh:
+    install-server: true
+    allow-pw: false
+    authorized-keys:
+      - "ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY your-laptop"
+  network:
+    version: 2
+    ethernets:
+      primary:
+        match:
+          name: "en*"
+        dhcp4: true
+  storage:
+    layout:
+      name: direct
+  packages:
+    - qemu-guest-agent
+    - python3
+    - sudo
+  late-commands:
+    - [curtin, in-target, --target=/target, --, systemctl, enable, qemu-guest-agent.service]
+  shutdown: poweroff

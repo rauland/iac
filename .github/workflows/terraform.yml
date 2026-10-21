@@ -89,6 +89,8 @@ jobs:
         run: python3 -m unittest discover -s terraform/modules/virtual-machine/tests -p 'test_*.py'
       - name: Test SSH credentials and host enrollment
         run: python3 -m unittest discover -s ssh -p 'test_*.py'
+      - name: Test disposable development containers
+        run: python3 -m unittest discover -s dev/codex -p 'test_*.py'
       - name: Test scoped inventory and playbook selection
         run: python3 -m unittest discover -s ansible/tests -p 'test_*.py'
       - uses: hashicorp/setup-terraform@v3

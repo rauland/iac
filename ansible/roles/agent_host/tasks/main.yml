@@ -1,0 +1,188 @@
+---
+- name: Validate the agent host and SSH access inputs
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == 'Ubuntu'
+      - ansible_facts['distribution_version'] == '24.04'
+      - agent_host_user is match('^[a-z_][a-z0-9_-]*$')
+      - agent_host_user != 'root'
+      - agent_host_authorized_keys is sequence
+      - agent_host_authorized_keys is not string
+      - agent_host_authorized_keys | length > 0
+      - >-
+        agent_host_authorized_keys | select('match', '^ssh-ed25519 [A-Za-z0-9+/]+=*( .*)?$')
+        | list | length == agent_host_authorized_keys | length
+    fail_msg: Use Ubuntu 24.04, a non-root developer account, and a list of Ed25519 public SSH keys.
+
+- name: Install rootless container and SSH development packages
+  ansible.builtin.apt:
+    name:
+      - acl
+      - ca-certificates
+      - dbus-user-session
+      - fuse-overlayfs
+      - git
+      - podman
+      - python3-venv
+      - qemu-guest-agent
+      - slirp4netns
+      - tmux
+      - uidmap
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Enable the guest agent inside a virtual machine
+  ansible.builtin.systemd_service:
+    name: qemu-guest-agent.service
+    enabled: true
+    state: started
+  when: ansible_facts['virtualization_type'] in ['kvm', 'qemu']
+
+- name: Create the developer account
+  ansible.builtin.user:
+    name: "{{ agent_host_user }}"
+    home: "{{ agent_host_home }}"
+    shell: /bin/bash
+    create_home: true
+    state: present
+  register: agent_host_account
+
+- name: Install developer SSH public keys
+  ansible.posix.authorized_key:
+    user: "{{ agent_host_user }}"
+    key: "{{ agent_host_authorized_keys | join('\n') }}"
+    state: present
+
+- name: Read subordinate identity allocations
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  loop:
+    - /etc/subuid
+    - /etc/subgid
+  register: agent_host_subordinate_ids
+  when: not ansible_check_mode
+
+- name: Require subordinate identities for rootless Podman
+  ansible.builtin.assert:
+    that:
+      - >-
+        (item.content | b64decode
+        | regex_findall('(?m)^' ~ agent_host_user ~ ':[0-9]+:([0-9]+)$')
+        | map('int') | select('ge', 65536) | list | length) > 0
+    fail_msg: >-
+      The developer needs at least 65536 subordinate UIDs and GIDs. Configure
+      non-overlapping ranges in /etc/subuid and /etc/subgid before continuing.
+  loop: "{{ agent_host_subordinate_ids.results | default([]) }}"
+  loop_control:
+    label: "{{ item.source | default('subordinate IDs') }}"
+  when: not ansible_check_mode
+
+- name: Keep the developer's user services running after SSH logout
+  ansible.builtin.command:
+    argv:
+      - loginctl
+      - enable-linger
+      - "{{ agent_host_user }}"
+    creates: "/var/lib/systemd/linger/{{ agent_host_user }}"
+
+- name: Start the developer's systemd user manager
+  ansible.builtin.systemd_service:
+    name: "user@{{ agent_host_account.uid }}.service"
+    state: started
+  when: not ansible_check_mode
+
+- name: Create the developer's project directory
+  ansible.builtin.file:
+    path: "{{ agent_host_home }}/projects"
+    state: directory
+    owner: "{{ agent_host_user }}"
+    group: "{{ agent_host_account.group }}"
+    mode: "0750"
+
+- name: Create the managed container tools directory
+  ansible.builtin.file:
+    path: "{{ agent_host_tools_directory }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the container helper and image sources
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../dev/codex/{{ item }}"
+    dest: "{{ agent_host_tools_directory }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "{{ '0755' if item == 'codex-container' else '0644' }}"
+  loop:
+    - codex-container
+    - Dockerfile
+    - .dockerignore
+    - podman-lxc.conf
+  register: agent_host_tools
+
+- name: Put the container helper on PATH
+  ansible.builtin.file:
+    src: "{{ agent_host_tools_directory }}/codex-container"
+    dest: /usr/local/bin/codex-container
+    state: link
+
+- name: Prepare and validate the developer's container image
+  become: true
+  become_user: "{{ agent_host_user }}"
+  environment:
+    HOME: "{{ agent_host_home }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ agent_host_account.uid }}"
+    CONTAINER_ENGINE: podman
+    CODEX_CONTAINER_VERSION: "{{ agent_host_codex_version }}"
+  when:
+    - agent_host_build_image | bool
+    - not ansible_check_mode
+  block:
+    - name: Check whether the developer image exists
+      ansible.builtin.command:
+        argv:
+          - podman
+          - image
+          - exists
+          - "localhost/codex-dev:{{ agent_host_account.uid }}-{{ agent_host_account.group }}"
+      register: agent_host_image
+      changed_when: false
+      failed_when: agent_host_image.rc not in [0, 1]
+
+    - name: Read the installed image version
+      ansible.builtin.command:
+        argv:
+          - podman
+          - image
+          - inspect
+          - "localhost/codex-dev:{{ agent_host_account.uid }}-{{ agent_host_account.group }}"
+      register: agent_host_image_metadata
+      changed_when: false
+      when: agent_host_image.rc == 0
+
+    - name: Build the developer image when missing or updated
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/codex-container
+          - build
+      when: >-
+        agent_host_tools.changed or agent_host_image.rc == 1 or
+        ((agent_host_image_metadata.stdout | from_json)[0]['Config']['Labels']
+        | default({}, true)).get('local.codex.version', '') != agent_host_codex_version
+      changed_when: true
+
+    - name: Verify Codex starts in a rootless container
+      ansible.builtin.command:
+        argv:
+          - podman
+          - run
+          - --rm
+          - --userns=keep-id
+          - --cap-drop=ALL
+          - --security-opt=no-new-privileges
+          - "localhost/codex-dev:{{ agent_host_account.uid }}-{{ agent_host_account.group }}"
+          - codex
+          - --version
+      changed_when: false
