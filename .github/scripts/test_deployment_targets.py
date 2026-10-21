@@ -77,6 +77,11 @@ class DeploymentTargetTests(unittest.TestCase):
         self.assertEqual(self.change("ansible/roles/vault/tasks/common.yml"),
                          {("dev", "vault"): (False, True), ("prod", "vault"): (False, True)})
 
+    def test_standalone_agent_bootstrap_does_not_deploy_service_vms(self):
+        self.assertEqual(self.change('ansible/roles/agent_host/tasks/main.yml',
+                                     'ansible/playbooks/agent-host.yml',
+                                     'dev/codex/codex-container'), {})
+
     def test_seed_builder_and_boot_policy_changes_select_vm_infrastructure(self):
         targets = self.change('terraform/modules/virtual-machine/cloud-init/agent-policy.py',
                               'terraform/modules/virtual-machine/scripts/build-seed.py')

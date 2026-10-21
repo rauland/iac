@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<'HELP'
+Usage: codex-container COMMAND [ARGS]
+
+  build                        Build the image for the current user's UID/GID
+  start NAME [PROJECT] [--env-file FILE] [--credentials-dir DIRECTORY]
+                              Start a container with optional dev credentials
+  attach NAME                  Connect to its persistent tmux terminal
+  exec NAME COMMAND [ARGS...]  Run a command inside it without tmux
+  list                         List these containers
+  stop NAME                    Remove the container and its temporary home
+
+Set CONTAINER_ENGINE=podman|docker to select an engine (prefers Podman).
+Set CODEX_CONTAINER_VERSION to choose the CLI version at build time.
+Set CODEX_CONTAINER_IMAGE to override the local image name.
+HELP
+}
+
+die() { echo "Error: $*" >&2; exit 1; }
+
+command_name=${1:-help}
+if [[ $command_name == help || $command_name == --help || $command_name == -h ]]; then
+    usage
+    exit 0
+fi
+shift
+
+project_argument=.
+environment_file=
+credentials_directory=
+if [[ $command_name == start ]]; then
+    [[ $# -ge 1 ]] || die 'Usage: start NAME [PROJECT] [--env-file FILE] [--credentials-dir DIRECTORY]'
+    task_name=$1
+    shift
+    project_supplied=false
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --env-file|--credentials-dir)
+                [[ $# -ge 2 && -n $2 ]] || die "$1 requires a path"
+                if [[ $1 == --env-file ]]; then
+                    [[ -z $environment_file ]] || die '--env-file may be supplied only once'
+                    environment_file=$2
+                else
+                    [[ -z $credentials_directory ]] || die '--credentials-dir may be supplied only once'
+                    credentials_directory=$2
+                fi
+                shift 2
+                ;;
+            -*) die "Unknown start option: $1" ;;
+            *)
+                [[ $project_supplied == false ]] || die 'Supply only one project directory'
+                project_argument=$1
+                project_supplied=true
+                shift
+                ;;
+        esac
+    done
+    set -- "$task_name"
+fi
+
+case "$command_name" in
+    build|list) [[ $# == 0 ]] || die "$command_name takes no arguments" ;;
+    start) ;;
+    attach|stop) [[ $# == 1 ]] || die "Usage: $command_name NAME" ;;
+    exec) [[ $# -ge 2 ]] || die 'Usage: exec NAME COMMAND [ARGS...]' ;;
+    *) usage >&2; die "Unknown command: $command_name" ;;
+esac
+
+engine=${CONTAINER_ENGINE:-}
+if [[ -z $engine ]]; then
+    if command -v podman >/dev/null 2>&1; then engine=podman; else engine=docker; fi
+fi
+[[ $engine == podman || $engine == docker ]] || die 'CONTAINER_ENGINE must be podman or docker'
+command -v "$engine" >/dev/null 2>&1 || die 'Install Podman or Docker first; see dev/codex/README.md'
+
+source_directory=$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd -P)
+# This development server is itself an LXC container, without kernel keyrings.
+# Keep the workaround scoped to these commands and honor explicit user settings.
+if [[ $engine == podman ]] && command -v systemd-detect-virt >/dev/null 2>&1 \
+    && [[ $(systemd-detect-virt --container || true) == lxc ]]; then
+    export CONTAINERS_CONF=${CONTAINERS_CONF:-$source_directory/podman-lxc.conf}
+    export BUILDAH_ISOLATION=${BUILDAH_ISOLATION:-rootless}
+fi
+
+dev_uid=$(id -u)
+dev_gid=$(id -g)
+image=${CODEX_CONTAINER_IMAGE:-localhost/codex-dev:$dev_uid-$dev_gid}
+label=local.codex.disposable
+
+if [[ $command_name != build && $command_name != list ]]; then
+    [[ $1 =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] || die 'Use letters, digits, dots, underscores, and hyphens in names'
+    container=codex-$1
+fi
+
+# Check ownership before executing commands or deleting an existing container.
+require_managed() {
+    local managed
+    managed=$("$engine" inspect --format '{{ index .Config.Labels "local.codex.disposable" }}' "$container")
+    [[ $managed == true ]] || die "$container is not managed by this helper"
+}
+
+case "$command_name" in
+    build)
+        exec "$engine" build --tag "$image" \
+            --build-arg "DEV_UID=$dev_uid" --build-arg "DEV_GID=$dev_gid" \
+            --build-arg "CODEX_VERSION=${CODEX_CONTAINER_VERSION:-0.162.1}" "$source_directory"
+        ;;
+    start)
+        project=$(cd -- "$project_argument" && pwd -P)
+        [[ $project != / && $project != "$HOME" ]] || die 'Choose a project directory, rather than / or your entire home'
+        [[ $project != *','* ]] || die 'Project paths containing commas are not supported by --mount'
+        options=()
+        if [[ -n $environment_file ]]; then
+            [[ -f $environment_file && -r $environment_file ]] || die 'The environment file must be a readable regular file'
+            environment_file=$(readlink -f -- "$environment_file")
+            [[ $environment_file != "$project/"* ]] || die 'Store the environment file outside the mounted project'
+            [[ $(stat -Lc '%u' -- "$environment_file") == "$dev_uid" ]] || die 'The environment file must belong to your SSH account'
+            file_mode=$(stat -Lc '%a' -- "$environment_file")
+            (( (8#$file_mode & 077) == 0 )) || die 'The environment file must be private; run chmod 600 on it'
+            options+=(--env-file "$environment_file")
+        fi
+        if [[ -n $credentials_directory ]]; then
+            credentials_directory=$(cd -- "$credentials_directory" && pwd -P)
+            [[ $credentials_directory != / && $credentials_directory != "$HOME" ]] || die 'Choose a dedicated credentials directory'
+            [[ $(stat -c '%u' -- "$credentials_directory") == "$dev_uid" ]] || die 'The credentials directory must belong to your SSH account'
+            directory_mode=$(stat -c '%a' -- "$credentials_directory")
+            (( (8#$directory_mode & 077) == 0 )) || die 'The credentials directory must be private; run chmod 700 on it'
+            [[ $credentials_directory != *','* ]] || die 'Credentials paths containing commas are not supported'
+            [[ $credentials_directory != "$project" && $credentials_directory != "$project/"* ]] \
+                || die 'Store credentials outside the mounted project'
+            [[ $project != "$credentials_directory/"* ]] || die 'Choose a credentials directory that does not contain the project'
+            options+=(--mount "type=bind,src=$credentials_directory,dst=/run/credentials,readonly")
+        fi
+        "$engine" image inspect "$image" >/dev/null 2>&1 || die 'Build the image first: codex-container build'
+        if [[ $engine == podman && $dev_uid != 0 ]]; then
+            options+=(--userns=keep-id)
+        fi
+        "$engine" run --detach --rm --init --name "$container" \
+            --label "$label=true" --hostname "$container" \
+            --user "$dev_uid:$dev_gid" --cap-drop=ALL \
+            --security-opt=no-new-privileges \
+            --mount "type=bind,src=$project,dst=/workspace" \
+            "${options[@]}" "$image"
+        echo "Connect with: $0 attach $1"
+        ;;
+    attach)
+        require_managed
+        exec "$engine" exec --interactive --tty --env "TERM=${TERM:-xterm-256color}" \
+            "$container" tmux new-session -A -s codex -c /workspace
+        ;;
+    exec)
+        require_managed
+        shift
+        exec "$engine" exec --interactive "$container" "$@"
+        ;;
+    list)
+        exec "$engine" ps --filter "label=$label=true"
+        ;;
+    stop)
+        require_managed
+        exec "$engine" stop "$container"
+        ;;
+esac
