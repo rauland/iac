@@ -26,7 +26,10 @@ no Tailscale secret is stored. Set up:
 2. Access rules that keep `tag:ci` to that subnet and the ports CI needs
    (Proxmox API `8006`, SSH `22`, Talos API `50000`, Kubernetes API `6443`), and
    that no rule grants all tagged devices broader access.
-3. Split DNS sending the Proxmox hostname's domain to the LAN resolver.
+3. Split DNS sending the Proxmox hostname's domain to the LAN resolver, and an
+   access rule letting `tag:ci` reach that resolver on `udp:53` and `tcp:53`.
+   Without it, CI nodes cannot resolve internal names and the Proxmox API
+   check times out.
 4. A workload identity federation trust credential for issuer GitHub, subject
    `repo:<owner>/<repo>:environment:*`, scope `auth_keys` (write) and tag
    `tag:ci`. Store its client ID and audience as repository variables
