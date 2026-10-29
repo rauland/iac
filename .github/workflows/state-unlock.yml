@@ -28,13 +28,20 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: ${{ format('proxmox-{0}-apply', inputs.environment) }}
+    permissions:
+      contents: read
+      id-token: write
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
       TF_CLI_ARGS_init: ${{ vars.TF_CLI_ARGS_init }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Assume scoped AWS state role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
 
       - name: Resolve Terraform root
         id: root

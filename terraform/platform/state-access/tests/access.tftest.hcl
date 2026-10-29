@@ -32,3 +32,50 @@ run "state_scope_boundaries" {
     error_message = "Apply credentials may delete lock files, never state files."
   }
 }
+
+run "oidc_trust_boundaries" {
+  command = plan
+
+  assert {
+    condition = alltrue([
+      for name, policy in local.trust_policies : alltrue([
+        for statement in policy.Statement :
+        statement.Action == "sts:AssumeRoleWithWebIdentity" &&
+        statement.Condition.StringEquals["token.actions.githubusercontent.com:aud"] == "sts.amazonaws.com"
+      ])
+    ])
+    error_message = "Roles may only be assumed through GitHub OIDC tokens issued for AWS STS."
+  }
+  assert {
+    condition = alltrue([
+      for name, policy in local.trust_policies : alltrue([
+        for statement in policy.Statement : alltrue([
+          for subject in statement.Condition.StringEquals["token.actions.githubusercontent.com:sub"] :
+          startswith(subject, "repo:rauland/iac:environment:proxmox-${local.identities[name].scope}-")
+        ])
+      ])
+    ])
+    error_message = "Each role must trust only protected environments of its own scope, never branches or pull requests."
+  }
+  assert {
+    condition = alltrue([
+      for name, identity in local.identities : alltrue([
+        for environment in identity.github_environments : endswith(environment, "-plan")
+      ]) if identity.operation == "plan"
+    ])
+    error_message = "Plan roles must not trust apply environments."
+  }
+  assert {
+    condition = (
+      local.identities["tf-dev-apply"].github_environments == ["proxmox-dev-apply", "proxmox-dev-auto-apply"] &&
+      local.identities["tf-prod-apply"].github_environments == ["proxmox-prod-apply"]
+    )
+    error_message = "Only dev apply may be assumed from the automatic deployment environment."
+  }
+  assert {
+    condition = alltrue([
+      for name, role in aws_iam_role.state : role.max_session_duration == 3600
+    ])
+    error_message = "Role sessions must stay short-lived."
+  }
+}
