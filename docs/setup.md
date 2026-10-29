@@ -25,8 +25,7 @@ secrets: `WIREGUARD_PRIVATE_KEY`, `RUNNER_IP`, `PEER_IP`,
 For local Terraform work, CI currently uses version `1.15.8`. Install the
 [VM seed builder dependency](../terraform/modules/virtual-machine/README.md#api-only-cloud-init-iso)
 before planning sandbox locally. The [Ansible guide](../ansible/README.md)
-covers its local dependencies and checks; the [agent-host guide](../dev/README.md)
-provides an optional development environment.
+covers its local dependencies and checks.
 
 ## 2. Configure Terraform state
 

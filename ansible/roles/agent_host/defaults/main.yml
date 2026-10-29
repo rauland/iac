@@ -1,7 +1,0 @@
----
-agent_host_user: developer
-agent_host_home: "/home/{{ agent_host_user }}"
-agent_host_authorized_keys: []
-agent_host_tools_directory: /opt/agent-host/codex
-agent_host_codex_version: "0.162.1"
-agent_host_build_image: true
