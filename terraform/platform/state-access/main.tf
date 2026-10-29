@@ -11,6 +11,12 @@ locals {
           ["proxmox-${scope}-${operation}"],
           scope == "dev" && operation == "apply" ? ["proxmox-dev-auto-apply"] : [],
         )
+        # SSM parameter prefixes under /iac whose values CI may read.
+        parameter_paths = concat(
+          ["shared/proxmox", "shared/wireguard", "${scope}/${operation}"],
+          operation == "apply" ? ["shared/apply"] : [],
+          operation == "apply" && scope != "platform" ? ["${scope}/ansible"] : [],
+        )
       }
     }
   ]...)
@@ -55,6 +61,20 @@ locals {
           Effect   = "Deny"
           Action   = ["s3:PutObject*", "s3:DeleteObject*"]
           Resource = ["*"]
+        }
+        ], [
+        {
+          # Values are SecureStrings under the AWS-managed aws/ssm key, whose key
+          # policy already allows decryption through SSM for this account.
+          Sid    = "ReadOwnParameters"
+          Effect = "Allow"
+          Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+          Resource = flatten([
+            for path in identity.parameter_paths : [
+              "arn:aws:ssm:${var.aws_region}:*:parameter/iac/${path}",
+              "arn:aws:ssm:${var.aws_region}:*:parameter/iac/${path}/*",
+            ]
+          ])
         }
       ])
     }

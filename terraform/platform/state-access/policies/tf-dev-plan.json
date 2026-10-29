@@ -44,6 +44,23 @@
         "*"
       ],
       "Sid": "DenyPlanWrites"
+    },
+    {
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/proxmox",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/proxmox/*",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/wireguard",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/wireguard/*",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/dev/plan",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/dev/plan/*"
+      ],
+      "Sid": "ReadOwnParameters"
     }
   ],
   "Version": "2012-10-17"

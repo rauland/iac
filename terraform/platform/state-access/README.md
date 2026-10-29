@@ -25,6 +25,25 @@ assume them without passing environment protection. Each role carries a
 The plan, deploy and state-unlock jobs request `id-token: write` and call
 `aws-actions/configure-aws-credentials` with the environment's `AWS_ROLE_ARN`.
 
+### CI parameters
+
+Each role may also read SSM Parameter Store values under `/iac`, so CI secrets
+can live in one place instead of being copied into every GitHub environment.
+Parameters are `SecureString`s encrypted with the AWS-managed `aws/ssm` key.
+Roles can only read, and only these prefixes:
+
+| Prefix | Holds | Readable by |
+| --- | --- | --- |
+| `/iac/shared/proxmox/` | Proxmox URL and API endpoint | All roles |
+| `/iac/shared/wireguard/` | WireGuard runner configuration | All roles |
+| `/iac/shared/apply/` | Cloudflare token, saved-plan private key | Apply roles |
+| `/iac/<scope>/plan/` | Scope's Proxmox plan token | That scope's plan role |
+| `/iac/<scope>/apply/` | Scope's Proxmox apply token | That scope's apply role |
+| `/iac/<scope>/ansible/` | Scope's Ansible inventory token and SSH key | Dev and prod apply roles |
+
+`<scope>` is `dev`, `prod` or `platform`. No role can read another scope's
+values, and plan roles cannot read apply values.
+
 ### Roll out
 
 1. [Apply this root](#initialize-review-and-apply) as an administrator. It adds
