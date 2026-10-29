@@ -23,7 +23,31 @@ runs:
           fi
           sleep 5
         done
-        echo "::error::Proxmox API unreachable over Tailscale. Check the approved subnet route, split DNS for the Proxmox domain and the tag:ci access rule."
+        # Report which layer failed without printing hostnames or addresses,
+        # because this repository's logs are public.
+        host=$(printf '%s' "$PROXMOX_URL" | sed -E 's#^[a-z]+://##; s#[:/].*##')
+        port=$(printf '%s' "$PROXMOX_URL" | sed -nE 's#^[a-z]+://[^:/]+:([0-9]+).*#\1#p')
+        address=$(getent ahostsv4 "$host" | awk 'NR == 1 { print $1 }')
+        if [ -z "$address" ]; then
+          echo "::error::DNS: the Proxmox hostname does not resolve. Check split DNS for its domain in the Tailscale admin console."
+        else
+          case "$address" in
+            10.0.0.*) echo "DNS: resolves inside 10.0.0.0/24." ;;
+            100.*) echo "DNS: resolves to a Tailscale (100.x) address." ;;
+            *) echo "::error::DNS: resolves outside 10.0.0.0/24, so public DNS answered. Check split DNS for its domain." ;;
+          esac
+          if ip route get "$address" | grep -q tailscale0; then
+            echo "Route: through tailscale0."
+          else
+            echo "::error::Route: not through tailscale0. Check the subnet route is approved and accepted."
+          fi
+          if timeout 5 bash -c "exec 3<>/dev/tcp/$address/${port:-443}" 2>/dev/null; then
+            echo "TCP: connects; the API itself did not answer over HTTPS."
+          else
+            echo "::error::TCP: no connection. Check the tag:ci access rule and that the subnet router forwards to this port."
+          fi
+        fi
+        echo "::error::Proxmox API unreachable over Tailscale."
         exit 1
 inputs:
   oauth-client-id:
