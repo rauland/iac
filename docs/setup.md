@@ -37,7 +37,7 @@ No AWS keys are stored in GitHub for this step:
 ```sh
 (
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-  export AWS_PROFILE=bootstrap bucket=rauland-iac-homelab region=ap-southeast-2
+  export AWS_PROFILE=admin bucket=rauland-iac-homelab region=ap-southeast-2
   aws s3api create-bucket --bucket "$bucket" --region "$region" \
     --create-bucket-configuration LocationConstraint="$region" &&
   aws s3api put-bucket-versioning --bucket "$bucket" \

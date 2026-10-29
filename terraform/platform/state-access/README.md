@@ -92,34 +92,34 @@ require applying this root.
 
 ### Authenticate with temporary administrator credentials
 
-Use a separate browser-authenticated session with IAM administration and backend
-access. Keep the existing least-privilege CLI user's permissions unchanged.
-AWS CLI 2.32.0 or newer supports `aws login`; the IAM identity needs
-`SignInLocalDevelopmentAccess` permissions as well as permission to manage these
-resources. Use an IAM user or role for the administrator session.
+Use a short-lived IAM Identity Center session with the `AdministratorAccess`
+permission set (one-hour sessions, MFA at sign-in). Do not use the root user.
+Day-to-day local Terraform uses a separate `TerraformState` permission set that
+can only read and write objects in the state bucket.
+Add the session and profile to `~/.aws/config` once:
 
-```sh
-aws login --profile bootstrap-login --remote --region ap-southeast-2
+```ini
+[sso-session rauland]
+sso_start_url = <AWS access portal URL from IAM Identity Center settings>
+sso_region = ap-southeast-2
+sso_registration_scopes = sso:account:access
+
+[profile admin]
+sso_session = rauland
+sso_account_id = <account ID>
+sso_role_name = AdministratorAccess
+region = ap-southeast-2
 ```
 
-Open the displayed URL, select the administrator identity and enter the resulting
-authorization code in the terminal. Do not paste credentials or authorization
-codes into chat. If you use IAM Identity Center, configure and authenticate an
-SSO profile instead.
-
-Configure a second profile so Terraform's provider and S3 backend can obtain
-temporary credentials through the CLI's credential process:
+Then sign in before each administrative change:
 
 ```sh
-aws configure set credential_process \
-  'aws configure export-credentials --profile bootstrap-login --format process' \
-  --profile bootstrap
-aws configure set region ap-southeast-2 --profile bootstrap
+aws sso login --sso-session rauland --use-device-code
 ```
 
-These commands store profile configuration and a local login cache, not
-administrator keys in the repository. See AWS's
-[browser login and credential-process documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sign-in.html).
+Open the displayed URL, sign in as the Identity Center user and approve the code.
+Do not paste credentials or authorization codes into chat. The CLI caches only
+the temporary session, not administrator keys.
 
 ### Initialize, review and apply
 
@@ -132,7 +132,7 @@ administrator identity before continuing.
 (
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
   unset AWS_SESSION_TOKEN AWS_SECURITY_TOKEN
-  export AWS_PROFILE=bootstrap
+  export AWS_PROFILE=admin
   umask 077
 
   aws sts get-caller-identity &&
@@ -162,7 +162,7 @@ GitHub secrets or committed files. Once provisioning is complete, end the
 temporary login session:
 
 ```sh
-aws logout --profile bootstrap-login
+aws sso logout
 ```
 
 ## State permission boundaries
