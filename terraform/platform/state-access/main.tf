@@ -101,29 +101,3 @@ resource "aws_iam_role_policy" "state" {
   role     = aws_iam_role.state[each.key].name
   policy   = jsonencode(local.policies[each.key])
 }
-
-resource "aws_iam_user" "state" {
-  for_each = local.identities
-  name     = "iac-${each.key}"
-  path     = "/"
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "aws_iam_user_policy" "state" {
-  for_each = local.identities
-  name     = "terraform-state"
-  user     = aws_iam_user.state[each.key].name
-  policy   = jsonencode(local.policies[each.key])
-}
-
-resource "aws_iam_access_key" "state" {
-  for_each   = local.identities
-  user       = aws_iam_user.state[each.key].name
-  status     = "Active"
-  depends_on = [aws_iam_user_policy.state]
-  lifecycle {
-    prevent_destroy = true
-  }
-}

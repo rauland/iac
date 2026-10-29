@@ -71,8 +71,9 @@ configure scoped AWS identities through IAM or Terraform. Adapt the example
 policies to your state bucket. Bootstrap initial state objects with an
 administrator before read-only plan credentials initialize a new root.
 
-Each plan/apply environment needs its matching `AWS_ACCESS_KEY_ID`,
-`AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION` variable,
+Each plan/apply environment needs its matching `AWS_ROLE_ARN` and
+`AWS_DEFAULT_REGION` variables (see
+[GitHub OIDC roles](../terraform/platform/state-access/README.md#github-oidc-roles)),
 `TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT`, `TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN`,
 and `PROXMOX_URL` secrets. Dev/prod apply environments also need the scoped
 Ansible inventory credentials documented in the Proxmox access guide.
