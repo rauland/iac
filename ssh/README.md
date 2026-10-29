@@ -6,8 +6,8 @@ control API access; guest SSH access is controlled separately by authorized keys
 
 | Environment | Public key | Private-key secret | Trusted host keys |
 | --- | --- | --- | --- |
-| Dev | [public_keys/dev/ansible-ci.pub](public_keys/dev/ansible-ci.pub) | `proxmox-dev-apply` and `proxmox-dev-auto-apply` → `SSH_PRIVATE_KEY_ANSIBLE` | [known_hosts/dev](known_hosts/dev) |
-| Prod | [public_keys/prod/ansible-ci.pub](public_keys/prod/ansible-ci.pub) | `proxmox-prod-apply` → `SSH_PRIVATE_KEY_ANSIBLE` | [known_hosts/prod](known_hosts/prod) |
+| Dev | [public_keys/dev/ansible-ci.pub](public_keys/dev/ansible-ci.pub) | SSM `/iac/dev/ansible/SSH_PRIVATE_KEY_ANSIBLE` | [known_hosts/dev](known_hosts/dev) |
+| Prod | [public_keys/prod/ansible-ci.pub](public_keys/prod/ansible-ci.pub) | SSM `/iac/prod/ansible/SSH_PRIVATE_KEY_ANSIBLE` | [known_hosts/prod](known_hosts/prod) |
 
 The same public-key files are used by Terraform for first boot and Ansible for
 ongoing access management. VM modules require explicit `ssh_public_keys`; they
@@ -209,9 +209,10 @@ environment's public key above, and retain the old public key in the role's
    and `automation_user_remove_retired_keys=false`.
 2. Verify a fresh SSH connection and noninteractive sudo using the new key on
    every guest. Disable multiplexed connection reuse during this verification.
-3. Upload the new private key to the matching GitHub environment secrets (both
-   dev apply environments for a dev key) via
-   stdin, without printing it or placing it in command-line arguments. Push the
+3. Store the new private key as the matching
+   `/iac/<scope>/ansible/SSH_PRIVATE_KEY_ANSIBLE` SSM parameter (see
+   [CI parameters](../terraform/platform/state-access/README.md#ci-parameters)),
+   without printing it or placing it in command-line arguments. Push the
    matching public key and workflow changes together with the cutover.
 4. Use the new credential to run the SSH-access playbook with retired-key
    removal enabled. Verify that the new key works and the retired and

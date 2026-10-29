@@ -87,16 +87,16 @@ administrator before read-only plan credentials initialize a new root.
 
 Each plan/apply environment needs its matching `AWS_ROLE_ARN` and
 `AWS_DEFAULT_REGION` variables (see
-[GitHub OIDC roles](../terraform/platform/state-access/README.md#github-oidc-roles)),
-`TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT`, `TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN`,
-and `PROXMOX_URL` secrets. Dev/prod apply environments also need the scoped
-Ansible inventory credentials documented in the Proxmox access guide.
+[GitHub OIDC roles](../terraform/platform/state-access/README.md#github-oidc-roles)).
+Proxmox endpoints and tokens, the Cloudflare token, the saved-plan private key
+and the scoped Ansible credentials are SSM parameters, listed in
+[CI parameters](../terraform/platform/state-access/README.md#ci-parameters).
 
 ## 4. Configure SSH and service credentials
 
 Follow [SSH automation access](../ssh/README.md) to generate separate dev/prod
-SSH keys, commit the public keys, and set `SSH_PRIVATE_KEY_ANSIBLE` in the matching
-apply environments. Use verified host pins or the documented guest-agent
+SSH keys, commit the public keys, and store each private key as the
+`/iac/<scope>/ansible/SSH_PRIVATE_KEY_ANSIBLE` parameter. Use verified host pins or the documented guest-agent
 enrollment path. The guest agent must already be running for automatic
 enrollment; Ansible cannot install it to establish its first connection.
 
@@ -122,7 +122,7 @@ gpg --homedir "$plan_key_dir" --batch --pinentry-mode loopback --passphrase '' \
 | GitHub setting | Value |
 | --- | --- |
 | Repository variable `TF_PLAN_PUBLIC_KEY` | Complete contents of `public.asc` |
-| Each apply environment secret `TF_PLAN_PRIVATE_KEY` | Complete contents of `private.asc` |
+| SSM parameter `/iac/shared/apply/TF_PLAN_PRIVATE_KEY` | Complete contents of `private.asc` |
 
 The dedicated private key has no passphrase. Keep a secure backup, remove the
 temporary key directory after setup, and rotate the pair before its one-year
