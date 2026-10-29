@@ -146,12 +146,13 @@ normal plans. Terraform deployment jobs use version `1.15.8`.
 
 ## Concurrency and networking
 
-The [WireGuard action](../.github/actions/wireguard/action.yml) uses one shared
-runner profile through repository secrets. Its private route is
-`10.0.0.0/24`. Plan and deployment jobs share the `iac-private-network`
-concurrency group and use `cancel-in-progress: false`, preventing overlapping
-use of the shared peer or concurrent deployments. Matrices also use
-`max-parallel: 1`. GitHub may replace an older pending job with a newer one;
+Each plan and deployment job joins the tailnet as its own ephemeral `tag:ci`
+node through the [Tailscale action](../.github/actions/tailscale/action.yml) and
+reaches `10.0.0.0/24` through the subnet router, so jobs for different targets
+run in parallel. Plan and deployment jobs for the same environment and target
+share an `iac-terraform-<environment>-<target>` concurrency group with
+`cancel-in-progress: false`, so one root is never planned and applied at the
+same time. GitHub may replace an older pending job in a group with a newer one;
 missing plan results prevent partial runs from deploying. Rerun all jobs after
 a cancellation. State unlock remains an explicit, approved recovery operation.
 

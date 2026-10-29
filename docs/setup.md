@@ -16,11 +16,24 @@ Service VMs use AlmaLinux 10; Kubernetes nodes use Talos. VM networking requires
 DHCP and dynamic DNS or explicitly configured static addresses. Talos requires
 the reservations and networking in the [Talos module guide](../terraform/modules/talos-cluster/README.md).
 
-Configure a WireGuard peer that GitHub-hosted runners can reach. The
-[WireGuard action](../.github/actions/wireguard/action.yml) expects these repository
-secrets: `WIREGUARD_PRIVATE_KEY`, `RUNNER_IP`, `PEER_IP`,
-`WIREGUARD_PEER_PUBLIC_KEY`, and `WIREGUARD_ENDPOINT`. It currently routes
-`10.0.0.0/24` and uses the peer for DNS; adapt this to your network.
+GitHub-hosted runners reach the private network through Tailscale. Each job
+joins the tailnet as an ephemeral `tag:ci` node using its GitHub OIDC token, so
+no Tailscale secret is stored. Set up:
+
+1. A subnet router (for example the LAN router) advertising the private network,
+   currently `10.0.0.0/24`, with the route approved in the Tailscale admin
+   console and IP masquerading enabled.
+2. Access rules that keep `tag:ci` to that subnet and the ports CI needs
+   (Proxmox API `8006`, SSH `22`, Talos API `50000`, Kubernetes API `6443`), and
+   that no rule grants all tagged devices broader access.
+3. Split DNS sending the Proxmox hostname's domain to the LAN resolver.
+4. A workload identity federation trust credential for issuer GitHub, subject
+   `repo:<owner>/<repo>:environment:*`, scope `auth_keys` (write) and tag
+   `tag:ci`. Store its client ID and audience as repository variables
+   `TS_OAUTH_CLIENT_ID` and `TS_AUDIENCE`; neither is secret.
+
+The [Tailscale action](../.github/actions/tailscale/action.yml) waits until the
+Proxmox API answers before Terraform or Ansible runs.
 
 For local Terraform work, CI currently uses version `1.15.8`. Install the
 [VM seed builder dependency](../terraform/modules/virtual-machine/README.md#api-only-cloud-init-iso)

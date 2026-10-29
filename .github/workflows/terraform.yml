@@ -181,11 +181,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
         include: ${{ fromJSON(needs.discover.outputs.plan-matrix) }}
+    # Each job joins the tailnet as its own node, so only runs touching the same
+    # Terraform root need to wait for each other.
     concurrency:
-      group: iac-private-network
+      group: iac-terraform-${{ matrix.environment }}-${{ matrix.target }}
       cancel-in-progress: false
     environment: ${{ format('proxmox-{0}-plan', matrix.environment) }}
     permissions:
@@ -215,13 +216,10 @@ jobs:
         with:
           terraform_version: "1.15.8"
           terraform_wrapper: false
-      - uses: ./.github/actions/wireguard
-        with: &wireguard-env
-          WIREGUARD_PRIVATE_KEY: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
-          RUNNER_IP: ${{ secrets.RUNNER_IP }}
-          PEER_IP: ${{ secrets.PEER_IP }}
-          WIREGUARD_PEER_PUBLIC_KEY: ${{ secrets.WIREGUARD_PEER_PUBLIC_KEY }}
-          WIREGUARD_ENDPOINT: ${{ secrets.WIREGUARD_ENDPOINT }}
+      - uses: ./.github/actions/tailscale
+        with: &tailscale-env
+          oauth-client-id: ${{ vars.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ vars.TS_AUDIENCE }}
       - name: Initialize Terraform backend
         env:
           STATE_KEY: terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate
@@ -321,11 +319,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
         include: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    # Each job joins the tailnet as its own node, so only runs touching the same
+    # Terraform root need to wait for each other.
     concurrency:
-      group: iac-private-network
+      group: iac-terraform-${{ matrix.environment }}-${{ matrix.target }}
       cancel-in-progress: false
     environment: ${{ matrix.approval_environment }}
     permissions:
@@ -370,8 +369,8 @@ jobs:
         with:
           terraform_version: "1.15.8"
           terraform_wrapper: false
-      - uses: ./.github/actions/wireguard
-        with: *wireguard-env
+      - uses: ./.github/actions/tailscale
+        with: *tailscale-env
       - name: Initialize Terraform with the reviewed dependency selections
         if: matrix.terraform
         env:

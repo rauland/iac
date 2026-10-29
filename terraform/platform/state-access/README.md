@@ -46,8 +46,8 @@ be masked reliably. Roles can only read, and only these prefixes:
 
 `<scope>` is `dev`, `prod` or `platform`. No role can read another scope's
 values, and plan roles cannot read apply values. Roles may also read
-`/iac/shared/wireguard/`, reserved for the WireGuard settings that are still
-repository secrets. `String` parameters hold non-secret identifiers and are
+`/iac/shared/wireguard/`, which is unused since CI moved to Tailscale.
+`String` parameters hold non-secret identifiers and are
 not masked.
 
 To set or rotate a value, use the `admin` profile and keep the value out of

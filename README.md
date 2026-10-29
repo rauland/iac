@@ -34,7 +34,7 @@ flowchart LR
     actions --> ansible["SSH enrollment<br/>and Ansible"]
     terraform <-->|Remote state| state[("AWS S3")]
 
-    subgraph private["Private network · WireGuard"]
+    subgraph private["Private network · Tailscale"]
         proxmox["Proxmox VE API"]
         vms["AlmaLinux service VMs"]
         talos["Talos Kubernetes"]
@@ -60,7 +60,8 @@ flowchart LR
     class proxmox,vms,talos infrastructure
 ```
 
-GitHub-hosted runners reach the private network through WireGuard. Terraform
+GitHub-hosted runners reach the private network through Tailscale, as ephemeral
+nodes authenticated with GitHub OIDC. Terraform
 manages VMs, images and seed ISOs through the Proxmox HTTPS API. Service VMs use
 AlmaLinux 10; Kubernetes nodes use Talos Linux and are configured through the
 Talos API. Inventory discovery and host-key enrollment also use the Proxmox API.
@@ -79,7 +80,7 @@ for the trust checks and guest-agent requirements.
 | [ssh](ssh/README.md) | Environment-specific public keys, verified host keys, and SSH rotation |
 | [docs](docs) | Platform setup, deployment policies, and recovery procedures |
 | [.github/workflows](.github/workflows) | Infrastructure/configuration, S3 bootstrap, and state unlock workflows |
-| [.github/actions](.github/actions) | Shared WireGuard, SSH, and Ansible actions |
+| [.github/actions](.github/actions) | Shared Tailscale, SSH, and Ansible actions |
 
 Enabled deployment roots are `dev/sandbox`, `dev/vault`, `dev/talos`, and
 [`platform/images`](terraform/platform/images/README.md). `platform/access` is
@@ -90,7 +91,7 @@ Talos is included in automatic discovery and manual deployments. See the
 [Talos module guide](terraform/modules/talos-cluster/README.md) for networking,
 deployment, and cluster lifecycle procedures.
 
-When forking, adapt the environment variables, VM addresses, and WireGuard setup
+When forking, adapt the environment variables, VM addresses, and Tailscale setup
 to your own infrastructure before running deployments. To exclude a root from
 GitHub Actions, add a `.disabled` file in its directory. This optional marker
 excludes it from automatic discovery and manual target selection; local Terraform
@@ -131,7 +132,7 @@ and recovery procedures.
 For a new installation, follow the [complete setup guide](docs/setup.md) in order:
 
 1. Prepare Proxmox storage and networking, workload variables, and runner
-   WireGuard access.
+   Tailscale access.
 2. Bootstrap the S3 state bucket and configure the backend variable.
 3. Configure scoped Proxmox and AWS identities and GitHub environment credentials.
 4. Set environment-specific SSH keys, host verification, and service credentials.

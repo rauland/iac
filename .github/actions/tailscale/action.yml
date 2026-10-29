@@ -1,0 +1,34 @@
+---
+name: Connect to the homelab
+description: Join the tailnet as an ephemeral tag:ci node and wait for the Proxmox API
+runs:
+  using: composite
+  steps:
+    # Authenticates with the job's GitHub OIDC token (workload identity
+    # federation), so no Tailscale secret is stored. The node is removed when
+    # the job ends.
+    - uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+      with:
+        oauth-client-id: ${{ inputs.oauth-client-id }}
+        audience: ${{ inputs.audience }}
+        tags: tag:ci
+        args: --accept-routes
+    - name: Wait for the Proxmox API through the subnet router
+      shell: bash
+      run: |
+        for attempt in $(seq 1 24); do
+          if curl --silent --insecure --output /dev/null --max-time 5 "${PROXMOX_URL%/}/api2/json/version"; then
+            echo "Proxmox API reachable after attempt $attempt."
+            exit 0
+          fi
+          sleep 5
+        done
+        echo "::error::Proxmox API unreachable over Tailscale. Check the approved subnet route, split DNS for the Proxmox domain and the tag:ci access rule."
+        exit 1
+inputs:
+  oauth-client-id:
+    description: "Tailscale federated identity client ID (not secret)"
+    required: true
+  audience:
+    description: "Tailscale federated identity audience (not secret)"
+    required: true
