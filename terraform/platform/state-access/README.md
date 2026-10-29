@@ -3,17 +3,15 @@
 This administrator-operated root creates six scoped IAM roles that GitHub Actions
 assumes through OIDC, one per dev, prod and shared-image plan/apply identity.
 Workflows receive temporary credentials for one hour; no AWS keys are stored in
-GitHub. The root also still manages the six earlier IAM users and access keys
-until their removal (see [Retire the access keys](#retire-the-access-keys)). It is
-excluded from automatic deployment discovery. Its encrypted state contains those
-secret keys and must remain inaccessible to workload CI.
+GitHub. It is excluded from automatic deployment discovery. Keep its state
+administrator-only so workload CI cannot change its own trust or permissions.
 
 ## GitHub OIDC roles
 
 Each role trusts only tokens that GitHub issues to jobs running in the listed
 environments of `rauland/iac`, so branch, pull-request and fork jobs cannot
-assume them without passing environment protection. Each role carries the same
-`terraform-state` inline policy as the matching user below.
+assume them without passing environment protection. Each role carries a
+`terraform-state` inline policy; console-ready copies are in [policies](policies).
 
 | IAM role | GitHub environments (`AWS_ROLE_ARN` variable) |
 | --- | --- |
@@ -30,8 +28,8 @@ The plan, deploy and state-unlock jobs request `id-token: write` and call
 ### Roll out
 
 1. [Apply this root](#initialize-review-and-apply) as an administrator. It adds
-   the GitHub OIDC provider, six roles and their policies, and changes nothing
-   on the existing users. If the account already has a
+   the GitHub OIDC provider, six roles and their policies. If the account
+   already has a
    `token.actions.githubusercontent.com` provider, import it first:
    `terraform import aws_iam_openid_connect_provider.github <provider-arn>`.
 2. Set each environment's `AWS_ROLE_ARN` variable from the
@@ -46,49 +44,40 @@ The plan, deploy and state-unlock jobs request `id-token: write` and call
      done
    ```
 
-3. Merge the workflow change and confirm a plan and a dev deploy succeed.
+3. Run a plan, for example a manual `infrastructure` run for dev sandbox, and
+   confirm the "Assume scoped AWS state role" step succeeds.
 
-### Retire the access keys
-
-Once OIDC runs succeed, delete `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
-from the six environments above and from `proxmox-dev-auto-apply`. Then remove
-the `aws_iam_access_key`, `aws_iam_user_policy` and `aws_iam_user` resources and
-the `state_credentials` output from this root (lifting `prevent_destroy`),
-update `export_policies.py` to read `aws_iam_role_policy`, and apply. The S3
-Bootstrap workflow's `proxmox-rw` keys are separate and not covered here.
+The S3 Bootstrap workflow still uses access keys in `proxmox-rw`; those are
+separate from these roles.
 
 ## AWS console setup
 
-These steps create the earlier IAM users; use them only if you are not applying
-this root.
+To create the roles in the IAM console instead of applying this root:
 
-The existing CLI user intentionally has no IAM administration privileges. To
-create these identities using an AWS administrator in the portal instead:
+1. In IAM → Identity providers, add an OpenID Connect provider with URL
+   `https://token.actions.githubusercontent.com` and audience `sts.amazonaws.com`.
+2. In IAM → Roles → Create role, choose **Web identity**, that provider and
+   audience `sts.amazonaws.com`, and use the role name from the table below.
+3. Edit the trust policy so `token.actions.githubusercontent.com:sub` equals
+   `repo:rauland/iac:environment:<environment>` for each listed environment.
+   Set the maximum session duration to one hour.
+4. Add an inline policy named `terraform-state` from the **JSON** editor using
+   the matching exported file. Attach no other policies.
+5. Set each listed GitHub environment's `AWS_ROLE_ARN` variable to the role ARN.
 
-1. In IAM → Users → Create user, use the user name from the table below. Leave
-   console access disabled; these users need API credentials only.
-2. Create an inline policy using the **JSON** editor and paste the corresponding
-   exported file. Name the inline policy `terraform-state` and attach no other
-   policies or groups.
-3. Under Security credentials, create an access key for an application running
-   outside AWS. Save the secret securely when displayed.
-4. In the matching GitHub environment, create `AWS_ACCESS_KEY_ID` and
-   `AWS_SECRET_ACCESS_KEY` using that user's key pair.
-
-| IAM user | Policy JSON | GitHub environment |
+| IAM role | Policy JSON | GitHub environments |
 | --- | --- | --- |
 | `iac-tf-dev-plan` | [tf-dev-plan.json](policies/tf-dev-plan.json) | `proxmox-dev-plan` |
-| `iac-tf-dev-apply` | [tf-dev-apply.json](policies/tf-dev-apply.json) | `proxmox-dev-apply` |
+| `iac-tf-dev-apply` | [tf-dev-apply.json](policies/tf-dev-apply.json) | `proxmox-dev-apply`, `proxmox-dev-auto-apply` |
 | `iac-tf-prod-plan` | [tf-prod-plan.json](policies/tf-prod-plan.json) | `proxmox-prod-plan` |
 | `iac-tf-prod-apply` | [tf-prod-apply.json](policies/tf-prod-apply.json) | `proxmox-prod-apply` |
 | `iac-tf-platform-images-plan` | [tf-platform-images-plan.json](policies/tf-platform-images-plan.json) | `proxmox-platform-plan` |
 | `iac-tf-platform-images-apply` | [tf-platform-images-apply.json](policies/tf-platform-images-apply.json) | `proxmox-platform-apply` |
 
 The files target bucket `rauland-iac-homelab`. Before running CI,
-verify that plan users can read only their state,
-apply users can write their state/manage locks, and all six are denied access to
+verify that plan roles can read only their state,
+apply roles can write their state/manage locks, and all six are denied access to
 `terraform/platform/access.tfstate` and `terraform/platform/state-access.tfstate`.
-Then follow the [GitHub cutover/secret cleanup checklist](../access/GITHUB-CUTOVER.md).
 
 The JSON files are exported from a mocked Terraform plan, not a second policy
 implementation. Regenerate after changes using `python3 export_policies.py`
@@ -98,13 +87,11 @@ implementation. Regenerate after changes using `python3 export_policies.py`
 
 Run these commands from the repository root on the machine where Terraform will
 run. `init` configures the backend and installs providers; `apply` creates the
-GitHub OIDC provider and six roles, and the six IAM users, inline policies and
-access keys.
+GitHub OIDC provider, six roles and their inline policies.
 
-Do not apply this root against IAM users already created in the console without
-importing those users, inline policies and access keys first. Importing an access
-key cannot recover its secret; keep the portal-created secret in GitHub or a
-secure local backup. Console setup does not require applying this root.
+Do not apply this root against roles already created in the console without
+importing the provider, roles and inline policies first. Console setup does not
+require applying this root.
 
 ### Authenticate with temporary administrator credentials
 
@@ -167,24 +154,15 @@ administrator identity before continuing.
 )
 ```
 
-### Handle generated credentials
+### After applying
 
-The `state_credentials` output is sensitive, so normal Terraform output hides
-its values. The actual secret keys remain in the encrypted S3 state. Keep access
-to this administrator state restricted; workload CI must never be able to read
-it. Saved plans and local state backups may also contain sensitive data.
-
-Upload each generated key pair to the GitHub environment in the table above as
-`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. For automation, capture
-`terraform output -json state_credentials` in process memory and pass each value
-to `gh secret set --repo rauland/iac --env <environment> <secret-name>` through
-stdin. Do not print the JSON or put secret values in command-line arguments.
-If exporting to a file is necessary, use the gitignored `.credentials/` directory
-with directory mode `700` and file mode `600`.
+Set the `AWS_ROLE_ARN` variables as described in [Roll out](#roll-out). The
+state holds no secret keys, but keep it administrator-only: anyone who can
+write it can change which workflows the roles trust.
 
 Never put administrator credentials in `.tfvars`, backend arguments, `.bashrc`,
-GitHub secrets or committed files. Once provisioning and secret uploads are
-complete, end the temporary login session:
+GitHub secrets or committed files. Once provisioning is complete, end the
+temporary login session:
 
 ```sh
 aws logout --profile bootstrap-login
@@ -192,7 +170,7 @@ aws logout --profile bootstrap-login
 
 ## State permission boundaries
 
-Plan users can read matching state objects. Apply users can also write those
+Plan roles can read matching state objects. Apply roles can also write those
 objects and manage their `.tflock` files. They cannot delete state objects.
 Dev/prod object access is restricted to `terraform/dev/*.tfstate` or
 `terraform/prod/*.tfstate`; image access is restricted to
@@ -201,8 +179,7 @@ outside the selected state scope, including both administrator access states
 and their historical versions. Bucket listing exposes key metadata only.
 Only the default Terraform workspace is supported by these policies.
 
-Roles and users share these boundaries. Initial states for new roots must be
-bootstrapped by an administrator before a read-only plan role can initialize
+Initial states for new roots must be bootstrapped by an administrator before a read-only plan role can initialize
 them. Never export the administrator's broad AWS credentials to those
 environments.
 

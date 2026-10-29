@@ -20,7 +20,7 @@ for line in result.stdout.splitlines():
     if event.get("type") != "test_plan":
         continue
     for change in event["test_plan"]["resource_changes"]:
-        if change["type"] == "aws_iam_user_policy":
+        if change["type"] == "aws_iam_role_policy":
             policies[change["index"]] = json.loads(change["change"]["after"]["policy"])
 if len(policies) != 6:
     raise SystemExit("Expected exactly six scoped state policies.")

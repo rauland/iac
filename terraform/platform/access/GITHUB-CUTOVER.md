@@ -18,10 +18,9 @@ The existing apply environments require the reviewer (`rauland`) and allow only
 disks.
 The shared repository-level WireGuard secrets are inherited.
 
-All six environments also have their scoped `AWS_ACCESS_KEY_ID` and
-`AWS_SECRET_ACCESS_KEY`. The credential identities, policy boundaries and live
-S3 read isolation were verified before upload. The state-access Terraform plan
-reported no changes.
+All six environments, plus `proxmox-dev-auto-apply`, assume their scoped AWS
+state role through GitHub OIDC using the `AWS_ROLE_ARN` variable. The earlier
+scoped access keys and IAM users have been retired.
 
 The temporary readiness flag and its workflow checks have been removed.
 
@@ -43,17 +42,14 @@ push generates fresh plans using the updated routing.
 ## Scoped AWS state access
 
 Use the [state-access Terraform root](../state-access/README.md#optional-terraform-provisioning)
-with a temporary administrator profile to provision the six scoped AWS users,
-policies and access keys. The existing least-privilege CLI user does not need
-IAM administration permissions. The same README includes an alternative
+with a temporary administrator profile to provision the GitHub OIDC provider
+and six scoped roles, then set each environment's `AWS_ROLE_ARN`; see
+[GitHub OIDC roles](../state-access/README.md#github-oidc-roles). The existing
+least-privilege CLI user does not need IAM administration permissions. The same
+README includes an alternative
 [IAM console checklist](../state-access/README.md#aws-console-setup) and six
 exported policy files; import console-created resources before managing them
 with Terraform.
-
-Workflows now assume scoped IAM roles through GitHub OIDC using each
-environment's `AWS_ROLE_ARN` variable; see
-[GitHub OIDC roles](../state-access/README.md#github-oidc-roles). The access key
-secrets remain only until that rollout is verified.
 Keep administrator/broad state credentials out of the new environments.
 
 Push the prepared workflow and directory changes before testing CI. After
