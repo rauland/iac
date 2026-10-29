@@ -29,12 +29,26 @@ covers its local dependencies and checks.
 
 ## 2. Configure Terraform state
 
-Configure `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in the protected
-`proxmox-rw` GitHub environment used by the bootstrap workflow. These credentials
-need permission to create and configure the state bucket. Then run the
-[S3 Bootstrap workflow](../.github/workflows/bootstrap.yml) with an explicit
-bucket name and region. The Terraform roots use an encrypted S3 backend with
-lock files enabled.
+Create the versioned, encrypted state bucket once, locally, using a temporary
+administrator session (see
+[authenticate with temporary administrator credentials](../terraform/platform/state-access/README.md#authenticate-with-temporary-administrator-credentials)).
+No AWS keys are stored in GitHub for this step:
+
+```sh
+(
+  unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+  export AWS_PROFILE=bootstrap bucket=rauland-iac-homelab region=ap-southeast-2
+  aws s3api create-bucket --bucket "$bucket" --region "$region" \
+    --create-bucket-configuration LocationConstraint="$region" &&
+  aws s3api put-bucket-versioning --bucket "$bucket" \
+    --versioning-configuration Status=Enabled &&
+  aws s3api put-bucket-encryption --bucket "$bucket" \
+    --server-side-encryption-configuration \
+    '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+)
+```
+
+The Terraform roots use an encrypted S3 backend with lock files enabled.
 
 Create the repository variable `TF_CLI_ARGS_init` in GitHub **Settings → Secrets
 and variables → Actions → Variables**:
