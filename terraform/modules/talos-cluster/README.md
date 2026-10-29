@@ -27,7 +27,7 @@ runs. Forks must adapt the example configuration to their own infrastructure.
    network access before that configuration has been applied. For static Talos
    networking, the reserved address and configured IPv4 address must agree.
 3. Ensure the runner can reach every node on Talos API port 50000 and the
-   Kubernetes API on port 6443 through WireGuard. The nodes need the routes and
+   Kubernetes API on port 6443 through Tailscale. The nodes need the routes and
    DNS necessary to reach Image Factory and container registries. Set
    `dns_servers` for static nodes (for example, your LAN resolver). A load-balanced
    `cluster_endpoint` must already exist; the module does not create a load

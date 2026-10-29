@@ -15,7 +15,8 @@ the legacy `proxmox-rw` private key, since removed with that environment. The ac
 The existing apply environments require the reviewer (`rauland`) and allow only
 `main`. Prod planning also requires review because its Proxmox token can change
 disks.
-The shared repository-level WireGuard secrets are inherited.
+Runners reach the private network through Tailscale using GitHub OIDC; the
+repository stores no secrets.
 
 All six environments, plus `proxmox-dev-auto-apply`, assume their scoped AWS
 state role through GitHub OIDC using the `AWS_ROLE_ARN` variable. The earlier
@@ -66,7 +67,7 @@ new workflows complete successfully:
 | --- | --- | --- |
 | `proxmox-ro` environment | The entire environment, including its old AWS/Proxmox secret copies | Nothing, once no workflow references it |
 | `proxmox-rw` environment | The entire environment; the S3 Bootstrap workflow that used its AWS keys was replaced by a local [state bucket setup](../../../docs/setup.md#2-configure-terraform-state) | Nothing |
-| Repository secrets | `GMAIL` appears unused by the checked-in workflows; optional cleanup after confirming no other use | `PEER_IP`, `RUNNER_IP`, `WIREGUARD_ENDPOINT`, `WIREGUARD_PEER_PUBLIC_KEY`, `WIREGUARD_PRIVATE_KEY` |
+| Repository secrets | `GMAIL` appears unused by the checked-in workflows; optional cleanup after confirming no other use | Nothing; Tailscale replaced the WireGuard secrets, and its `TS_OAUTH_CLIENT_ID` / `TS_AUDIENCE` are variables |
 | Repository variables | No deletion needed | `TF_CLI_ARGS_INIT`, `TF_PLAN_PUBLIC_KEY` |
 
 Keep the new environment secrets and their `AWS_DEFAULT_REGION` variables.
