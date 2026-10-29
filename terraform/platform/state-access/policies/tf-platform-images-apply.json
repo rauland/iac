@@ -55,6 +55,25 @@
         "arn:aws:s3:::rauland-iac-homelab/terraform/platform/images.tfstate.tflock"
       ],
       "Sid": "ManageOwnLocks"
+    },
+    {
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/proxmox",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/proxmox/*",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/wireguard",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/wireguard/*",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/platform/apply",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/platform/apply/*",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/apply",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/apply/*"
+      ],
+      "Sid": "ReadOwnParameters"
     }
   ],
   "Version": "2012-10-17"
