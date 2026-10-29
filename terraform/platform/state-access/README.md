@@ -27,22 +27,39 @@ The plan, deploy and state-unlock jobs request `id-token: write` and call
 
 ### CI parameters
 
-Each role may also read SSM Parameter Store values under `/iac`, so CI secrets
-can live in one place instead of being copied into every GitHub environment.
-Parameters are `SecureString`s encrypted with the AWS-managed `aws/ssm` key.
-Roles can only read, and only these prefixes:
+CI reads its Proxmox, Cloudflare, Ansible and saved-plan secrets from SSM
+Parameter Store instead of GitHub environment secrets. Each parameter's last
+path segment is the environment variable it becomes. The plan and deploy jobs
+run [load-parameters.py](../../../.github/scripts/load-parameters.py) right after
+assuming their role; it masks every line of each `SecureString` before
+exporting it, and refuses secrets shorter than eight characters, which cannot
+be masked reliably. Roles can only read, and only these prefixes:
 
-| Prefix | Holds | Readable by |
+| Parameter | Type | Readable by |
 | --- | --- | --- |
-| `/iac/shared/proxmox/` | Proxmox URL and API endpoint | All roles |
-| `/iac/shared/wireguard/` | WireGuard runner configuration | All roles |
-| `/iac/shared/apply/` | Cloudflare token, saved-plan private key | Apply roles |
-| `/iac/<scope>/plan/` | Scope's Proxmox plan token | That scope's plan role |
-| `/iac/<scope>/apply/` | Scope's Proxmox apply token | That scope's apply role |
-| `/iac/<scope>/ansible/` | Scope's Ansible inventory token and SSH key | Dev and prod apply roles |
+| `/iac/shared/proxmox/PROXMOX_URL`, `.../TF_VAR_virtual_environment_endpoint` | SecureString | All roles |
+| `/iac/shared/apply/CLOUDFLARE_API_TOKEN`, `.../TF_PLAN_PRIVATE_KEY` | SecureString | Apply roles |
+| `/iac/<scope>/plan/TF_VAR_virtual_environment_api_token` | SecureString | That scope's plan role |
+| `/iac/<scope>/apply/TF_VAR_virtual_environment_api_token` | SecureString | That scope's apply role |
+| `/iac/<scope>/ansible/PROXMOX_TOKEN_SECRET_ANSIBLE`, `.../SSH_PRIVATE_KEY_ANSIBLE` | SecureString | Dev and prod apply roles |
+| `/iac/<scope>/ansible/PROXMOX_USER_ANSIBLE`, `.../PROXMOX_TOKEN_ID_ANSIBLE` | String | Dev and prod apply roles |
 
 `<scope>` is `dev`, `prod` or `platform`. No role can read another scope's
-values, and plan roles cannot read apply values.
+values, and plan roles cannot read apply values. Roles may also read
+`/iac/shared/wireguard/`, reserved for the WireGuard settings that are still
+repository secrets. `String` parameters hold non-secret identifiers and are
+not masked.
+
+To set or rotate a value, use the `admin` profile and keep the value out of
+command-line arguments, for example by passing a request file:
+
+```sh
+umask 077; printf '%s' '{"Name":"/iac/dev/apply/TF_VAR_virtual_environment_api_token","Type":"SecureString","Overwrite":true,"Value":"..."}' > request.json
+aws ssm put-parameter --profile admin --cli-input-json file://request.json && rm request.json
+```
+
+Write the JSON with an editor or a script rather than typing the value into the
+shell, so it stays out of shell history.
 
 ### Roll out
 

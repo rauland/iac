@@ -107,8 +107,9 @@ repository does not change tags on running VMs by itself.
 
 The inventory reads Proxmox credentials from `PROXMOX_URL`, `PROXMOX_USER`,
 `PROXMOX_TOKEN_ID`, and `PROXMOX_TOKEN_SECRET`. The Vault role also needs
-`CLOUDFLARE_API_TOKEN`; both deployment workflows pass it from GitHub environment
-secrets. SSH and sudo access as `ansible` must already be available on guests.
+`CLOUDFLARE_API_TOKEN`. In CI these come from SSM parameters loaded at the start
+of each deploy job (see
+[CI parameters](../terraform/platform/state-access/README.md#ci-parameters)). SSH and sudo access as `ansible` must already be available on guests.
 
 Inventory uses the pinned `community.proxmox` version in `requirements.yml`.
 Install it from the repository root to override a different version bundled

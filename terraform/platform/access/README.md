@@ -118,14 +118,14 @@ The [platform/images root](../images/README.md) uses platform image credentials
 and state key `terraform/platform/images.tfstate`: its output is shared by dev
 workloads too.
 
-In each environment, set `TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN` to the matching
-full token, and `TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT` / `PROXMOX_URL` to the API
-URL. In dev/prod apply environments, set `PROXMOX_USER_ANSIBLE`,
-`PROXMOX_TOKEN_ID_ANSIBLE` and `PROXMOX_TOKEN_SECRET_ANSIBLE` from the inventory
-identity. Retain the existing WireGuard secrets, AWS credentials/region, and
-backend init settings. Apply environments also need `TF_PLAN_PRIVATE_KEY`;
-dev/prod apply environments need their distinct Ansible SSH private keys and
-the Cloudflare secret. See [SSH access and rotation](../../../ssh/README.md).
+Store each identity's full token as the matching
+`/iac/<scope>/<plan|apply>/TF_VAR_virtual_environment_api_token` SSM parameter,
+and the inventory identity's `user_id`, `token_name` and `secret` as
+`/iac/<scope>/ansible/PROXMOX_USER_ANSIBLE`, `PROXMOX_TOKEN_ID_ANSIBLE` and
+`PROXMOX_TOKEN_SECRET_ANSIBLE`. The full layout, including the API URL, saved
+plan key, Ansible SSH keys and Cloudflare token, is in
+[CI parameters](../state-access/README.md#ci-parameters). WireGuard settings
+remain repository secrets. See [SSH access and rotation](../../../ssh/README.md).
 Keep the public plan encryption key in the repository variable.
 
 Allow deployment only from `main` for all apply environments. Dev Terraform

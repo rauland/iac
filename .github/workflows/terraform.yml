@@ -194,9 +194,6 @@ jobs:
     env: &terraform-env
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
       TF_CLI_ARGS_init: ${{ vars.TF_CLI_ARGS_init }}
-      PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
-      TF_VAR_virtual_environment_endpoint: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT }}
-      TF_VAR_virtual_environment_api_token: ${{ secrets.TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Assume scoped AWS state role
@@ -204,6 +201,11 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+      # Masks each secret before exporting it; see .github/scripts/load-parameters.py.
+      - name: Load CI parameters
+        env:
+          SCOPE: ${{ matrix.environment }}
+        run: python3 .github/scripts/load-parameters.py /iac/shared/proxmox "/iac/$SCOPE/plan"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -337,6 +339,14 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+      # Masks each secret before exporting it; see .github/scripts/load-parameters.py.
+      - name: Load CI parameters
+        env:
+          SCOPE: ${{ matrix.environment }}
+        run: |
+          paths=(/iac/shared/proxmox /iac/shared/apply "/iac/$SCOPE/apply")
+          if [ "$SCOPE" != platform ]; then paths+=("/iac/$SCOPE/ansible"); fi
+          python3 .github/scripts/load-parameters.py "${paths[@]}"
       - uses: actions/setup-python@v5
         if: matrix.terraform
         with:
@@ -353,7 +363,6 @@ jobs:
       - name: Decrypt saved plan
         if: matrix.terraform
         env:
-          TF_PLAN_PRIVATE_KEY: ${{ secrets.TF_PLAN_PRIVATE_KEY }}
           TARGET_DIRECTORY: ${{ matrix.directory }}
         run: bash .github/scripts/terraform-plan-artifact.sh decrypt "$TARGET_DIRECTORY" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
       - uses: hashicorp/setup-terraform@v3
@@ -384,13 +393,11 @@ jobs:
         if: matrix.ansible
         uses: ./.github/actions/ansible
         env:
-          PROXMOX_USER: ${{ secrets.PROXMOX_USER_ANSIBLE }}
-          PROXMOX_TOKEN_ID: ${{ secrets.PROXMOX_TOKEN_ID_ANSIBLE }}
-          PROXMOX_TOKEN_SECRET: ${{ secrets.PROXMOX_TOKEN_SECRET_ANSIBLE }}
-          PROXMOX_URL: ${{ secrets.PROXMOX_URL }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PROXMOX_USER: ${{ env.PROXMOX_USER_ANSIBLE }}
+          PROXMOX_TOKEN_ID: ${{ env.PROXMOX_TOKEN_ID_ANSIBLE }}
+          PROXMOX_TOKEN_SECRET: ${{ env.PROXMOX_TOKEN_SECRET_ANSIBLE }}
         with:
           working-directory: ansible
-          SSH_PRIVATE_KEY_ANSIBLE: ${{ secrets.SSH_PRIVATE_KEY_ANSIBLE }}
+          SSH_PRIVATE_KEY_ANSIBLE: ${{ env.SSH_PRIVATE_KEY_ANSIBLE }}
           target: ${{ matrix.target }}
           environment: ${{ matrix.environment }}

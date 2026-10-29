@@ -147,7 +147,7 @@ normal plans. Terraform deployment jobs use version `1.15.8`.
 ## Concurrency and networking
 
 The [WireGuard action](../.github/actions/wireguard/action.yml) uses one shared
-runner profile through its environment secrets. Its private route is
+runner profile through repository secrets. Its private route is
 `10.0.0.0/24`. Plan and deployment jobs share the `iac-private-network`
 concurrency group and use `cancel-in-progress: false`, preventing overlapping
 use of the shared peer or concurrent deployments. Matrices also use
