@@ -44,7 +44,7 @@ Use the [state-access Terraform root](../state-access/README.md#optional-terrafo
 with a temporary administrator profile to provision the GitHub OIDC provider
 and six scoped roles, then set each environment's `AWS_ROLE_ARN`; see
 [GitHub OIDC roles](../state-access/README.md#github-oidc-roles). The existing
-least-privilege CLI user does not need IAM administration permissions. The same
+day-to-day `TerraformState` session does not need IAM administration permissions. The same
 README includes an alternative
 [IAM console checklist](../state-access/README.md#aws-console-setup) and six
 exported policy files; import console-created resources before managing them
@@ -72,5 +72,6 @@ new workflows complete successfully:
 Keep the new environment secrets and their `AWS_DEFAULT_REGION` variables.
 Deleting GitHub secret copies does not revoke AWS or Proxmox credentials.
 Retire old Proxmox CI tokens only after checking that no other automation uses
-them. Keep the local `terraform@pve` administrator and the existing AWS CLI key
-needed for platform administration until separately replaced.
+them. Keep the local `terraform@pve` administrator until separately replaced. The
+account has no IAM users or access keys; people use IAM Identity Center sessions
+and CI uses OIDC roles.

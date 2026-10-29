@@ -93,8 +93,9 @@ require applying this root.
 ### Authenticate with temporary administrator credentials
 
 Use a short-lived IAM Identity Center session with the `AdministratorAccess`
-permission set (one-hour sessions, MFA at sign-in). Keep the existing
-least-privilege CLI user's permissions unchanged, and do not use the root user.
+permission set (one-hour sessions, MFA at sign-in). Do not use the root user.
+Day-to-day local Terraform uses a separate `TerraformState` permission set that
+can only read and write objects in the state bucket.
 Add the session and profile to `~/.aws/config` once:
 
 ```ini
