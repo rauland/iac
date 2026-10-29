@@ -50,8 +50,10 @@ IAM administration permissions. The same README includes an alternative
 exported policy files; import console-created resources before managing them
 with Terraform.
 
-Upload each key pair directly to the matching GitHub environment as
-`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+Workflows now assume scoped IAM roles through GitHub OIDC using each
+environment's `AWS_ROLE_ARN` variable; see
+[GitHub OIDC roles](../state-access/README.md#github-oidc-roles). The access key
+secrets remain only until that rollout is verified.
 Keep administrator/broad state credentials out of the new environments.
 
 Push the prepared workflow and directory changes before testing CI. After

@@ -6,6 +6,11 @@ locals {
         scope     = scope
         operation = operation
         state_key = scope == "platform" ? "terraform/platform/images.tfstate" : "terraform/${scope}/*.tfstate"
+        # GitHub environments whose OIDC tokens may assume this identity's role.
+        github_environments = concat(
+          ["proxmox-${scope}-${operation}"],
+          scope == "dev" && operation == "apply" ? ["proxmox-dev-auto-apply"] : [],
+        )
       }
     }
   ]...)
@@ -54,6 +59,47 @@ locals {
       ])
     }
   }
+
+  trust_policies = {
+    for name, identity in local.identities : name => {
+      Version = "2012-10-17"
+      Statement = [{
+        Sid       = "GitHubEnvironmentOIDC"
+        Effect    = "Allow"
+        Action    = "sts:AssumeRoleWithWebIdentity"
+        Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+            "token.actions.githubusercontent.com:sub" = [
+              for environment in identity.github_environments :
+              "repo:${var.github_repository}:environment:${environment}"
+            ]
+          }
+        }
+      }]
+    }
+  }
+}
+
+resource "aws_iam_openid_connect_provider" "github" {
+  url            = "https://token.actions.githubusercontent.com"
+  client_id_list = ["sts.amazonaws.com"]
+}
+
+resource "aws_iam_role" "state" {
+  for_each             = local.identities
+  name                 = "iac-${each.key}"
+  path                 = "/"
+  max_session_duration = 3600
+  assume_role_policy   = jsonencode(local.trust_policies[each.key])
+}
+
+resource "aws_iam_role_policy" "state" {
+  for_each = local.identities
+  name     = "terraform-state"
+  role     = aws_iam_role.state[each.key].name
+  policy   = jsonencode(local.policies[each.key])
 }
 
 resource "aws_iam_user" "state" {
