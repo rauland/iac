@@ -47,9 +47,6 @@ The plan, deploy and state-unlock jobs request `id-token: write` and call
 3. Run a plan, for example a manual `infrastructure` run for dev sandbox, and
    confirm the "Assume scoped AWS state role" step succeeds.
 
-The S3 Bootstrap workflow still uses access keys in `proxmox-rw`; those are
-separate from these roles.
-
 ## AWS console setup
 
 To create the roles in the IAM console instead of applying this root:

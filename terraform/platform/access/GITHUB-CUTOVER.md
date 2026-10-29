@@ -10,8 +10,7 @@ environments use distinct Ansible SSH keys, matching their public keys under
 [SSH cutover procedure](../../../ssh/README.md#rotation) when rotating keys.
 All apply environments have the replacement
 `TF_PLAN_PRIVATE_KEY`. The repository's `TF_PLAN_PUBLIC_KEY` was updated, as was
-the legacy `proxmox-rw` private key so existing main-branch workflows remain
-compatible. The actual saved-plan encryption scripts passed a round-trip test.
+the legacy `proxmox-rw` private key, since removed with that environment. The actual saved-plan encryption scripts passed a round-trip test.
 
 The existing apply environments require the reviewer (`rauland`) and allow only
 `main`. Prod planning also requires review because its Proxmox token can change
@@ -66,7 +65,7 @@ new workflows complete successfully:
 | Location | Delete | Keep |
 | --- | --- | --- |
 | `proxmox-ro` environment | The entire environment, including its old AWS/Proxmox secret copies | Nothing, once no workflow references it |
-| `proxmox-rw` environment | `PROXMOX_USER`, `PROXMOX_TOKEN_ID`, `PROXMOX_TOKEN_SECRET`, `PROXMOX_URL`, `TF_VAR_VIRTUAL_ENVIRONMENT_ENDPOINT`, `TF_VAR_VIRTUAL_ENVIRONMENT_API_TOKEN`, `PROXMOX_USER_ANSIBLE`, `PROXMOX_TOKEN_ID_ANSIBLE`, `PROXMOX_TOKEN_SECRET_ANSIBLE`, `SSH_PRIVATE_KEY_ANSIBLE`, `CLOUDFLARE_API_TOKEN`, `TF_PLAN_PRIVATE_KEY` | `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are still used by the S3 Bootstrap workflow; retain the environment/reviewer protection |
+| `proxmox-rw` environment | The entire environment; the S3 Bootstrap workflow that used its AWS keys was replaced by a local [state bucket setup](../../../docs/setup.md#2-configure-terraform-state) | Nothing |
 | Repository secrets | `GMAIL` appears unused by the checked-in workflows; optional cleanup after confirming no other use | `PEER_IP`, `RUNNER_IP`, `WIREGUARD_ENDPOINT`, `WIREGUARD_PEER_PUBLIC_KEY`, `WIREGUARD_PRIVATE_KEY` |
 | Repository variables | No deletion needed | `TF_CLI_ARGS_INIT`, `TF_PLAN_PUBLIC_KEY` |
 
@@ -74,4 +73,4 @@ Keep the new environment secrets and their `AWS_DEFAULT_REGION` variables.
 Deleting GitHub secret copies does not revoke AWS or Proxmox credentials.
 Retire old Proxmox CI tokens only after checking that no other automation uses
 them. Keep the local `terraform@pve` administrator and the existing AWS CLI key
-needed for platform administration/S3 bootstrap until separately replaced.
+needed for platform administration until separately replaced.
