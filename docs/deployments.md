@@ -72,12 +72,6 @@ PRs, passing checks, and resolving review conversations are still required.
 This is separate from the mandatory production deployment review. If a team
 joins the repository, increase the approving PR review count in the ruleset.
 
-The optional [agent merge-authority ruleset](../.github/policies/main-merge-authority.json)
-adds a separate restriction so only administrators can update the default branch
-through PRs. Keep the existing PR/CI ruleset active alongside it. See
-[GitHub App setup](../dev/github.md) for a separate agent identity that can publish
-topic branches and PRs without merging into the default branch.
-
 ## Approval and saved plans
 
 The [Proxmox access root](../terraform/platform/access/README.md) documents scoped

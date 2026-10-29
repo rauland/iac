@@ -22,7 +22,7 @@ still planned.
 | Add or change a VM workload | [Sandbox example](docs/deployments.md#example-vm), [VM module](terraform/modules/virtual-machine/README.md), and [Ansible targets](ansible/README.md) |
 | Deploy or maintain Kubernetes | [Talos cluster guide](terraform/modules/talos-cluster/README.md) |
 | Bootstrap a fork or a new platform | [Setup checklist](#setup) |
-| Develop and run checks locally | [Local checks](#local-checks) and [agent-host setup](dev/README.md) |
+| Develop and run checks locally | [Local checks](#local-checks) |
 | Recover a failed deployment | [Saved plans and recovery](docs/deployments.md#approval-and-saved-plans) |
 
 ## Architecture
@@ -77,7 +77,6 @@ for the trust checks and guest-agent requirements.
 | [terraform/modules](terraform/modules) | Reusable cloud-image, virtual-machine, and talos-cluster modules |
 | [ansible](ansible/README.md) | Dynamic Proxmox inventory, playbooks, and roles |
 | [ssh](ssh/README.md) | Environment-specific public keys, verified host keys, and SSH rotation |
-| [dev](dev/README.md) | Fresh Ubuntu agent-host bootstrap and disposable Codex containers for SSH development |
 | [docs](docs) | Platform setup, deployment policies, and recovery procedures |
 | [.github/workflows](.github/workflows) | Infrastructure/configuration, S3 bootstrap, and state unlock workflows |
 | [.github/actions](.github/actions) | Shared WireGuard, SSH, and Ansible actions |

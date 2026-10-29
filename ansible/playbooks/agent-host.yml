@@ -1,6 +1,0 @@
----
-- name: Bootstrap an Ubuntu agent development host
-  hosts: all
-  become: true
-  roles:
-    - agent_host
