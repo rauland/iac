@@ -6,13 +6,13 @@ runs:
   steps:
     # Authenticates with the job's GitHub OIDC token (workload identity
     # federation), so no Tailscale secret is stored. The node is removed when
-    # the job ends.
+    # the job ends. The action already runs `tailscale up --accept-routes`, so
+    # passing it again in args makes tailscale up fail.
     - uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
       with:
         oauth-client-id: ${{ inputs.oauth-client-id }}
         audience: ${{ inputs.audience }}
         tags: tag:ci
-        args: --accept-routes
     - name: Wait for the Proxmox API through the subnet router
       shell: bash
       run: |
