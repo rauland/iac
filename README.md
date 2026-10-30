@@ -178,7 +178,7 @@ protections or the health of deployed services.
 | Secrets management | Implemented | CI reads its secrets from SSM Parameter Store through those roles and masks them before use; the workflows reference no GitHub secrets. Saved plans are encrypted and Talos credentials are ignored. Kubernetes Secrets are committed SOPS-encrypted and decrypted by Flux with an age key only the dev apply role can read. |
 | Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
 | Linting and validation | Partial | Ansible linting, Terraform validation, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
-| Kubernetes GitOps | Partial | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/dev` from `main`; CI builds the manifests offline. Secrets are SOPS-encrypted. Only the podinfo demo, which reads an encrypted Secret, runs so far. |
+| Kubernetes GitOps | Partial | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/dev` from `main`; CI builds the manifests offline. Secrets are SOPS-encrypted. MetalLB and Traefik expose Services on the LAN. Only the podinfo demo runs so far; persistent storage and TLS certificates are not configured. |
 | Workload backups | Planned | No workload backup or restore process is configured. S3 stores Terraform state only. |
 | IP address management | Planned | Addresses are supplied explicitly or through DHCP; no IPAM integration allocates addresses or manages reservations. |
 | SSH certificates | Not planned | VM access uses per-environment SSH keys, cloud-init and verified host pins. One CI identity per environment does not justify running an SSH CA. |

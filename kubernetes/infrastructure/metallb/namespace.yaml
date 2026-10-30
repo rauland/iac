@@ -1,0 +1,8 @@
+# The speaker uses host networking and raw sockets to answer ARP, which the
+# baseline Pod Security standard Talos enforces would reject.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: metallb-system
+  labels:
+    pod-security.kubernetes.io/enforce: privileged

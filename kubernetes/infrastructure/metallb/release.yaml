@@ -1,0 +1,31 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: metallb
+  namespace: metallb-system
+spec:
+  url: https://metallb.github.io/metallb
+  interval: 24h
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: metallb
+  namespace: metallb-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: metallb
+      version: 0.16.1
+      sourceRef:
+        kind: HelmRepository
+        name: metallb
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+  values:
+    # The bundled frr-k8s backend is only used for BGP.
+    frrk8s:
+      enabled: false

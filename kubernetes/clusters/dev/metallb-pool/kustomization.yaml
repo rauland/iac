@@ -1,0 +1,6 @@
+# Applied by the metallb-pool Flux Kustomization after MetalLB installs its
+# CRDs; the root kustomization does not list it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - pool.yaml

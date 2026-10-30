@@ -1,0 +1,55 @@
+# Separate Flux Kustomizations so each step waits for the one before it:
+# MetalLB's CRDs exist before the pool, and the pool before Traefik asks it
+# for an address.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: metallb
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./kubernetes/infrastructure/metallb
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: metallb-pool
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: metallb
+  interval: 10m
+  retryInterval: 1m
+  path: ./kubernetes/clusters/dev/metallb-pool
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: traefik
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: metallb-pool
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./kubernetes/infrastructure/traefik
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substitute:
+      ingress_ip: 10.0.0.60

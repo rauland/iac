@@ -139,12 +139,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reject unencrypted Secrets
         run: python3 .github/scripts/check-kubernetes-secrets.py kubernetes
-      - name: Build every cluster directory Flux reconciles
+      - name: Build every kustomization Flux reconciles
         run: |
-          for directory in kubernetes/clusters/*/; do
-            echo "Building $directory"
-            kubectl kustomize "$directory" > /dev/null
-          done
+          find kubernetes -name kustomization.yaml -printf '%h\n' | sort |
+            while read -r directory; do
+              echo "Building $directory"
+              kubectl kustomize "$directory" > /dev/null
+            done
 
   terraform_validate:
     name: Terraform format and validation
