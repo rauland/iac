@@ -154,6 +154,17 @@ class DeploymentTargetTests(unittest.TestCase):
         targets = self.change("ansible/playbooks/common.yml")
         self.assertNotIn(("dev", "sandbox"), targets)
 
+    def test_flux_root_plans_without_ansible_and_manifests_never_deploy(self):
+        self.write("terraform/workloads/dev/flux/main.tf", "# root\n")
+        self.base = self.commit()
+        self.assertNotIn(("dev", "flux"), self.change("ansible/playbooks/common.yml"))
+        self.base = self.git("rev-parse", "HEAD")
+        # Flux pulls these from Git itself; CI never applies them.
+        self.assertEqual(self.change("kubernetes/clusters/dev/kustomization.yaml"), {})
+        self.base = self.git("rev-parse", "HEAD")
+        self.assertEqual(self.change("terraform/workloads/dev/flux/main.tf"),
+                         {("dev", "flux"): (True, False)})
+
     def test_privileged_platform_roots_do_not_deploy(self):
         self.assertEqual(self.change("terraform/platform/access/main.tf",
                                      "terraform/platform/state-access/main.tf"), {})

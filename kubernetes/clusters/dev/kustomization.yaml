@@ -1,0 +1,5 @@
+# Flux reconciles this directory on the dev cluster from main.
+# Add manifests or nested kustomizations under resources.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: []

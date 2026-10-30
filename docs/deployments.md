@@ -28,7 +28,7 @@ infrastructure secrets and reports even for documentation-only pull requests.
 | Documentation, tests, lint policy, or pipeline implementation only | Run CI; no deployment. |
 
 Shared baseline roles select enabled VM targets. Service-specific files select
-only their own target. Images and Talos never run Ansible. Any actual infrastructure
+only their own target. Images, Talos and Flux never run Ansible. Any actual infrastructure
 change to a VM target also runs Ansible after the saved plan is successfully
 applied. A no-op Terraform plan does not suppress separately requested Ansible
 work. Removed roots are never destroyed automatically: destroy them explicitly

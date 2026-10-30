@@ -21,7 +21,7 @@ def enabled_roots():
          for path in candidates
          if path.is_dir() and any(path.glob("*.tf"))
          and ((path.parent.name in {"dev", "prod"}
-               and path.name in VM_TARGETS | {"talos"})
+               and path.name in VM_TARGETS | {"talos", "flux"})
               or path.as_posix() == "terraform/platform/images")
          and not (path / ".disabled").exists()),
         key=lambda root: (root["environment"], root["target"]),

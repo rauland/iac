@@ -35,3 +35,9 @@ output "upgrade_inventory" {
     workers         = [for key in sort(keys(var.talos_nodes)) : var.talos_nodes[key].api_address if var.talos_nodes[key].node_type == "worker"]
   }
 }
+
+output "kubernetes_client_configuration" {
+  description = "Kubernetes API host and base64-encoded administrator certificates, for providers in other roots."
+  value       = talos_cluster_kubeconfig.this.kubernetes_client_configuration
+  sensitive   = true
+}

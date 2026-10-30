@@ -57,7 +57,7 @@ def prepare(targets, result_directory, context):
         seen.add(key)
         if ((environment == "platform" and name != "images")
                 or (environment in {"dev", "prod"}
-                    and name not in VM_TARGETS | {"common", "talos"})
+                    and name not in VM_TARGETS | {"common", "talos", "flux"})
                 or environment not in {"dev", "prod", "platform"}):
             raise ValueError("Invalid deployment target")
         for flag in ("terraform", "ansible", "destroy"):
