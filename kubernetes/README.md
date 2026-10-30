@@ -8,6 +8,7 @@ pulls `main` itself, about once a minute.
 | Path | Reconciled by |
 | --- | --- |
 | [clusters/dev](clusters/dev/kustomization.yaml) | Flux on the dev Talos cluster |
+| [clusters/dev/podinfo](clusters/dev/podinfo) | Demo app whose UI message is a SOPS-encrypted Secret |
 
 ## How Flux is installed
 
@@ -62,7 +63,13 @@ place before committing. [`.sops.yaml`](../.sops.yaml) supplies the recipient:
 sops --encrypt --in-place kubernetes/clusters/dev/my-app/credentials.sops.yaml
 ```
 
-Add it to `resources` like any other manifest. To change a value, edit it with
+Add it to `resources` like any other manifest;
+[podinfo](clusters/dev/podinfo) is a working example. Its message proves
+decryption end to end:
+
+```sh
+kubectl get --raw /api/v1/namespaces/podinfo/services/podinfo:9898/proxy/ | jq -r .message
+``` To change a value, edit it with
 `sops kubernetes/clusters/dev/my-app/credentials.sops.yaml`, which needs the
 private key (`SOPS_AGE_KEY_FILE`); without it, write a new file and encrypt it
 again. CI fails a pull request with a plain `kind: Secret` file or an

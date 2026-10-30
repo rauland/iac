@@ -1,0 +1,10 @@
+# Demo workload that proves SOPS decryption end to end: the UI message comes
+# from an encrypted Secret. Remove it once a real workload covers the same path.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: podinfo
+resources:
+  - namespace.yaml
+  - message.sops.yaml
+  - deployment.yaml
+  - service.yaml
