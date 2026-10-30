@@ -77,6 +77,10 @@ Terraform and State Unlock use this variable during initialization and supply
 the state key separately as `terraform/<environment>/<target>.tfstate`. Use the
 same bucket and region you selected during bootstrap.
 
+Also create the repository variable `TF_STATE_BUCKET` holding just the bucket
+name. The [Flux root](../kubernetes/README.md) uses it to read the Talos root's
+state for the cluster's API credentials. Locally, export it as `TF_VAR_state_bucket`.
+
 For local use, authenticate to AWS and export the variable:
 
 ```sh

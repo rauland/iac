@@ -28,7 +28,7 @@ on:
       target:
         description: Target (ignored when scope is all)
         type: choice
-        options: [common, sandbox, talos, images]
+        options: [common, sandbox, talos, flux, images]
         default: sandbox
         required: true
 
@@ -132,6 +132,18 @@ jobs:
           python3 terraform/modules/talos-cluster/scripts/test_upgrade_node.py
           python3 terraform/modules/talos-cluster/scripts/test_rolling_upgrade.py
 
+  kubernetes_checks:
+    name: Kubernetes manifest build (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build every cluster directory Flux reconciles
+        run: |
+          for directory in kubernetes/clusters/*/; do
+            echo "Building $directory"
+            kubectl kustomize "$directory" > /dev/null
+          done
+
   terraform_validate:
     name: Terraform format and validation
     needs: discover
@@ -155,7 +167,7 @@ jobs:
   ci:
     name: CI
     if: always()
-    needs: [discover, ansible_lint, access_checks, talos_checks, terraform_validate]
+    needs: [discover, ansible_lint, access_checks, talos_checks, kubernetes_checks, terraform_validate]
     runs-on: ubuntu-latest
     steps:
       - name: Require every validation job to succeed
@@ -197,6 +209,8 @@ jobs:
     env: &terraform-env
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
       TF_CLI_ARGS_init: ${{ vars.TF_CLI_ARGS_init }}
+      # Lets the flux root read the talos root's state.
+      TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
     steps:
       - uses: actions/checkout@v4
       - name: Assume scoped AWS state role

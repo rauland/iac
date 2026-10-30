@@ -64,8 +64,9 @@ class PrepareDeploymentTests(unittest.TestCase):
         self.assertTrue(deploy["terraform"])
         self.assertTrue(deploy["ansible"])
 
-    def test_talos_and_images_never_run_ansible(self):
-        for target in (self.target(name="talos"), self.target(environment="platform", name="images")):
+    def test_cluster_roots_and_images_never_run_ansible(self):
+        for target in (self.target(name="talos"), self.target(name="flux"),
+                       self.target(environment="platform", name="images")):
             self.result(target)
             self.assertFalse(self.prepare(target)[0]["ansible"])
 

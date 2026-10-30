@@ -27,6 +27,12 @@ output "talosconfig" {
   sensitive = true
 }
 
+# Read by the flux root through terraform_remote_state.
+output "kubernetes_client_configuration" {
+  value     = module.talos_cluster.kubernetes_client_configuration
+  sensitive = true
+}
+
 output "kubeconfig" {
   value     = module.talos_cluster.kubeconfig
   sensitive = true

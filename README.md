@@ -76,6 +76,7 @@ for the trust checks and guest-agent requirements.
 | [terraform/workloads](terraform/workloads) | Environment workload roots, each with its own state |
 | [terraform/platform](terraform/platform) | Shared images and administrator-operated Proxmox/AWS access configuration, with separate states |
 | [terraform/modules](terraform/modules) | Reusable cloud-image, virtual-machine, and talos-cluster modules |
+| [kubernetes](kubernetes/README.md) | Cluster manifests that Flux reconciles from `main` |
 | [ansible](ansible/README.md) | Dynamic Proxmox inventory, playbooks, and roles |
 | [ssh](ssh/README.md) | Environment-specific public keys, verified host keys, and SSH rotation |
 | [docs](docs) | Platform setup, deployment policies, and recovery procedures |
@@ -87,7 +88,8 @@ Enabled deployment roots are `dev/sandbox`, `dev/talos`, and
 administrator-operated and excluded from deployment discovery, as is
 [`platform/state-access`](terraform/platform/state-access/README.md) for CI AWS
 state credentials.
-Talos is included in automatic discovery and manual deployments. See the
+Talos is included in automatic discovery and manual deployments. The
+`dev/flux` root installs Flux on that cluster; see [Kubernetes GitOps](kubernetes/README.md). See the
 [Talos module guide](terraform/modules/talos-cluster/README.md) for networking,
 deployment, and cluster lifecycle procedures.
 
@@ -121,7 +123,7 @@ its configuration.
 For a manual run from `main`, choose an environment, scope and target, then use
 `auto` to reconcile infrastructure and configuration, `infrastructure` for
 Terraform, `configuration` for Ansible, or `destroy` for explicit teardown.
-Images and Talos never run Ansible.
+Images, Talos and Flux never run Ansible.
 
 See [deployments and operations](docs/deployments.md) for full selection rules,
 manual modes, branch protection, approval policies, saved plans, concurrency,
@@ -175,7 +177,7 @@ protections or the health of deployed services.
 | Secrets management | Implemented | CI reads its secrets from SSM Parameter Store through those roles and masks them before use; the workflows reference no GitHub secrets. Saved plans are encrypted and Talos credentials are ignored. Workload secret delivery inside the cluster is not configured. |
 | Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
 | Linting and validation | Partial | Ansible linting, Terraform validation, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
-| Kubernetes GitOps | Planned | No Flux or Argo CD bootstrap or workload reconciliation is configured. |
+| Kubernetes GitOps | Partial | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/dev` from `main`; CI builds the manifests offline. The `dev/flux` root starts disabled until the Talos root exports its API credentials. No workloads or SOPS secret decryption are configured yet. |
 | Workload backups | Planned | No workload backup or restore process is configured. S3 stores Terraform state only. |
 | IP address management | Planned | Addresses are supplied explicitly or through DHCP; no IPAM integration allocates addresses or manages reservations. |
 | SSH certificates | Not planned | VM access uses per-environment SSH keys, cloud-init and verified host pins. One CI identity per environment does not justify running an SSH CA. |
