@@ -29,17 +29,10 @@ Upgrade Flux by changing `flux_operator_version` or `flux_version` in
 [`terraform.auto.tfvars`](../terraform/workloads/dev/flux/terraform.auto.tfvars)
 through a reviewed pull request.
 
-## First deployment
+## Checking the sync
 
-The `dev/flux` root ships with a `.disabled` marker, because it needs an output
-that the Talos root only exports after its next deployment.
-
-1. Create the `TF_STATE_BUCKET` repository variable.
-2. Deploy `dev/talos` from `main`, so its state has `kubernetes_client_configuration`.
-3. Remove `terraform/workloads/dev/flux/.disabled` in a pull request. Merging it
-   plans and, after approval, applies the Flux install.
-4. Check the sync: `kubectl -n flux-system get fluxinstance flux` should report
-   `Ready`, and `flux get kustomizations` lists `flux-system` as applied.
+`kubectl -n flux-system get fluxinstance flux` should report `Ready`, and
+`flux get kustomizations` lists `flux-system` as applied.
 
 Apply the Talos root before the Flux root on a rebuilt cluster. Both plan in
 parallel when one push changes both, so the Flux plan can only see the cluster
