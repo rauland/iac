@@ -17,6 +17,11 @@ module "talos_cluster" {
   dns_servers        = var.dns_servers
 }
 
+output "upgrade_inventory" {
+  description = "Read by .github/workflows/talos-upgrade.yml."
+  value       = module.talos_cluster.upgrade_inventory
+}
+
 output "talosconfig" {
   value     = module.talos_cluster.talosconfig
   sensitive = true

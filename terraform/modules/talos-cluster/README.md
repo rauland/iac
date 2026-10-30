@@ -148,14 +148,45 @@ its version input is ignored after creation.
 Changing `talos_version` updates boot media and generated installation settings;
 it **does not upgrade the OS already running on existing nodes**. Never recreate
 VM disks to perform an OS upgrade. Follow the supported sequential Talos release
-path, back up etcd, and prepare an Image Factory installer with the required
-extensions. Use a `talosctl` version appropriate for the running cluster.
+path, back up etcd, and use an Image Factory installer with the required
+extensions. Use a `talosctl` version appropriate for the running cluster. An
+upgrade keeps the `STATE` and `EPHEMERAL` volumes, including etcd data.
 
-Run the helper once for each node, one node at a time. It checks full cluster
-health, upgrades exactly one node with `--wait`, and checks health again. It stops
-if either the precheck, upgrade, or postcheck fails. Coordinate operators so two
-invocations cannot overlap; Terraform's deployment concurrency does not lock
-independent CLI upgrades. A single control plane has API downtime while rebooting.
+### Upgrade workflow
+
+Run the **Talos upgrade** workflow (`.github/workflows/talos-upgrade.yml`) from
+`main`. Choose the environment, the component (`talos` or `kubernetes`) and a
+pinned target version. After approval in the `proxmox-ENVIRONMENT-apply`
+environment, it:
+
+1. Reads the `upgrade_inventory` output and the talosconfig from Terraform state.
+   Deploy the Talos root from `main` once before the first upgrade so the output exists.
+2. Installs the `talosctl` release matching the target (Talos) or the pinned
+   `talos_version` (Kubernetes), verified against the release checksums.
+3. Takes an etcd snapshot, encrypts it to the saved-plan public key and keeps it
+   as a run artifact for seven days. Decrypt it with the saved-plan private key.
+4. For `talos`, reads every node's running version and refuses the run before
+   changing anything if any node would be downgraded or skip a minor release.
+   Nodes already on the target are skipped, so rerunning after a failure resumes
+   where it stopped. The rest are upgraded with `upgrade-node.sh`, control planes
+   first, using the same Secure Boot schematic with the new tag.
+5. For `kubernetes`, runs `talosctl upgrade-k8s --to VERSION` between two
+   cluster health checks.
+
+The workflow shares the `iac-terraform-ENVIRONMENT-talos` concurrency group with
+deployments, so an upgrade never overlaps a Terraform apply or another upgrade.
+A single control plane has API downtime while rebooting. When the run succeeds,
+open a pull request pinning the new `talos_version` or `kubernetes_version` so
+future machines use the same version. ISO attachments may update, but the
+disk-first boot order preserves installed systems.
+
+### Manual upgrade
+
+Without the workflow, run the helper once for each node, one node at a time. It
+checks full cluster health, upgrades exactly one node with `--wait`, and checks
+health again. It stops if the precheck, upgrade, or postcheck fails. Coordinate
+operators so two invocations cannot overlap: unlike the workflow, a local run
+does not join the deployment concurrency group.
 
 ```sh
 export TALOSCONFIG=/secure/path/talosconfig
@@ -165,10 +196,7 @@ bash terraform/modules/talos-cluster/scripts/upgrade-node.sh \
 
 The last two arguments are comma-separated address lists; pass `''` for no
 workers. Include all cluster nodes. Upgrade each control plane and check health
-before proceeding, then upgrade workers individually. Update the pinned
-`talos_version` through a reviewed Terraform change after the rolling operation
-so future machines use the same version. ISO attachments may update, but the
-disk-first boot order preserves installed systems.
+before proceeding, then upgrade workers individually.
 Always use the matching Secure Boot installer image and preserve signing-key
 continuity; a regular installer image can leave a node unable to boot or unlock
 its system volumes.
@@ -194,14 +222,15 @@ of deployment exclusion markers. Manual runs validate it when Talos is selected.
 Contract tests mock both providers and reject invalid bootstrap selections,
 unpinned releases, mismatched addresses, and static networking without DNS.
 A separate test exercises the real local Talos configuration generator while
-overriding every network-facing operation. The upgrade helper tests use a fake
-`talosctl` executable. Tests also cover Secure Boot image selection, UEFI/TPM
+overriding every network-facing operation. The upgrade helper and rolling
+upgrade tests use a fake `talosctl` executable. Tests also cover Secure Boot image selection, UEFI/TPM
 hardware, and the real generator's encrypted-volume configuration for both node roles.
 
 ```sh
 terraform -chdir=terraform/modules/talos-cluster init -backend=false
 terraform -chdir=terraform/modules/talos-cluster test
 python3 terraform/modules/talos-cluster/scripts/test_upgrade_node.py
+python3 terraform/modules/talos-cluster/scripts/test_rolling_upgrade.py
 ```
 
 Mocked tests cannot demonstrate a successful Proxmox boot or a live Talos cluster;

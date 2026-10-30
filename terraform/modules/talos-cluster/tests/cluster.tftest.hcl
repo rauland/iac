@@ -98,6 +98,15 @@ run "boot_and_configuration_contract" {
     error_message = "Boot media and exported installation/upgrade images must use the Secure Boot variants."
   }
   assert {
+    condition = (
+      output.upgrade_inventory.installer_image == output.installer_image &&
+      output.upgrade_inventory.talos_version == var.talos_version &&
+      output.upgrade_inventory.control_planes == ["192.0.2.10"] &&
+      output.upgrade_inventory.workers == ["192.0.2.11"]
+    )
+    error_message = "The upgrade workflow needs the Secure Boot installer and addresses split by node role."
+  }
+  assert {
     condition     = talos_machine_bootstrap.this.node == "192.0.2.10" && talos_machine_bootstrap.this.endpoint == "192.0.2.10"
     error_message = "Bootstrap must use the selected control plane rather than a hardcoded address."
   }

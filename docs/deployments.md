@@ -155,6 +155,9 @@ share an `iac-terraform-<environment>-<target>` concurrency group with
 same time. GitHub may replace an older pending job in a group with a newer one;
 missing plan results prevent partial runs from deploying. Rerun all jobs after
 a cancellation. State unlock remains an explicit, approved recovery operation.
+The [Talos upgrade workflow](../terraform/modules/talos-cluster/README.md#upgrade-workflow)
+joins the same group as the Talos root, so OS and Kubernetes upgrades never
+overlap a Talos plan or apply.
 
 ## VM configuration with Ansible
 

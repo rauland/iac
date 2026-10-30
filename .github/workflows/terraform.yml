@@ -128,7 +128,9 @@ jobs:
         run: terraform test -no-color
         working-directory: terraform/modules/talos-cluster
       - name: Test upgrade ordering
-        run: python3 terraform/modules/talos-cluster/scripts/test_upgrade_node.py
+        run: |
+          python3 terraform/modules/talos-cluster/scripts/test_upgrade_node.py
+          python3 terraform/modules/talos-cluster/scripts/test_rolling_upgrade.py
 
   terraform_validate:
     name: Terraform format and validation
