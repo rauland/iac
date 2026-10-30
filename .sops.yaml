@@ -1,0 +1,6 @@
+# Encrypt Kubernetes Secrets for Flux; see kubernetes/README.md#secrets.
+# Only data and stringData are encrypted, so names and labels stay reviewable.
+creation_rules:
+  - path_regex: ^kubernetes/clusters/dev/.*\.sops\.ya?ml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1qxll9dznkk8drf06frwf574z6uc4snjtl3wt2gtyj2e65kt8xerq0lnd6z

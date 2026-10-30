@@ -15,7 +15,7 @@ locals {
         parameter_paths = concat(
           ["shared/proxmox", "shared/wireguard", "${scope}/${operation}"],
           operation == "apply" ? ["shared/apply"] : [],
-          operation == "apply" && scope != "platform" ? ["${scope}/ansible"] : [],
+          operation == "apply" && scope != "platform" ? ["${scope}/ansible", "${scope}/flux"] : [],
         )
       }
     }

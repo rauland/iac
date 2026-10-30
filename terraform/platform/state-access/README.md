@@ -43,6 +43,7 @@ be masked reliably. Roles can only read, and only these prefixes:
 | `/iac/<scope>/apply/TF_VAR_virtual_environment_api_token` | SecureString | That scope's apply role |
 | `/iac/<scope>/ansible/PROXMOX_TOKEN_SECRET_ANSIBLE`, `.../SSH_PRIVATE_KEY_ANSIBLE` | SecureString | Dev and prod apply roles |
 | `/iac/<scope>/ansible/PROXMOX_USER_ANSIBLE`, `.../PROXMOX_TOKEN_ID_ANSIBLE` | String | Dev and prod apply roles |
+| `/iac/<scope>/flux/SOPS_AGE_KEY` | SecureString | Dev and prod apply roles; loaded only by Flux deployments |
 
 `<scope>` is `dev`, `prod` or `platform`. No role can read another scope's
 values, and plan roles cannot read apply values. Roles may also read

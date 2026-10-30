@@ -46,5 +46,52 @@ Add resources, or directories with their own `kustomization.yaml`, under
 pull request before Flux ever sees it. Flux applies only after merge to `main`.
 
 Talos enforces the Kubernetes `baseline` Pod Security standard by default, so
-privileged workloads need a namespace labelled for it. Do not commit plain
-Secrets: encrypted secret delivery is not configured yet.
+privileged workloads need a namespace labelled for it.
+
+## Secrets
+
+Secrets are committed encrypted with [SOPS](https://getsops.io) and an age key.
+Flux decrypts them in the cluster with the private key in `flux-system/sops-age`.
+Only `data` and `stringData` are encrypted, so names, namespaces and labels
+stay readable in review. Anyone can encrypt; only the cluster can decrypt.
+
+To add one, write the Secret to a file ending in `.sops.yaml` and encrypt it in
+place before committing. [`.sops.yaml`](../.sops.yaml) supplies the recipient:
+
+```sh
+sops --encrypt --in-place kubernetes/clusters/dev/my-app/credentials.sops.yaml
+```
+
+Add it to `resources` like any other manifest. To change a value, edit it with
+`sops kubernetes/clusters/dev/my-app/credentials.sops.yaml`, which needs the
+private key (`SOPS_AGE_KEY_FILE`); without it, write a new file and encrypt it
+again. CI fails a pull request with a plain `kind: Secret` file or an
+unencrypted `*.sops.yaml` file, but check `git diff --staged` before
+committing: a plaintext value that reaches a pushed commit stays in Git history
+and must be rotated.
+
+### Decryption key
+
+The age private key is the SSM parameter `/iac/dev/flux/SOPS_AGE_KEY`. Only the
+dev apply role can read it; plan roles, Terraform state and saved plans never
+hold it. After each `dev/flux` apply, the deploy job installs it as
+`flux-system/sops-age` with
+[`install-sops-key.sh`](../.github/scripts/install-sops-key.sh), which reads the
+kubeconfig from the Talos root's state. A rebuilt cluster gets the key when Flux
+is reinstalled.
+
+To install or rotate it without a Flux change, run the script as an
+administrator with the same inputs:
+
+```sh
+export AWS_PROFILE=admin TF_VAR_state_bucket=YOUR_STATE_BUCKET
+SOPS_AGE_KEY=$(aws ssm get-parameter --with-decryption \
+  --name /iac/dev/flux/SOPS_AGE_KEY --query Parameter.Value --output text) \
+  bash .github/scripts/install-sops-key.sh dev
+```
+
+To rotate, generate a new pair with `age-keygen`, store the private key in SSM,
+add the new public key to `.sops.yaml` alongside the old one, run
+`sops updatekeys` on every `*.sops.yaml` file, install the new key, then remove
+the old recipient. Keep a backup of the private key outside AWS: without it,
+committed secrets cannot be decrypted.

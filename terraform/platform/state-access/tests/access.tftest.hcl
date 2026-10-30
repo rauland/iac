@@ -106,15 +106,17 @@ run "parameter_read_boundaries" {
     condition = alltrue([
       for name, identity in local.identities : alltrue([
         for path in identity.parameter_paths :
-        !contains(["shared/apply", "${identity.scope}/apply", "${identity.scope}/ansible"], path)
+        !contains(["shared/apply", "${identity.scope}/apply", "${identity.scope}/ansible", "${identity.scope}/flux"], path)
       ]) if identity.operation == "plan"
     ])
-    error_message = "Plan roles must not read apply secrets (plan key, apply or Ansible tokens)."
+    error_message = "Plan roles must not read apply secrets (plan key, apply or Ansible tokens, or the SOPS key)."
   }
   assert {
     condition = (
       contains(local.identities["tf-prod-apply"].parameter_paths, "prod/ansible") &&
+      contains(local.identities["tf-dev-apply"].parameter_paths, "dev/flux") &&
       !contains(local.identities["tf-platform-images-apply"].parameter_paths, "platform/ansible") &&
+      !contains(local.identities["tf-platform-images-apply"].parameter_paths, "platform/flux") &&
       local.identities["tf-dev-plan"].parameter_paths == ["shared/proxmox", "shared/wireguard", "dev/plan"]
     )
     error_message = "Unexpected parameter paths for the sample roles."

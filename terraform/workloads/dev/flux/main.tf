@@ -60,6 +60,18 @@ resource "helm_release" "flux_instance" {
         ref  = var.sync_ref
         path = var.sync_path
       }
+      # Decrypt SOPS files with the age key the deploy job installs as
+      # sops-age; see .github/scripts/install-sops-key.sh.
+      kustomize = {
+        patches = [{
+          target = { kind = "Kustomization" }
+          patch = yamlencode([{
+            op    = "add"
+            path  = "/spec/decryption"
+            value = { provider = "sops", secretRef = { name = "sops-age" } }
+          }])
+        }]
+      }
     }
   })]
 
