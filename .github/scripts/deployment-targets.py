@@ -60,6 +60,9 @@ def configuration_path(path, root):
 
 
 def infrastructure_path(path, root):
+    # Removing the marker re-enables a root, which needs a plan of its own.
+    if path == root["directory"] + "/.disabled":
+        return True
     if path.startswith(("terraform/modules/virtual-machine/cloud-init/", "terraform/modules/virtual-machine/scripts/")):
         return root["target"] in VM_TARGETS
     if path in {".github/scripts/terraform-plan.py", ".github/scripts/terraform-apply.py",

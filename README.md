@@ -97,7 +97,8 @@ When forking, adapt the environment variables, VM addresses, and Tailscale setup
 to your own infrastructure before running deployments. To exclude a root from
 GitHub Actions, add a `.disabled` file in its directory. This optional marker
 excludes it from automatic discovery and manual target selection; local Terraform
-commands still work. Remove the marker to include the root again.
+commands still work. Remove the marker to include the root again; that change
+plans the root like any Terraform change.
 
 ## Deployments
 
@@ -177,7 +178,7 @@ protections or the health of deployed services.
 | Secrets management | Implemented | CI reads its secrets from SSM Parameter Store through those roles and masks them before use; the workflows reference no GitHub secrets. Saved plans are encrypted and Talos credentials are ignored. Workload secret delivery inside the cluster is not configured. |
 | Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
 | Linting and validation | Partial | Ansible linting, Terraform validation, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
-| Kubernetes GitOps | Partial | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/dev` from `main`; CI builds the manifests offline. The `dev/flux` root starts disabled until the Talos root exports its API credentials. No workloads or SOPS secret decryption are configured yet. |
+| Kubernetes GitOps | Partial | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/dev` from `main`; CI builds the manifests offline. No workloads or SOPS secret decryption are configured yet. |
 | Workload backups | Planned | No workload backup or restore process is configured. S3 stores Terraform state only. |
 | IP address management | Planned | Addresses are supplied explicitly or through DHCP; no IPAM integration allocates addresses or manages reservations. |
 | SSH certificates | Not planned | VM access uses per-environment SSH keys, cloud-init and verified host pins. One CI identity per environment does not justify running an SSH CA. |
