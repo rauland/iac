@@ -63,6 +63,11 @@ disabled to avoid blocking configuration while the VM is in maintenance mode.
 The boot order tries the installed disk before the ISO. The network patch selects
 the one physical NIC rather than relying on a Linux interface name.
 
+Every node is labelled `topology.kubernetes.io/region` with `proxmox_region`
+(default `pve`) and `topology.kubernetes.io/zone` with its `pve_node`. The
+Proxmox CSI plugin needs both to create and attach volumes, and its config must
+use the same region. Changing them applies without a reboot.
+
 ## Secure Boot and system-volume encryption
 
 Both boot media and installation/upgrade images use Image Factory's Secure Boot

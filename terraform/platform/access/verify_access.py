@@ -15,6 +15,7 @@ import requests
 def verify(endpoint, credentials, node):
     base = endpoint.rstrip("/") + "/api2/json"
     created = []
+    volumes = []
 
     def call(identity, method, path, expected=200, **kwargs):
         response = requests.request(
@@ -82,8 +83,29 @@ def verify(endpoint, credentials, node):
                 call(identity, "GET", own_path, expected=403)
                 call(identity, "POST", own_path, expected=403, data={"memory": 256})
         print("PASS: pool-scoped creation then tagging and owner lifecycle access work; plan tokens have only the approved disk-write exception; memory changes, cross-environment access and image-publisher VM access are denied to read identities.")
+
+        if "k8s-csi-dev" in credentials:
+            csi, vm_id = "k8s-csi-dev", guests["dev"]
+            call(csi, "GET", f"/nodes/{node}/qemu/{vm_id}/config")
+            call(csi, "GET", f"/nodes/{node}/qemu/{guests['prod']}/config", expected=403)
+            call(csi, "POST", f"/nodes/{node}/qemu/{vm_id}/config", expected=403, data={"memory": 256})
+            disk = {"vmid": vm_id, "filename": f"vm-{vm_id}-disk-9", "size": "4M"}
+            for storage in ["zfs", "local-lvm"]:
+                call(csi, "POST", f"/nodes/{node}/storage/{storage}/content", expected=403, data=disk)
+            volume = call(csi, "POST", f"/nodes/{node}/storage/k8s-dev/content", data=disk)
+            volumes.append((csi, volume))
+            result = call(csi, "DELETE", f"/nodes/{node}/storage/k8s-dev/content/{quote(volume, safe='')}")
+            if isinstance(result, str) and result.startswith("UPID:"):
+                wait(csi, result)
+            volumes.remove((csi, volume))
+            print("PASS: the dev CSI token reads only dev guests, cannot change VM memory, and creates and deletes volumes only on k8s-dev.")
     finally:
         failures = []
+        for identity, volume in volumes:
+            try:
+                call(identity, "DELETE", f"/nodes/{node}/storage/k8s-dev/content/{quote(volume, safe='')}")
+            except Exception as error:
+                failures.append(str(error))
         for owner, vm_id in reversed(created):
             try:
                 wait(owner, call(owner, "DELETE", f"/nodes/{node}/qemu/{vm_id}"))

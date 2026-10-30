@@ -29,6 +29,11 @@ data "talos_machine_configuration" "node" {
           image = data.talos_image_factory_urls.this.urls.installer_secureboot
         }
         } : key => value if !local.split_machine_config }, {
+        # The Proxmox CSI plugin places volumes by these labels; see README.md.
+        nodeLabels = {
+          "topology.kubernetes.io/region" = var.proxmox_region
+          "topology.kubernetes.io/zone"   = each.value.pve_node
+        }
         network = merge({ for key, value in {
           hostname    = each.value.node_name
           nameservers = var.dns_servers

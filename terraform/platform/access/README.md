@@ -49,7 +49,8 @@ use, and node audit privileges. They do not manage access assignments or publish
 shared images.
 
 Automation is separated into plan/apply users for dev/prod, read-only Ansible
-inventory users for dev/prod, and plan/apply shared image publishers. Every token
+inventory users for dev/prod, plan/apply shared image publishers, and Kubernetes
+CSI users for environments with Kubernetes storage. Every token
 has privilege separation enabled and matching explicit user/token ACLs. No
 automation identity created here has a global `/` or `/vms` grant.
 
@@ -85,6 +86,30 @@ The shared `ImagePublisher` role does not receive the deletion privilege.
 Download permission is `Sys.AccessNetwork` on the selected node; it does not
 grant `Sys.Modify`. Directory storage shares the host filesystem's capacity;
 this does not introduce a quota or a separate disk.
+
+### Kubernetes volumes
+
+Each environment in `kubernetes_storage_pools` gets a ZFS storage named
+`k8s-<environment>` and a `k8s-csi-<environment>@pve` identity for the
+[Proxmox CSI plugin](../../../kubernetes/README.md#persistent-storage). Dev uses
+the `nas/k8s-dev` dataset. Create the dataset on the host before the first apply:
+the provider registers storage but cannot create ZFS datasets.
+
+```sh
+zfs create nas/k8s-dev
+```
+
+The identity has `KubernetesDisk` (`VM.Audit`, `VM.Config.Disk`) on its
+environment's pool and `KubernetesStorage` (`Datastore.Audit`,
+`Datastore.Allocate`, `Datastore.AllocateSpace`) only on its own storage.
+`Datastore.Allocate` deletes any volume on a storage, which is why Kubernetes
+volumes do not use the shared `zfs` storage: there it could delete the NFS
+media disk or the Proxmox Backup Server datastore. `VM.Config.Disk` covers every
+guest in the pool, so the token can detach a disk from any dev VM, though it
+cannot delete disks outside `k8s-dev`. It cannot change memory, power or CPU.
+
+The token secret goes into the cluster as a SOPS-encrypted Secret; see the
+[Kubernetes guide](../../../kubernetes/README.md#persistent-storage).
 
 ## Credential export and GitHub cutover
 
@@ -172,7 +197,9 @@ plan-only disk exception, matching token/user ACLs and image-publisher restricti
 The Python verifier requires `requests`, reads the protected credential export,
 creates two stopped diskless guests in dev/prod, tests owner lifecycle access
 and denied cross-environment writes, and deletes both guests in a `finally`
-block. It prints no secrets.
+block. When the export includes `k8s-csi-dev`, it also checks that the token can
+create and delete a 4 MiB volume on `k8s-dev` but not on `zfs` or `local-lvm`,
+and cannot read prod guests or change memory. It prints no secrets.
 
 The Talos module's `removed` block stops managing pre-RBAC boot media without
 deleting it. The next dev Talos apply creates new media in `dev-images` and

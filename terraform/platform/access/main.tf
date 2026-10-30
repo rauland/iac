@@ -8,6 +8,10 @@ locals {
     SeedPublisher  = ["Datastore.Audit", "Datastore.AllocateTemplate", "Datastore.Allocate"]
     DownloadAccess = ["Sys.AccessNetwork"]
     PlanDiskAccess = ["VM.Config.Disk"]
+    # The Proxmox CSI plugin attaches volumes to VMs in its pool and creates
+    # and deletes them only on its environment's dedicated Kubernetes storage.
+    KubernetesDisk    = ["VM.Audit", "VM.Config.Disk"]
+    KubernetesStorage = ["Datastore.Audit", "Datastore.Allocate", "Datastore.AllocateSpace"]
   }
   groups = merge({ "platform-admins" = "Platform administrators" }, merge([
     for environment in local.environments : {
@@ -26,10 +30,17 @@ locals {
     ]...), {
     "tf-platform-images-plan"  = { environment = "platform", operation = "plan" }
     "tf-platform-images-apply" = { environment = "platform", operation = "apply" }
+    }, {
+    for environment in keys(var.kubernetes_storage_pools) :
+    "k8s-csi-${environment}" => { environment = environment, operation = "csi" }
   })
   # Explicit ACLs apply to both owners and privilege-separated tokens.
   service_grants = flatten([
-    for name, service in local.services : concat(
+    for name, service in local.services : service.operation == "csi" ? [
+      { path = "/nodes/${var.node_name}", role = "NodeAudit", name = name },
+      { path = "/pool/${service.environment}", role = "KubernetesDisk", name = name },
+      { path = "/storage/k8s-${service.environment}", role = "KubernetesStorage", name = name }
+      ] : concat(
       [{ path = "/nodes/${var.node_name}", role = "NodeAudit", name = name }],
       service.environment == "platform" ? [] : [
         for role in(service.operation == "apply" ? ["PVEVMAdmin", "PVEPoolAdmin"] : ["PVEAuditor"]) :
@@ -93,6 +104,20 @@ resource "proxmox_storage_directory" "dev_images" {
   }
 }
 
+# Kubernetes volumes get their own storage so the CSI identity's
+# Datastore.Allocate cannot delete other disks in the same ZFS pool.
+resource "proxmox_storage_zfspool" "kubernetes" {
+  for_each       = var.kubernetes_storage_pools
+  id             = "k8s-${each.key}"
+  zfs_pool       = each.value
+  nodes          = [var.node_name]
+  content        = ["images"]
+  thin_provision = true
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 resource "proxmox_pool_membership" "infra" {
   for_each = { for vm_id in var.infra_vm_ids : tostring(vm_id) => vm_id }
   pool_id  = proxmox_virtual_environment_pool.environment["infra"].pool_id
@@ -143,6 +168,7 @@ resource "proxmox_acl" "service_user" {
     proxmox_virtual_environment_pool.environment,
     proxmox_virtual_environment_role.custom,
     proxmox_storage_directory.dev_images,
+    proxmox_storage_zfspool.kubernetes,
   ]
 }
 
@@ -156,6 +182,7 @@ resource "proxmox_acl" "service_token" {
     proxmox_virtual_environment_pool.environment,
     proxmox_virtual_environment_role.custom,
     proxmox_storage_directory.dev_images,
+    proxmox_storage_zfspool.kubernetes,
   ]
 }
 
@@ -169,5 +196,6 @@ resource "proxmox_acl" "human" {
     proxmox_virtual_environment_pool.environment,
     proxmox_virtual_environment_role.custom,
     proxmox_storage_directory.dev_images,
+    proxmox_storage_zfspool.kubernetes,
   ]
 }
