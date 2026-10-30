@@ -1,0 +1,7 @@
+# MetalLB in layer 2 mode: it answers ARP for LoadBalancer IPs from a node,
+# so the router needs no BGP. Each cluster supplies its own address pool.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - release.yaml

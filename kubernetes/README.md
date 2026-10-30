@@ -8,7 +8,9 @@ pulls `main` itself, about once a minute.
 | Path | Reconciled by |
 | --- | --- |
 | [clusters/dev](clusters/dev/kustomization.yaml) | Flux on the dev Talos cluster |
+| [clusters/dev/infrastructure.yaml](clusters/dev/infrastructure.yaml) | Flux Kustomizations that install the shared infrastructure in order |
 | [clusters/dev/podinfo](clusters/dev/podinfo) | Demo app whose UI message is a SOPS-encrypted Secret |
+| [infrastructure](infrastructure) | MetalLB and Traefik, shared by every cluster |
 
 ## How Flux is installed
 
@@ -48,6 +50,34 @@ pull request before Flux ever sees it. Flux applies only after merge to `main`.
 
 Talos enforces the Kubernetes `baseline` Pod Security standard by default, so
 privileged workloads need a namespace labelled for it.
+
+## Load balancing and ingress
+
+[MetalLB](https://metallb.io) gives LoadBalancer Services an address from the
+cluster's pool and answers ARP for it from one node (layer 2 mode). Dev uses
+`10.0.0.60`–`10.0.0.69`, which is outside the router's DHCP pool; see
+[`metallb-pool`](clusters/dev/metallb-pool/pool.yaml). A Service can ask for a
+fixed address with the `metallb.io/loadBalancerIPs` annotation. If a node fails,
+another node takes over its addresses within a few seconds.
+
+[Traefik](https://doc.traefik.io/traefik/) is the default IngressClass and owns
+the first pool address, `10.0.0.60`, set as `ingress_ip` in
+[`infrastructure.yaml`](clusters/dev/infrastructure.yaml). To expose an HTTP
+app, add an `Ingress` with a host name, as
+[podinfo](clusters/dev/podinfo/ingress.yaml) does, and point that name at the
+ingress IP in DNS. Until DNS exists, test with a `Host` header:
+
+```sh
+curl -H 'Host: podinfo.dev.netkuki.com' http://10.0.0.60/
+```
+
+Only plain HTTP is configured; TLS certificates are not yet managed. Non-HTTP
+apps use their own LoadBalancer Service instead of the ingress.
+
+The three steps are separate Flux Kustomizations, each waiting for the last:
+MetalLB installs its CRDs, the pool uses them, and Traefik then gets its
+address. `flux get kustomizations` shows where a failed rollout stopped. Chart
+versions are pinned in each `release.yaml`; upgrade them through a pull request.
 
 ## Secrets
 

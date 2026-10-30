@@ -8,3 +8,4 @@ resources:
   - message.sops.yaml
   - deployment.yaml
   - service.yaml
+  - ingress.yaml

@@ -1,0 +1,7 @@
+# Traefik is the default IngressClass. Its LoadBalancer Service takes the
+# address the cluster sets as ingress_ip through Flux substitution.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - release.yaml
