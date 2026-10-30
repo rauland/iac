@@ -137,7 +137,7 @@ class EnrollmentTests(unittest.TestCase):
             with self.assertRaises(enrollment.EnrollmentError):
                 self.enroll()
             self.assertFalse(self.output.exists())
-        for config in ({"name": "renamed", "tags": "sandbox"}, {"name": "sandbox", "tags": "vault"}):
+        for config in ({"name": "renamed", "tags": "sandbox"}, {"name": "sandbox", "tags": "talos"}):
             self.api.get.side_effect = lambda path, **kwargs: config if path.endswith("/config") else self.response(path)
             with self.assertRaises(enrollment.EnrollmentError):
                 self.enroll()
@@ -186,22 +186,22 @@ class StateScopeTests(unittest.TestCase):
     def test_common_reads_only_enabled_vm_roots_in_its_environment(self):
         with tempfile.TemporaryDirectory() as tmp:
             repository = Path(tmp)
-            for root in ("dev/sandbox", "dev/vault", "dev/talos", "prod/vault"):
+            for root in ("dev/sandbox", "dev/talos", "prod/sandbox"):
                 (repository / "terraform/workloads" / root).mkdir(parents=True)
             def state(command, directory):
                 return {"resources": [{
                     "mode": "managed", "type": "proxmox_virtual_environment_vm",
                     "instances": [{"attributes": {
-                        "node_name": "pve", "vm_id": 113 if directory.name == "sandbox" else 103,
+                        "node_name": "pve", "vm_id": 113,
                         "name": directory.name, "pool_id": "dev", "tags": ["common", directory.name],
                     }}],
                 }]}
             with patch.object(enrollment.subprocess, "run", return_value=Mock(returncode=0)):
                 with patch.object(enrollment, "command_json", side_effect=state) as read:
                     self.assertEqual(set(enrollment.managed_guests(repository, "dev", "common")),
-                                     {("pve", 113, "sandbox"), ("pve", 103, "vault")})
+                                     {("pve", 113, "sandbox")})
                     self.assertEqual({call.args[1] for call in read.call_args_list},
-                                     {repository / "terraform/workloads/dev" / name for name in ("sandbox", "vault")})
+                                     {repository / "terraform/workloads/dev/sandbox"})
 
     def test_only_current_managed_instances_in_selected_pool_and_target_are_allowed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -213,7 +213,7 @@ class StateScopeTests(unittest.TestCase):
             other = copy.deepcopy(valid)
             other["attributes"].update(pool_id="prod", vm_id=213)
             untagged = copy.deepcopy(valid)
-            untagged["attributes"].update(tags=["vault"], vm_id=114)
+            untagged["attributes"].update(tags=["talos"], vm_id=114)
             deposed = copy.deepcopy(valid)
             deposed.update(deposed="old")
             deposed["attributes"]["vm_id"] = 115

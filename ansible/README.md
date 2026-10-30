@@ -8,11 +8,10 @@ and `prod`; supported targets are listed below.
 | --- | --- | --- | --- |
 | `common` | `common.yml` | None | Environment pool and `common` tag |
 | `sandbox` | `common.yml`, then `sandbox.yml` | `sandbox.yml` | Environment pool and `sandbox` tag |
-| `vault` | `common.yml`, then `vault.yml` | `vault.yml` | Environment pool and `vault` tag |
 
 The `common` tag adds timezone, automation-user, and package configuration from
 `common.yml` before the selected service playbook. All VMs with the selected
-target tag receive `vault.yml` or `sandbox.yml`, including VMs tagged `common`. VMs
+target tag receive `sandbox.yml`, including VMs tagged `common`. VMs
 without `common` skip the baseline; VMs without any matching tag receive no
 playbook. A baseline failure stops the service playbook. `sandbox.yml` installs
 Podman and an Nginx site on sandbox guests also tagged `podman`. Use the runner
@@ -31,19 +30,16 @@ variables live in `inventory/group_vars/tag_common.yml`.
 | [`automation_user`](roles/automation_user/README.md) | Maintain the automation account and environment-specific SSH keys. |
 | [`system_packages`](roles/system_packages/README.md) | Install baseline and additional packages using the host's package manager. |
 | [`podman`](roles/podman/README.md) | Run the sandbox Nginx site with Podman and a systemd Quadlet. |
-| [`vault`](roles/vault/README.md) | Install Vault, obtain Cloudflare DNS TLS certificates, and configure storage and systemd. |
 
 Playbooks select baseline or service responsibilities. Roles handle OS differences
 using gathered `ansible_facts['os_family']`, so service playbooks do not duplicate
 the baseline for each distribution. The baseline roles use portable modules;
 package names still need to be valid for each target distribution.
 
-The current guests are AlmaLinux. Vault supports the `RedHat` family with DNF
-and EPEL: `roles/vault/tasks/RedHat.yml` installs its repositories and packages,
-and `roles/vault/tasks/common.yml` configures the service. The role rejects
-other OS families before making changes. To add another family, add its package
-tasks and extend the assertion and task imports in `roles/vault/tasks/main.yml`;
-keep shared configuration in `common.yml`. This follows Ansible's documented
+The current guests are AlmaLinux. A role that supports only some OS families
+should reject the others before making changes, keep package tasks in a
+per-family file such as `tasks/RedHat.yml`, and keep shared configuration in
+`tasks/common.yml`. This follows Ansible's documented
 [OS-family role pattern](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_reuse_roles.html).
 
 New roles should contain a README and the files they use. Put configurable,
@@ -86,10 +82,10 @@ content; the configuration contains no ignored rules or baseline exemptions.
 ## Inventory and access
 
 Proxmox tags create groups prefixed with `tag_`, such as `tag_common` and
-`tag_vault`, to avoid collisions with VM names. The inventory plugin creates
+`tag_sandbox`, to avoid collisions with VM names. The inventory plugin creates
 `proxmox_pool_dev` and `proxmox_pool_prod` from Proxmox resource pool membership.
 The runner intersects that pool group with the target tag, for example
-`proxmox_pool_dev:&tag_vault`. Assign each VM to its environment pool and tag its
+`proxmox_pool_dev:&tag_sandbox`. Assign each VM to its environment pool and tag its
 target; add `common` when it should also receive the shared baseline.
 Environment tags such as `dev` and `prod` are optional and do not select hosts.
 Unpooled VMs are excluded. Group variable files retain their `tag_` names.
@@ -97,8 +93,8 @@ Unpooled VMs are excluded. Group variable files retain their `tag_` names.
 Preview a target before applying:
 
 ```sh
-bash ansible/run-playbook.sh dev vault --list-hosts
-bash ansible/run-playbook.sh dev vault --check
+bash ansible/run-playbook.sh dev sandbox --list-hosts
+bash ansible/run-playbook.sh dev sandbox --check
 ```
 
 Apply the updated Terraform workload definitions to update existing VM tags
@@ -106,8 +102,7 @@ before running the new playbooks against those VMs. Renaming a tag in this
 repository does not change tags on running VMs by itself.
 
 The inventory reads Proxmox credentials from `PROXMOX_URL`, `PROXMOX_USER`,
-`PROXMOX_TOKEN_ID`, and `PROXMOX_TOKEN_SECRET`. The Vault role also needs
-`CLOUDFLARE_API_TOKEN`. In CI these come from SSM parameters loaded at the start
+`PROXMOX_TOKEN_ID`, and `PROXMOX_TOKEN_SECRET`. In CI these come from SSM parameters loaded at the start
 of each deploy job (see
 [CI parameters](../terraform/platform/state-access/README.md#ci-parameters)). SSH and sudo access as `ansible` must already be available on guests.
 
@@ -153,7 +148,6 @@ Run offline selection tests and syntax checks without contacting Proxmox or host
 ```sh
 python3 -m unittest discover -s ansible/tests -p 'test_*.py'
 bash ansible/run-playbook.sh dev common -i tests/inventory.yml --syntax-check
-bash ansible/run-playbook.sh dev vault -i tests/inventory.yml --syntax-check
 bash ansible/run-playbook.sh dev sandbox -i tests/inventory.yml --syntax-check
 ```
 

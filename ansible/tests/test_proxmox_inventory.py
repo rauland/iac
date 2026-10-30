@@ -39,14 +39,14 @@ class ScopedInventoryTests(unittest.TestCase):
                     self.send_error(403, 'Global Sys.Audit is not granted')
                     return
                 vmid = 103 if environment == 'dev' else 203
-                guest = dict(vmid=vmid, name=f'{environment}-vault', status='running',
-                             type='qemu', node='pve', tags='common;vault')
-                config = dict(tags='common;vault', ipconfig0=f'ip=10.0.0.{vmid}/24')
+                guest = dict(vmid=vmid, name=f'{environment}-sandbox', status='running',
+                             type='qemu', node='pve', tags='common;sandbox')
+                config = dict(tags='common;sandbox', ipconfig0=f'ip=10.0.0.{vmid}/24')
                 if owner.agentless:
-                    config = dict(tags='common;vault', agent='0',
+                    config = dict(tags='common;sandbox', agent='0',
                                   net0='virtio=02:00:00:00:00:01,bridge=vmbr0')
                 if owner.seed_iso:
-                    config = dict(tags='common;vault', agent='enabled=1',
+                    config = dict(tags='common;sandbox', agent='enabled=1',
                                   net0='virtio=02:00:00:00:00:01,bridge=vmbr0')
                 responses = {
                     '/nodes': [dict(node='pve', type='node', status='online')],
@@ -101,22 +101,22 @@ class ScopedInventoryTests(unittest.TestCase):
 
     def test_dev_inventory_works_without_global_cluster_audit(self):
         inventory = self.inventory('dev')
-        self.assertEqual(inventory['proxmox_pool_dev']['hosts'], ['dev-vault'])
-        self.assertEqual(inventory['tag_common']['hosts'], ['dev-vault'])
-        self.assertEqual(inventory['_meta']['hostvars']['dev-vault']['system_packages_base'],
+        self.assertEqual(inventory['proxmox_pool_dev']['hosts'], ['dev-sandbox'])
+        self.assertEqual(inventory['tag_common']['hosts'], ['dev-sandbox'])
+        self.assertEqual(inventory['_meta']['hostvars']['dev-sandbox']['system_packages_base'],
                          ['qemu-guest-agent'])
         # Newer Ansible preserves the untrusted-string tag in inventory JSON.
-        self.assertIn(inventory['_meta']['hostvars']['dev-vault']['ansible_host'],
+        self.assertIn(inventory['_meta']['hostvars']['dev-sandbox']['ansible_host'],
                       ('10.0.0.103', {'__ansible_unsafe': '10.0.0.103'}))
-        self.assertNotIn('prod-vault', inventory['_meta']['hostvars'])
+        self.assertNotIn('prod-sandbox', inventory['_meta']['hostvars'])
 
     def test_prod_inventory_works_without_global_cluster_audit(self):
         inventory = self.inventory('prod')
-        self.assertEqual(inventory['proxmox_pool_prod']['hosts'], ['prod-vault'])
-        self.assertEqual(inventory['tag_common']['hosts'], ['prod-vault'])
-        self.assertEqual(inventory['_meta']['hostvars']['prod-vault']['system_packages_base'],
+        self.assertEqual(inventory['proxmox_pool_prod']['hosts'], ['prod-sandbox'])
+        self.assertEqual(inventory['tag_common']['hosts'], ['prod-sandbox'])
+        self.assertEqual(inventory['_meta']['hostvars']['prod-sandbox']['system_packages_base'],
                          ['qemu-guest-agent'])
-        self.assertNotIn('dev-vault', inventory['_meta']['hostvars'])
+        self.assertNotIn('dev-sandbox', inventory['_meta']['hostvars'])
 
     def test_agentless_guest_address_can_be_supplied_through_host_variables(self):
         self.agentless = True
@@ -124,27 +124,27 @@ class ScopedInventoryTests(unittest.TestCase):
         shutil.copy(ANSIBLE / 'inventory/proxmox.yml', source)
         host_vars = source.parent / 'host_vars'
         host_vars.mkdir()
-        (host_vars / 'dev-vault.yml').write_text('---\nansible_host: 10.0.0.50\n')
+        (host_vars / 'dev-sandbox.yml').write_text('---\nansible_host: 10.0.0.50\n')
         result = subprocess.run(['ansible-inventory', '-i', str(source), '--list'],
                                 cwd=ANSIBLE, env=self.environment('dev'), text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         inventory = json.loads(result.stdout)
-        self.assertIn(inventory['_meta']['hostvars']['dev-vault']['ansible_host'],
+        self.assertIn(inventory['_meta']['hostvars']['dev-sandbox']['ansible_host'],
                       ('10.0.0.50', {'__ansible_unsafe': '10.0.0.50'}))
-        self.assertEqual(inventory['proxmox_pool_dev']['hosts'], ['dev-vault'])
-        self.assertEqual(inventory['tag_vault']['hosts'], ['dev-vault'])
+        self.assertEqual(inventory['proxmox_pool_dev']['hosts'], ['dev-sandbox'])
+        self.assertEqual(inventory['tag_sandbox']['hosts'], ['dev-sandbox'])
         self.assertFalse(any('/agent/' in path for path in self.requests))
 
     def test_iso_guest_without_proxmox_ipconfig_uses_agent_ipv4(self):
         self.seed_iso = True
         inventory = self.inventory('dev')
-        self.assertIn(inventory['_meta']['hostvars']['dev-vault']['ansible_host'],
+        self.assertIn(inventory['_meta']['hostvars']['dev-sandbox']['ansible_host'],
                       ('10.0.0.103', {'__ansible_unsafe': '10.0.0.103'}))
         self.assertIn('/nodes/pve/qemu/103/agent/network-get-interfaces', self.requests)
 
     def test_permission_failure_stops_playbooks_instead_of_skipping_hosts(self):
         self.deny_inventory = True
-        result = subprocess.run(['bash', 'run-playbook.sh', 'dev', 'vault', '--list-hosts'],
+        result = subprocess.run(['bash', 'run-playbook.sh', 'dev', 'sandbox', '--list-hosts'],
                                 cwd=ANSIBLE, env=self.environment('dev'), text=True, capture_output=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('403', result.stderr)

@@ -16,7 +16,6 @@ esac
 case "$ansible_target" in
   common) ansible_playbook=common.yml; ansible_group=tag_common ;;
   sandbox) ansible_playbook=sandbox.yml; ansible_group=tag_sandbox ;;
-  vault) ansible_playbook=vault.yml; ansible_group=tag_vault ;;
   *) echo "Unsupported target: $ansible_target" >&2; exit 2 ;;
 esac
 

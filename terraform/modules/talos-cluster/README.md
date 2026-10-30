@@ -39,7 +39,7 @@ runs. Forks must adapt the example configuration to their own infrastructure.
    `disk_datastore_id` for VM disks. The defaults are `local` and `local-lvm`.
 5. Run the Terraform workflow on `main` with environment `dev`, mode `single`,
    and target `talos`. Review the plan before approving apply. Mode `all` for
-   `dev` also includes Sandbox and Vault.
+   `dev` also includes Sandbox.
 
 To opt out of GitHub Actions deployments, add a `.disabled` file in the root
 directory. The marker excludes it from automatic and manual discovery without

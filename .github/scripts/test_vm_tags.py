@@ -310,7 +310,7 @@ elif sys.argv[1] == 'show':
             elif mutation == "version":
                 manifest["version"] = True
             else:
-                manifest["target"] = "vault"
+                manifest["target"] = "talos"
             (self.directory / vm_tags.MANIFEST).write_text(json.dumps(manifest))
             with self.subTest(mutation=mutation):
                 result = self.apply()

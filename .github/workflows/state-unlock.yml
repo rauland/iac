@@ -22,7 +22,6 @@ on:
           - images
           - sandbox
           - talos
-          - vault
 jobs:
   state_unlock:
     if: github.ref == 'refs/heads/main'

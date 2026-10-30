@@ -77,7 +77,7 @@ def is_pinned(trust, address):
 def managed_guests(repository, environment, target):
     """Read backend state without refreshing or changing guests."""
     guests = {}
-    targets = ("sandbox", "vault") if target == "common" else (target,)
+    targets = ("sandbox",) if target == "common" else (target,)
     for name in targets:
         directory = repository / "terraform/workloads" / environment / name
         if not directory.is_dir() or (directory / ".disabled").exists():
@@ -147,7 +147,7 @@ def host_public_key(content):
 
 
 def enroll(inventory, repository, environment, target, trust, output, load_guests, api_factory):
-    if environment not in {"dev", "prod"} or target not in {"common", "sandbox", "vault"}:
+    if environment not in {"dev", "prod"} or target not in {"common", "sandbox"}:
         raise EnrollmentError("Invalid enrollment environment or target")
     pending = [host for host in selected_hosts(inventory, environment, target)
                if not is_pinned(trust, host[1])]
@@ -190,7 +190,7 @@ def enroll(inventory, repository, environment, target, trust, output, load_guest
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("environment", choices=("dev", "prod"))
-    parser.add_argument("target", choices=("common", "sandbox", "vault"))
+    parser.add_argument("target", choices=("common", "sandbox"))
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
     repository = Path(__file__).resolve().parent.parent

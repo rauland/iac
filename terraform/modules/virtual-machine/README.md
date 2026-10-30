@@ -2,7 +2,7 @@
 
 Create cloud-image guests in an explicit Proxmox pool with environment-specific
 SSH public keys. The caller supplies the VM name, node, hardware, image and tags
-through `vm_config`. Sandbox and Vault use this module.
+through `vm_config`. Sandbox uses this module.
 
 ## API-only cloud-init ISO
 
