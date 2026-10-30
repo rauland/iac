@@ -97,7 +97,8 @@ When forking, adapt the environment variables, VM addresses, and Tailscale setup
 to your own infrastructure before running deployments. To exclude a root from
 GitHub Actions, add a `.disabled` file in its directory. This optional marker
 excludes it from automatic discovery and manual target selection; local Terraform
-commands still work. Remove the marker to include the root again.
+commands still work. Remove the marker to include the root again; that change
+plans the root like any Terraform change.
 
 ## Deployments
 

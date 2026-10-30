@@ -165,6 +165,15 @@ class DeploymentTargetTests(unittest.TestCase):
         self.assertEqual(self.change("terraform/workloads/dev/flux/main.tf"),
                          {("dev", "flux"): (True, False)})
 
+    def test_reenabled_root_is_planned(self):
+        self.write("terraform/workloads/dev/sandbox/.disabled", "disabled\n")
+        self.base = self.commit()
+        (self.repo / "terraform/workloads/dev/sandbox/.disabled").unlink()
+        self.commit()
+        result, targets = self.discover()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([(t["target"], t["terraform"]) for t in targets], [("sandbox", True)])
+
     def test_privileged_platform_roots_do_not_deploy(self):
         self.assertEqual(self.change("terraform/platform/access/main.tf",
                                      "terraform/platform/state-access/main.tf"), {})
