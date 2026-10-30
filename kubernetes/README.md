@@ -74,7 +74,7 @@ and must be rotated.
 
 The age private key is the SSM parameter `/iac/dev/flux/SOPS_AGE_KEY`. Only the
 dev apply role can read it; plan roles, Terraform state and saved plans never
-hold it. After each `dev/flux` apply, the deploy job installs it as
+hold it. Before each `dev/flux` apply, the deploy job installs it as
 `flux-system/sops-age` with
 [`install-sops-key.sh`](../.github/scripts/install-sops-key.sh), which reads the
 kubeconfig from the Talos root's state. A rebuilt cluster gets the key when Flux

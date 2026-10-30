@@ -395,6 +395,18 @@ jobs:
           STATE_KEY: terraform/${{ matrix.environment }}/${{ matrix.target }}.tfstate
         run: terraform init -input=false -lockfile=readonly -backend-config="key=$STATE_KEY"
         working-directory: ./${{ matrix.directory }}
+      # Only Flux deployments read the SOPS key, so other apply jobs never hold it.
+      # Installing it before the apply means the decryption patch never sees it missing.
+      - name: Load the SOPS decryption key
+        if: matrix.target == 'flux' && matrix.terraform && !matrix.destroy
+        env:
+          SCOPE: ${{ matrix.environment }}
+        run: python3 .github/scripts/load-parameters.py "/iac/$SCOPE/flux"
+      - name: Install the SOPS decryption key for Flux
+        if: matrix.target == 'flux' && matrix.terraform && !matrix.destroy
+        env:
+          TARGET_ENVIRONMENT: ${{ matrix.environment }}
+        run: bash .github/scripts/install-sops-key.sh "$TARGET_ENVIRONMENT"
       - name: Apply the saved infrastructure or destroy plan
         if: matrix.terraform
         env:
@@ -406,17 +418,6 @@ jobs:
           python3 .github/scripts/terraform-apply.py \
             --directory "$TARGET_DIRECTORY" --environment "$TARGET_ENVIRONMENT" \
             --target "$TARGET_NAME" --destroy "$DESTROY"
-      # Only Flux deployments read the SOPS key, so other apply jobs never hold it.
-      - name: Load the SOPS decryption key
-        if: matrix.target == 'flux' && matrix.terraform && !matrix.destroy
-        env:
-          SCOPE: ${{ matrix.environment }}
-        run: python3 .github/scripts/load-parameters.py "/iac/$SCOPE/flux"
-      - name: Install the SOPS decryption key for Flux
-        if: matrix.target == 'flux' && matrix.terraform && !matrix.destroy
-        env:
-          TARGET_ENVIRONMENT: ${{ matrix.environment }}
-        run: bash .github/scripts/install-sops-key.sh "$TARGET_ENVIRONMENT"
       - name: Configure selected guests
         if: matrix.ansible
         uses: ./.github/actions/ansible
