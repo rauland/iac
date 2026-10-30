@@ -73,7 +73,9 @@
         "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/apply",
         "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/apply/*",
         "arn:aws:ssm:ap-southeast-2:*:parameter/iac/prod/ansible",
-        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/prod/ansible/*"
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/prod/ansible/*",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/prod/flux",
+        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/prod/flux/*"
       ],
       "Sid": "ReadOwnParameters"
     }

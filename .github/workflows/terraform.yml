@@ -137,6 +137,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Reject unencrypted Secrets
+        run: python3 .github/scripts/check-kubernetes-secrets.py kubernetes
       - name: Build every cluster directory Flux reconciles
         run: |
           for directory in kubernetes/clusters/*/; do
@@ -404,6 +406,17 @@ jobs:
           python3 .github/scripts/terraform-apply.py \
             --directory "$TARGET_DIRECTORY" --environment "$TARGET_ENVIRONMENT" \
             --target "$TARGET_NAME" --destroy "$DESTROY"
+      # Only Flux deployments read the SOPS key, so other apply jobs never hold it.
+      - name: Load the SOPS decryption key
+        if: matrix.target == 'flux' && matrix.terraform && !matrix.destroy
+        env:
+          SCOPE: ${{ matrix.environment }}
+        run: python3 .github/scripts/load-parameters.py "/iac/$SCOPE/flux"
+      - name: Install the SOPS decryption key for Flux
+        if: matrix.target == 'flux' && matrix.terraform && !matrix.destroy
+        env:
+          TARGET_ENVIRONMENT: ${{ matrix.environment }}
+        run: bash .github/scripts/install-sops-key.sh "$TARGET_ENVIRONMENT"
       - name: Configure selected guests
         if: matrix.ansible
         uses: ./.github/actions/ansible
