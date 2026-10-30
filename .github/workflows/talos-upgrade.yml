@@ -1,0 +1,155 @@
+name: Talos upgrade
+
+# Rolling in-place upgrades of a running Talos cluster. Terraform does not
+# upgrade existing nodes; see terraform/modules/talos-cluster/README.md.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment holding the cluster
+        type: choice
+        options: [dev, prod]
+        required: true
+      component:
+        description: talos upgrades the OS node by node; kubernetes runs talosctl upgrade-k8s
+        type: choice
+        options: [talos, kubernetes]
+        required: true
+      version:
+        description: Target release, such as v1.15.0 (Talos) or v1.38.0 (Kubernetes)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check inputs and upgrade logic (offline)
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require a pinned version and an enabled Talos root
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version must be a pinned release such as v1.15.0." && exit 1
+          fi
+          root="terraform/workloads/$ENVIRONMENT/talos"
+          if ! compgen -G "$root/*.tf" > /dev/null || [ -e "$root/.disabled" ]; then
+            echo "::error::$root is not an enabled Talos root." && exit 1
+          fi
+      - name: Test upgrade ordering
+        run: |
+          python3 terraform/modules/talos-cluster/scripts/test_upgrade_node.py
+          python3 terraform/modules/talos-cluster/scripts/test_rolling_upgrade.py
+
+  upgrade:
+    name: Upgrade ${{ inputs.component }} to ${{ inputs.version }}
+    needs: check
+    runs-on: ubuntu-latest
+    # Shares the deployment workflow's group, so a Terraform apply to this
+    # cluster and an upgrade never run at the same time.
+    concurrency:
+      group: iac-terraform-${{ inputs.environment }}-talos
+      cancel-in-progress: false
+    environment: ${{ format('proxmox-{0}-apply', inputs.environment) }}
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
+      TF_CLI_ARGS_init: ${{ vars.TF_CLI_ARGS_init }}
+      ROOT: terraform/workloads/${{ inputs.environment }}/talos
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assume scoped AWS state role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+      # Provides PROXMOX_URL for the Tailscale reachability check.
+      - name: Load CI parameters
+        run: python3 .github/scripts/load-parameters.py /iac/shared/proxmox
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
+          terraform_wrapper: false
+      - name: Read cluster inventory and credentials from state
+        env:
+          STATE_KEY: terraform/${{ inputs.environment }}/talos.tfstate
+        run: |
+          umask 077
+          echo "TALOSCONFIG=$RUNNER_TEMP/talosconfig" >> "$GITHUB_ENV"
+          export TALOSCONFIG=$RUNNER_TEMP/talosconfig
+          terraform -chdir="$ROOT" init -input=false -lockfile=readonly -backend-config="key=$STATE_KEY" > /dev/null
+          if ! terraform -chdir="$ROOT" output -json upgrade_inventory > "$RUNNER_TEMP/inventory.json"; then
+            echo "::error::State has no upgrade_inventory output. Deploy the Talos root from main first." && exit 1
+          fi
+          terraform -chdir="$ROOT" output -raw talosconfig > "$TALOSCONFIG"
+      - name: Install talosctl
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Upgrades use the target release's client; Kubernetes upgrades use
+          # the client matching the pinned Talos release.
+          release=$VERSION
+          if [ "$COMPONENT" = kubernetes ]; then release=$(jq -r .talos_version "$RUNNER_TEMP/inventory.json"); fi
+          base="https://github.com/siderolabs/talos/releases/download/$release"
+          cd "$RUNNER_TEMP"
+          curl --fail --silent --show-error --location --remote-name "$base/talosctl-linux-amd64" --remote-name "$base/sha256sum.txt"
+          grep ' talosctl-linux-amd64$' sha256sum.txt | sha256sum --check --strict
+          install -m 0755 talosctl-linux-amd64 /usr/local/bin/talosctl
+          talosctl version --client --short
+      - uses: ./.github/actions/tailscale
+        with:
+          oauth-client-id: ${{ vars.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ vars.TS_AUDIENCE }}
+      - name: Take an encrypted etcd snapshot
+        env:
+          TF_PLAN_PUBLIC_KEY: ${{ vars.TF_PLAN_PUBLIC_KEY }}
+        run: |
+          umask 077
+          node=$(jq -r '.control_planes[0]' "$RUNNER_TEMP/inventory.json")
+          talosctl --endpoints "$node" --nodes "$node" etcd snapshot "$RUNNER_TEMP/etcd.snapshot"
+          export GNUPGHOME=$(mktemp -d)
+          printf '%s\n' "$TF_PLAN_PUBLIC_KEY" > "$GNUPGHOME/public.asc"
+          gpg --batch --yes --trust-model always --recipient-file "$GNUPGHOME/public.asc" \
+            --output "$RUNNER_TEMP/etcd.snapshot.gpg" --encrypt "$RUNNER_TEMP/etcd.snapshot"
+          rm -rf "$RUNNER_TEMP/etcd.snapshot" "$GNUPGHOME"
+      # Decrypt with the saved-plan private key. Holds every cluster secret.
+      - name: Upload encrypted etcd snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: etcd-snapshot-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.environment }}
+          path: ${{ runner.temp }}/etcd.snapshot.gpg
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upgrade one node at a time
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          python3 terraform/modules/talos-cluster/scripts/rolling-upgrade.py \
+            --component "$COMPONENT" --version "$VERSION" --inventory "$RUNNER_TEMP/inventory.json"
+      - name: Remind to pin the new version
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          variable=talos_version
+          if [ "$COMPONENT" = kubernetes ]; then variable=kubernetes_version; fi
+          {
+            echo "### ${COMPONENT^} upgraded to $VERSION"
+            echo
+            echo "Open a pull request setting \`$variable = \"$VERSION\"\` in \`$ROOT/terraform.auto.tfvars\`,"
+            echo "so new and replaced nodes are built at the same version."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove cluster credentials
+        if: always()
+        run: rm -f "$TALOSCONFIG"

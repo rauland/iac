@@ -25,3 +25,13 @@ output "kubeconfig" {
   value       = talos_cluster_kubeconfig.this.kubeconfig_raw
   sensitive   = true
 }
+
+output "upgrade_inventory" {
+  description = "Non-secret node lists and installer image for the Talos upgrade workflow."
+  value = {
+    talos_version   = var.talos_version
+    installer_image = data.talos_image_factory_urls.this.urls.installer_secureboot
+    control_planes  = [for key in sort(keys(var.talos_nodes)) : var.talos_nodes[key].api_address if var.talos_nodes[key].node_type == "controlplane"]
+    workers         = [for key in sort(keys(var.talos_nodes)) : var.talos_nodes[key].api_address if var.talos_nodes[key].node_type == "worker"]
+  }
+}
