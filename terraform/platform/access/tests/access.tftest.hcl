@@ -19,7 +19,7 @@ run "environment_boundaries" {
   }
   assert {
     condition = alltrue([
-      for name, service in local.services : service.operation == "apply" || alltrue([
+      for name, service in local.services : contains(["apply", "csi"], service.operation) || alltrue([
         for grant in local.service_grants :
         contains(concat(["PVEAuditor", "NodeAudit", "StorageRead", "NetworkRead"], service.operation == "plan" ? ["PlanDiskAccess"] : []), grant.role) if grant.name == name
       ])
@@ -64,4 +64,36 @@ run "environment_boundaries" {
     )
     error_message = "Downloads must use node-scoped Sys.AccessNetwork and never grant Sys.Modify."
   }
+  assert {
+    condition = (
+      toset(local.roles.KubernetesDisk) == toset(["VM.Audit", "VM.Config.Disk"]) &&
+      toset(local.roles.KubernetesStorage) == toset(["Datastore.Audit", "Datastore.Allocate", "Datastore.AllocateSpace"]) &&
+      toset([for name, service in local.services : name if service.operation == "csi"]) == toset(["k8s-csi-dev"]) &&
+      alltrue([
+        for grant in local.service_grants : contains([
+          "${grant.role}:/nodes/${var.node_name}" == "NodeAudit:${grant.path}",
+          grant.role == "KubernetesDisk" && grant.path == "/pool/${local.services[grant.name].environment}",
+          grant.role == "KubernetesStorage" && grant.path == "/storage/k8s-${local.services[grant.name].environment}",
+        ], true) if local.services[grant.name].operation == "csi"
+      ]) &&
+      alltrue([for grant in local.service_grants : local.services[grant.name].operation == "csi" if contains(["KubernetesDisk", "KubernetesStorage"], grant.role)])
+    )
+    error_message = "CSI identities may only attach disks in their own pool and allocate on their own Kubernetes storage."
+  }
+  assert {
+    condition = (
+      proxmox_storage_zfspool.kubernetes["dev"].id == "k8s-dev" &&
+      proxmox_storage_zfspool.kubernetes["dev"].zfs_pool != "nas" &&
+      toset(proxmox_storage_zfspool.kubernetes["dev"].content) == toset(["images"])
+    )
+    error_message = "Kubernetes volumes need a dedicated dataset, never the shared ZFS pool root."
+  }
+}
+
+run "reject_unknown_storage_environment" {
+  command = plan
+  variables {
+    kubernetes_storage_pools = { staging = "nas/k8s-staging" }
+  }
+  expect_failures = [var.kubernetes_storage_pools]
 }

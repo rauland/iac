@@ -39,3 +39,13 @@ variable "infra_vm_ids" {
   type        = set(number)
   default     = [100, 101, 105, 116]
 }
+
+variable "kubernetes_storage_pools" {
+  description = "Existing ZFS dataset per environment for Kubernetes volumes. Each becomes storage k8s-<environment>, the only storage that environment's CSI identity can allocate on or delete from. Create the dataset before applying."
+  type        = map(string)
+  default     = { dev = "nas/k8s-dev" }
+  validation {
+    condition     = alltrue([for environment in keys(var.kubernetes_storage_pools) : contains(["dev", "prod"], environment)])
+    error_message = "Kubernetes storage pools must be keyed by dev or prod."
+  }
+}

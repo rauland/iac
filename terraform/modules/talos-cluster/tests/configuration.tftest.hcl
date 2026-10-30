@@ -105,6 +105,15 @@ run "generate_valid_talos_configuration_offline" {
     )
     error_message = "The real Talos generator must accept the patches and preserve networking, endpoint, and node roles."
   }
+  assert {
+    condition = alltrue([for key, node in data.talos_machine_configuration.node : (
+      one([for doc in split("\n---\n", node.machine_configuration) : yamldecode(doc) if try(yamldecode(doc).version, "") == "v1alpha1"]).machine.nodeLabels == {
+        "topology.kubernetes.io/region" = "pve"
+        "topology.kubernetes.io/zone"   = var.talos_nodes[key].pve_node
+      }
+    )])
+    error_message = "Every node needs the region and zone labels the Proxmox CSI plugin uses to place volumes."
+  }
 }
 
 run "generate_legacy_talos_configuration_offline" {

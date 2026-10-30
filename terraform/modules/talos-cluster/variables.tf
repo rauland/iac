@@ -17,6 +17,16 @@ variable "cluster_name" {
   }
 }
 
+variable "proxmox_region" {
+  description = "Region name for this Proxmox host or cluster. Nodes are labelled topology.kubernetes.io/region with it and topology.kubernetes.io/zone with their pve_node; the Proxmox CSI plugin's config must use the same region."
+  type        = string
+  default     = "pve"
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]*$", var.proxmox_region))
+    error_message = "proxmox_region must be a valid Kubernetes label value of lowercase letters, digits, dots, and hyphens."
+  }
+}
+
 variable "cluster_endpoint" {
   description = "Kubernetes API URL, including https:// and port 6443; provide a stable load balancer or control-plane address."
   type        = string
