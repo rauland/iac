@@ -1,0 +1,38 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: proxmox-csi-plugin
+  namespace: csi-proxmox
+spec:
+  url: oci://ghcr.io/sergelogvinov/charts/proxmox-csi-plugin
+  ref:
+    tag: 0.5.13
+  interval: 24h
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: proxmox-csi-plugin
+  namespace: csi-proxmox
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: proxmox-csi-plugin
+  values:
+    # config.yaml with the Proxmox API URL, token and region; see the
+    # cluster's proxmox-csi directory.
+    existingConfigSecret: proxmox-csi-plugin
+    storageClass:
+      - name: proxmox
+        storage: ${csi_storage}
+        fstype: ext4
+        reclaimPolicy: Delete
+        volumeBindingMode: WaitForFirstConsumer
+        cache: none
+        ssd: true
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"

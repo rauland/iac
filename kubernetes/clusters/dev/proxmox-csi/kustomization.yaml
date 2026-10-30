@@ -1,0 +1,7 @@
+# Applied by the proxmox-csi Flux Kustomization with this cluster's config
+# Secret; the root kustomization does not list it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../infrastructure/proxmox-csi
+  - config.sops.yaml

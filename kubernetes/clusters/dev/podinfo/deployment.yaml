@@ -6,6 +6,9 @@ metadata:
     app.kubernetes.io/name: podinfo
 spec:
   replicas: 1
+  # The volume attaches to one VM at a time, so stop the old pod first.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: podinfo
@@ -20,6 +23,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 100
         runAsGroup: 101
+        fsGroup: 101
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -59,4 +63,5 @@ spec:
               drop: ["ALL"]
       volumes:
         - name: data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: podinfo-data

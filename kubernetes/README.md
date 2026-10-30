@@ -10,7 +10,7 @@ pulls `main` itself, about once a minute.
 | [clusters/dev](clusters/dev/kustomization.yaml) | Flux on the dev Talos cluster |
 | [clusters/dev/infrastructure.yaml](clusters/dev/infrastructure.yaml) | Flux Kustomizations that install the shared infrastructure in order |
 | [clusters/dev/podinfo](clusters/dev/podinfo) | Demo app whose UI message is a SOPS-encrypted Secret |
-| [infrastructure](infrastructure) | MetalLB and Traefik, shared by every cluster |
+| [infrastructure](infrastructure) | MetalLB, Traefik and the Proxmox CSI plugin, shared by every cluster |
 
 ## How Flux is installed
 
@@ -78,6 +78,55 @@ The three steps are separate Flux Kustomizations, each waiting for the last:
 MetalLB installs its CRDs, the pool uses them, and Traefik then gets its
 address. `flux get kustomizations` shows where a failed rollout stopped. Chart
 versions are pinned in each `release.yaml`; upgrade them through a pull request.
+
+## Persistent storage
+
+The [Proxmox CSI plugin](https://github.com/sergelogvinov/proxmox-csi-plugin)
+provides the default `proxmox` StorageClass. Each PersistentVolume is a Proxmox
+disk on the cluster's dedicated storage (`k8s-dev` on the `nas/k8s-dev` ZFS
+dataset), attached to the VM that runs the pod. Every node is on host `pve`, so
+a volume follows its pod to any node. Volumes are `ReadWriteOnce`: use the
+`Recreate` strategy, as [podinfo](clusters/dev/podinfo/deployment.yaml) does, so
+the old pod releases the disk before the new one starts. Set `fsGroup` for
+non-root containers so they can write to the volume.
+
+Deleting a PersistentVolumeClaim deletes its disk. Annotate the PersistentVolume
+with `csi.proxmox.sinextra.dev/lifecycle: keep` to keep the disk instead.
+Volumes are not backed up yet.
+
+The plugin uses the `k8s-csi-dev@pve` token from
+[`platform/access`](../terraform/platform/access/README.md#kubernetes-volumes),
+which can only create and delete disks on `k8s-dev`. Its config is the
+SOPS-encrypted Secret [`config.sops.yaml`](clusters/dev/proxmox-csi/config.sops.yaml).
+The `region` must match the Talos nodes' `topology.kubernetes.io/region` label
+(`pve`). To create or rotate it, as an administrator, without the token
+touching disk unencrypted:
+
+```sh
+secret=$(terraform -chdir=terraform/platform/access output -json automation_credentials |
+  jq -r '."k8s-csi-dev".secret')
+token_id='k8s-csi-dev@pve!ci'
+cat <<YAML | sops --encrypt --filename-override kubernetes/clusters/dev/proxmox-csi/config.sops.yaml \
+  --input-type yaml --output-type yaml /dev/stdin > kubernetes/clusters/dev/proxmox-csi/config.sops.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: proxmox-csi-plugin
+  namespace: csi-proxmox
+stringData:
+  config.yaml: |
+    clusters:
+      - url: https://pve.netkuki.com:8006/api2/json
+        insecure: false
+        token_id: $token_id
+        token_secret: $secret
+        region: pve
+YAML
+unset secret token_id
+```
+
+The plugin is its own Flux Kustomization, `proxmox-csi`, which declares SOPS
+decryption itself; only the root Kustomization gets it from the FluxInstance.
 
 ## Secrets
 

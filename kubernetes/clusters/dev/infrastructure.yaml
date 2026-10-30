@@ -53,3 +53,28 @@ spec:
   postBuild:
     substitute:
       ingress_ip: 10.0.0.60
+---
+# Unlike the root, this Kustomization is not patched by the FluxInstance, so
+# it declares SOPS decryption itself for the plugin's config Secret.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: proxmox-csi
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./kubernetes/clusters/dev/proxmox-csi
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  postBuild:
+    substitute:
+      csi_storage: k8s-dev
