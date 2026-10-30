@@ -1,6 +1,14 @@
 locals {
-  # Talos 1.14 generates dedicated install, hostname, and resolver documents.
+  # Talos 1.14 generates dedicated install, hostname, resolver, and Kubernetes
+  # node documents, and rejects the matching v1alpha1 fields alongside them.
   split_machine_config = tonumber(split(".", trimprefix(var.talos_version, "v"))[0]) > 1 || tonumber(split(".", trimprefix(var.talos_version, "v"))[1]) >= 14
+  # The Proxmox CSI plugin places volumes by these labels; see README.md.
+  topology_labels = {
+    for key, node in var.talos_nodes : key => {
+      "topology.kubernetes.io/region" = var.proxmox_region
+      "topology.kubernetes.io/zone"   = node.pve_node
+    }
+  }
 }
 
 resource "talos_machine_secrets" "this" {
@@ -28,12 +36,8 @@ data "talos_machine_configuration" "node" {
           disk  = "/dev/sda"
           image = data.talos_image_factory_urls.this.urls.installer_secureboot
         }
+        nodeLabels = local.topology_labels[each.key]
         } : key => value if !local.split_machine_config }, {
-        # The Proxmox CSI plugin places volumes by these labels; see README.md.
-        nodeLabels = {
-          "topology.kubernetes.io/region" = var.proxmox_region
-          "topology.kubernetes.io/zone"   = each.value.pve_node
-        }
         network = merge({ for key, value in {
           hostname    = each.value.node_name
           nameservers = var.dns_servers
@@ -72,6 +76,12 @@ data "talos_machine_configuration" "node" {
       apiVersion  = "v1alpha1"
       kind        = "ResolverConfig"
       nameservers = [for address in var.dns_servers : { address = address }]
+    }),
+    # Merges with the generated document's role labels.
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "KubeNodeConfig"
+      labels     = local.topology_labels[each.key]
     })
     ] : [], [for volume in ["STATE", "EPHEMERAL"] : yamlencode({
       apiVersion = "v1alpha1"
