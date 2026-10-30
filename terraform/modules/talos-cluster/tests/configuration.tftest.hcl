@@ -107,12 +107,15 @@ run "generate_valid_talos_configuration_offline" {
   }
   assert {
     condition = alltrue([for key, node in data.talos_machine_configuration.node : (
-      one([for doc in split("\n---\n", node.machine_configuration) : yamldecode(doc) if try(yamldecode(doc).version, "") == "v1alpha1"]).machine.nodeLabels == {
-        "topology.kubernetes.io/region" = "pve"
-        "topology.kubernetes.io/zone"   = var.talos_nodes[key].pve_node
-      }
+      one([for doc in split("\n---\n", node.machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "KubeNodeConfig"]).labels["topology.kubernetes.io/region"] == "pve" &&
+      one([for doc in split("\n---\n", node.machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "KubeNodeConfig"]).labels["topology.kubernetes.io/zone"] == var.talos_nodes[key].pve_node &&
+      !can(one([for doc in split("\n---\n", node.machine_configuration) : yamldecode(doc) if try(yamldecode(doc).version, "") == "v1alpha1"]).machine.nodeLabels)
     )])
-    error_message = "Every node needs the region and zone labels the Proxmox CSI plugin uses to place volumes."
+    error_message = "Talos 1.14 nodes need the CSI region and zone labels in KubeNodeConfig; nodes reject machine.nodeLabels alongside that document."
+  }
+  assert {
+    condition     = one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "KubeNodeConfig"]).labels["node-role.kubernetes.io/control-plane"] == ""
+    error_message = "The topology labels must merge with, not replace, the generated control-plane role labels."
   }
 }
 
@@ -128,5 +131,12 @@ run "generate_legacy_talos_configuration_offline" {
       length([for doc in split("\n---\n", node.machine_configuration) : doc if try(yamldecode(doc).kind, "") == "VolumeConfig"]) == 2
     )])
     error_message = "The legacy machine configuration layout must also use the Secure Boot installer and accept both encrypted system volumes."
+  }
+  assert {
+    condition = alltrue([for key, node in data.talos_machine_configuration.node : (
+      one([for doc in split("\n---\n", node.machine_configuration) : yamldecode(doc) if try(yamldecode(doc).version, "") == "v1alpha1"]).machine.nodeLabels["topology.kubernetes.io/zone"] == var.talos_nodes[key].pve_node &&
+      length([for doc in split("\n---\n", node.machine_configuration) : doc if try(yamldecode(doc).kind, "") == "KubeNodeConfig"]) == 0
+    )])
+    error_message = "Talos releases before 1.14 take the CSI topology labels in machine.nodeLabels."
   }
 }
