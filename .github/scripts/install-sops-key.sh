@@ -23,6 +23,8 @@ jq -er '.outputs.kubeconfig.value' "$scratch/state.json" > "$scratch/kubeconfig"
 rm "$scratch/state.json"
 export KUBECONFIG="$scratch/kubeconfig"
 
+# Runs before the Flux apply, so on a new cluster the namespace may not exist yet.
+kubectl create namespace flux-system --dry-run=client --output=yaml | kubectl apply --filename=- > /dev/null
 printf '%s\n' "$SOPS_AGE_KEY" > "$scratch/age.agekey"
 kubectl --namespace flux-system create secret generic sops-age \
   --from-file=age.agekey="$scratch/age.agekey" --dry-run=client --output=yaml |

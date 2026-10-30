@@ -61,7 +61,7 @@ resource "helm_release" "flux_instance" {
         path = var.sync_path
       }
       # Decrypt SOPS files with the age key the deploy job installs as
-      # sops-age; see .github/scripts/install-sops-key.sh.
+      # sops-age before this apply; see .github/scripts/install-sops-key.sh.
       kustomize = {
         patches = [{
           target = { kind = "Kustomization" }
