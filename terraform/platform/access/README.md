@@ -123,7 +123,7 @@ Store each identity's full token as the matching
 and the inventory identity's `user_id`, `token_name` and `secret` as
 `/iac/<scope>/ansible/PROXMOX_USER_ANSIBLE`, `PROXMOX_TOKEN_ID_ANSIBLE` and
 `PROXMOX_TOKEN_SECRET_ANSIBLE`. The full layout, including the API URL, saved
-plan key, Ansible SSH keys and Cloudflare token, is in
+plan key and Ansible SSH keys, is in
 [CI parameters](../state-access/README.md#ci-parameters). Runners reach Proxmox
 through Tailscale and need no network secret. See [SSH access and rotation](../../../ssh/README.md).
 Keep the public plan encryption key in the repository variable.

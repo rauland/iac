@@ -27,7 +27,7 @@ The plan, deploy and state-unlock jobs request `id-token: write` and call
 
 ### CI parameters
 
-CI reads its Proxmox, Cloudflare, Ansible and saved-plan secrets from SSM
+CI reads its Proxmox, Ansible and saved-plan secrets from SSM
 Parameter Store instead of GitHub environment secrets. Each parameter's last
 path segment is the environment variable it becomes. The plan and deploy jobs
 run [load-parameters.py](../../../.github/scripts/load-parameters.py) right after
@@ -38,7 +38,7 @@ be masked reliably. Roles can only read, and only these prefixes:
 | Parameter | Type | Readable by |
 | --- | --- | --- |
 | `/iac/shared/proxmox/PROXMOX_URL`, `.../TF_VAR_virtual_environment_endpoint` | SecureString | All roles |
-| `/iac/shared/apply/CLOUDFLARE_API_TOKEN`, `.../TF_PLAN_PRIVATE_KEY` | SecureString | Apply roles |
+| `/iac/shared/apply/TF_PLAN_PRIVATE_KEY` | SecureString | Apply roles |
 | `/iac/<scope>/plan/TF_VAR_virtual_environment_api_token` | SecureString | That scope's plan role |
 | `/iac/<scope>/apply/TF_VAR_virtual_environment_api_token` | SecureString | That scope's apply role |
 | `/iac/<scope>/ansible/PROXMOX_TOKEN_SECRET_ANSIBLE`, `.../SSH_PRIVATE_KEY_ANSIBLE` | SecureString | Dev and prod apply roles |

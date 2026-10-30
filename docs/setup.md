@@ -104,7 +104,7 @@ administrator before read-only plan credentials initialize a new root.
 Each plan/apply environment needs its matching `AWS_ROLE_ARN` and
 `AWS_DEFAULT_REGION` variables (see
 [GitHub OIDC roles](../terraform/platform/state-access/README.md#github-oidc-roles)).
-Proxmox endpoints and tokens, the Cloudflare token, the saved-plan private key
+Proxmox endpoints and tokens, the saved-plan private key
 and the scoped Ansible credentials are SSM parameters, listed in
 [CI parameters](../terraform/platform/state-access/README.md#ci-parameters).
 

@@ -109,7 +109,7 @@ run "parameter_read_boundaries" {
         !contains(["shared/apply", "${identity.scope}/apply", "${identity.scope}/ansible"], path)
       ]) if identity.operation == "plan"
     ])
-    error_message = "Plan roles must not read apply secrets (Cloudflare, plan key, apply or Ansible tokens)."
+    error_message = "Plan roles must not read apply secrets (plan key, apply or Ansible tokens)."
   }
   assert {
     condition = (
