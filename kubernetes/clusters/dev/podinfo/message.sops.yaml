@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: podinfo-message
+type: Opaque
+stringData:
+    message: ENC[AES256_GCM,data:3G3WP88IrP0g8y+iiLTYOjhWIdVLm9bDtoK2,iv:d7blkVQYvtbaOD/meqFXLvJRgKtOZXezAXsfCpM9fCw=,tag:hyjVaQ+w9u1635tMnjK6kg==,type:str]
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    age:
+        - recipient: age1qxll9dznkk8drf06frwf574z6uc4snjtl3wt2gtyj2e65kt8xerq0lnd6z
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBJc1BmVkdIc3JlWXZ3d3Jm
+            cVB3M2VxL3FreXFxUzZrejBLMzE5OGJOaXhnCktiNFhQdVVPY2xqTm5EZi9rSU1o
+            S0xFem9Tb2VYQ1krenJwbU5HdHNucncKLS0tIDBmdDhLZVVFcnhqRU5vbE1DZTdp
+            bGdPNkR1dk1Qb25qUnl4MXo2dFRYZFEKkO5vvagBZQeYsfTK9qLkdlhYwdeV8Gjg
+            u4w9gdPs0S7yyXzCz0rZ7q6LZ8ViGXlxiDwbcs4PxFHXKpSe07+ZCA==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-10-30T10:33:23Z"
+    mac: ENC[AES256_GCM,data:G+WBnKy5kfw0RQeyEEXwaGG6YJ+3xrc7IZIEkC+4XIxnzOJbR03lzI3IDlzwW57asi7WbD3qjuY7tDzzTaUiRWS4osuMGaY7gIui0HtyAdcVfEEF8xwrABnnPpRWAS0vrIgLSuhnQJNoDsO/t4Ev8T3AUokjVOkmZoOQoo9l6sI=,iv:qPKwBvfySYJwt8gSY1QI9IdMzWHalQHciNJ9SdBkoQM=,tag:EZGZUkCWW2GSRPRbnQXahg==,type:str]
+    pgp: []
+    encrypted_regex: ^(data|stringData)$
+    version: 3.9.4
