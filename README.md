@@ -170,10 +170,12 @@ protections or the health of deployed services.
 
 | Feature | Status | Coverage and remaining work |
 | --- | --- | --- |
-| SSH certificates | Not planned | VM access uses per-environment SSH keys, cloud-init and verified host pins. One CI identity per environment does not justify running an SSH CA. |
-| Secrets management | Implemented | CI reads its secrets from SSM Parameter Store through OIDC roles; saved plans are encrypted and Talos credentials are ignored. The workflows reference no GitHub secrets. Workload secret delivery inside the cluster is not configured. |
+| CI cloud access | Implemented | GitHub OIDC assumes one AWS role per environment and operation, with one-hour sessions and no IAM users or access keys. Plan roles cannot read apply parameters. Administrators use IAM Identity Center. |
+| CI network access | Implemented | Runners join Tailscale as ephemeral `tag:ci` nodes through GitHub OIDC and reach Proxmox through the subnet router. No network secret is stored, and jobs run in parallel. |
+| Secrets management | Implemented | CI reads its secrets from SSM Parameter Store through those roles and masks them before use; the workflows reference no GitHub secrets. Saved plans are encrypted and Talos credentials are ignored. Workload secret delivery inside the cluster is not configured. |
 | Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
 | Linting and validation | Partial | Ansible linting, Terraform validation, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
 | Kubernetes GitOps | Planned | No Flux or Argo CD bootstrap or workload reconciliation is configured. |
 | Workload backups | Planned | No workload backup or restore process is configured. S3 stores Terraform state only. |
 | IP address management | Planned | Addresses are supplied explicitly or through DHCP; no IPAM integration allocates addresses or manages reservations. |
+| SSH certificates | Not planned | VM access uses per-environment SSH keys, cloud-init and verified host pins. One CI identity per environment does not justify running an SSH CA. |
