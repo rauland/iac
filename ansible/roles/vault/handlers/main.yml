@@ -1,9 +1,0 @@
----
-- name: Reload systemd
-  ansible.builtin.systemd:
-    daemon_reload: true
-
-- name: Restart Vault
-  ansible.builtin.systemd:
-    name: vault
-    state: restarted

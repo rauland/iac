@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 
 
-VM_TARGETS = {"sandbox", "vault"}
+VM_TARGETS = {"sandbox"}
 CONFIG_TARGETS = VM_TARGETS | {"common"}
 
 
@@ -103,7 +103,7 @@ def discover():
             raise SystemExit("Invalid deployment scope or environment")
         if mode == "configuration" and scope == "single":
             if environment not in {"dev", "prod"} or target not in CONFIG_TARGETS:
-                raise SystemExit("Configuration requires dev/prod and common/sandbox/vault")
+                raise SystemExit("Configuration requires dev/prod and common/sandbox")
             root = next((root for root in roots if root["environment"] == environment
                          and root["target"] == target), None)
             directory = Path(f"terraform/workloads/{environment}/{target}")

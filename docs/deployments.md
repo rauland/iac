@@ -27,8 +27,8 @@ infrastructure secrets and reports even for documentation-only pull requests.
 | Verified SSH host keys or a running guest agent for managed guests | Configure VM targets; CI can enroll unpinned guests through the scoped Proxmox apply identity. |
 | Documentation, tests, lint policy, or pipeline implementation only | Run CI; no deployment. |
 
-Shared baseline roles select enabled VM targets. Vault-specific files select
-only Vault targets. Images and Talos never run Ansible. Any actual infrastructure
+Shared baseline roles select enabled VM targets. Service-specific files select
+only their own target. Images and Talos never run Ansible. Any actual infrastructure
 change to a VM target also runs Ansible after the saved plan is successfully
 applied. A no-op Terraform plan does not suppress separately requested Ansible
 work. Removed roots are never destroyed automatically: destroy them explicitly
@@ -47,7 +47,7 @@ target; all scope selects enabled targets in the chosen environment.
 | `configuration` | Run Ansible only; no Terraform plan or apply. |
 | `destroy` | Generate and apply an explicitly requested destroy plan after approval; never run Ansible. |
 
-For configuration-only single runs, targets are `common`, `sandbox`, or `vault`
+For configuration-only single runs, targets are `common` or `sandbox`
 in dev/prod. They may configure existing guests without a matching Terraform
 root. All-scope configuration selects enabled VM workload roots. Use
 `platform/images` for shared cloud-image publishing.
@@ -166,24 +166,22 @@ Environment tags are optional; pool membership determines the environment.
 | VM tags | Playbooks for a matching target run |
 | --- | --- |
 | `common` | `common.yml`: timezone, Ansible user, and packages |
-| `common` + `vault` | `common.yml`, then `vault.yml` |
 | `common` + `sandbox` | `common.yml`, then `sandbox.yml` |
-| `vault` or `sandbox`, without `common` | Corresponding service playbook only |
+| `sandbox`, without `common` | `sandbox.yml` only |
 | No matching tag | Skipped |
 
 The common baseline is optional and does not exclude service roles. `common`
 is the VM tag and runner target, and creates the `tag_common` inventory group.
-OS-family differences are handled inside roles; Vault currently
-supports RHEL-family guests with DNF and EPEL. Sandbox guests also tagged
+OS-family differences are handled inside roles. Sandbox guests also tagged
 `podman` run an Nginx site through the [Podman role](../ansible/roles/podman/README.md).
 See [Ansible deployment targets](../ansible/README.md)
 for credentials, inventory conventions, and offline checks.
 
-Preview a Vault run from the repository root:
+Preview a sandbox run from the repository root:
 
 ```sh
-bash ansible/run-playbook.sh dev vault --list-hosts
-bash ansible/run-playbook.sh dev vault --check
+bash ansible/run-playbook.sh dev sandbox --list-hosts
+bash ansible/run-playbook.sh dev sandbox --check
 ```
 
 ### Example VM

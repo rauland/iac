@@ -82,7 +82,7 @@ for the trust checks and guest-agent requirements.
 | [.github/workflows](.github/workflows) | Infrastructure/configuration, S3 bootstrap, and state unlock workflows |
 | [.github/actions](.github/actions) | Shared Tailscale, SSH, and Ansible actions |
 
-Enabled deployment roots are `dev/sandbox`, `dev/vault`, `dev/talos`, and
+Enabled deployment roots are `dev/sandbox`, `dev/talos`, and
 [`platform/images`](terraform/platform/images/README.md). `platform/access` is
 administrator-operated and excluded from deployment discovery, as is
 [`platform/state-access`](terraform/platform/state-access/README.md) for CI AWS
@@ -155,8 +155,8 @@ lists the offline Python, Node, and Terraform checks run by CI.
 For a live Ansible preview after configuring credentials, inventory and SSH trust:
 
 ```sh
-bash ansible/run-playbook.sh dev vault --list-hosts
-bash ansible/run-playbook.sh dev vault --check
+bash ansible/run-playbook.sh dev sandbox --list-hosts
+bash ansible/run-playbook.sh dev sandbox --check
 ```
 
 See [local Terraform state setup](docs/setup.md#2-configure-terraform-state)
@@ -170,8 +170,8 @@ protections or the health of deployed services.
 
 | Feature | Status | Coverage and remaining work |
 | --- | --- | --- |
-| SSH certificates | Planned | VM access uses SSH keys and cloud-init; no SSH CA or certificate lifecycle is configured. |
-| Secrets management | Partial | GitHub Actions secrets, encrypted saved plans, and ignored Talos credentials are in place. Vault provisioning and an Ansible role exist; automated initialization, unsealing, and workload secret retrieval are not configured. |
+| SSH certificates | Not planned | VM access uses per-environment SSH keys, cloud-init and verified host pins. One CI identity per environment does not justify running an SSH CA. |
+| Secrets management | Implemented | CI reads its secrets from SSM Parameter Store through OIDC roles; saved plans are encrypted and Talos credentials are ignored. The workflows reference no GitHub secrets. Workload secret delivery inside the cluster is not configured. |
 | Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
 | Linting and validation | Partial | Ansible linting, Terraform validation, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
 | Kubernetes GitOps | Planned | No Flux or Argo CD bootstrap or workload reconciliation is configured. |

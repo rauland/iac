@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 
-VM_TARGETS = {"sandbox", "vault"}
+VM_TARGETS = {"sandbox"}
 
 
 def preview(targets, result_directory, rows, context):

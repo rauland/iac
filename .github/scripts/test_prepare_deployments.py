@@ -24,7 +24,7 @@ class PrepareDeploymentTests(unittest.TestCase):
                             GITHUB_EVENT_NAME="push", GITHUB_REF="refs/heads/main",
                             GITHUB_SERVER_URL="https://github.com", GITHUB_REPOSITORY="owner/iac")
 
-    def target(self, environment="dev", name="vault", terraform=True, ansible=False, destroy=False):
+    def target(self, environment="dev", name="sandbox", terraform=True, ansible=False, destroy=False):
         return dict(environment=environment, target=name,
                     directory=(f"terraform/platform/{name}" if environment == "platform"
                                else f"terraform/workloads/{environment}/{name}"),
@@ -99,7 +99,7 @@ class PrepareDeploymentTests(unittest.TestCase):
     def test_wrong_commit_run_attempt_target_or_mode_is_rejected(self):
         target = self.target()
         for overrides in (dict(sha="other"), dict(run_id="41"), dict(run_attempt="1"),
-                          dict(environment="prod"), dict(target="sandbox"), dict(destroy=True),
+                          dict(environment="prod"), dict(target="talos"), dict(destroy=True),
                           dict(changes="false")):
             with self.subTest(overrides=overrides):
                 self.result(target, **overrides)
@@ -135,16 +135,16 @@ class PrepareDeploymentTests(unittest.TestCase):
         self.context["PR_HEAD_SHA"] = "pr-head"
         body = self.preview(dev, prod)
         self.assertIn("Commit: `pr-head`", body)
-        self.assertIn("dev/vault — changes", body)
+        self.assertIn("dev/sandbox — changes", body)
         self.assertIn("memory = 1024 -&gt; 2048", body)
-        self.assertIn("prod/vault — no changes", body)
+        self.assertIn("prod/sandbox — no changes", body)
         self.assertIn("No changes. Your infrastructure", body)
         self.assertIn("https://github.com/owner/iac/actions/runs/42/attempts/2", body)
 
     def test_configuration_only_preview_explains_no_plans(self):
         body = self.preview(self.target(terraform=False, ansible=True))
         self.assertIn("No Terraform plans were needed", body)
-        self.assertIn("| dev/vault | skip | run |", body)
+        self.assertIn("| dev/sandbox | skip | run |", body)
 
     def test_preview_escapes_markup_in_resource_values(self):
         target = self.target()

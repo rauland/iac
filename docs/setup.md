@@ -116,9 +116,8 @@ SSH keys, commit the public keys, and store each private key as the
 enrollment path. The guest agent must already be running for automatic
 enrollment; Ansible cannot install it to establish its first connection.
 
-Configure any service-specific credentials required by your target, including
-the Cloudflare token for Vault. See the [Ansible guide](../ansible/README.md)
-and [Vault role](../ansible/roles/vault/README.md).
+Configure any service-specific credentials required by your target. See the
+[Ansible guide](../ansible/README.md).
 
 ## 5. Configure plan encryption
 

@@ -35,7 +35,7 @@ if sys.argv[1] == 'show':
                 change['after']['cpu'] = [{'cores': 8}]
         print(json.dumps(plan))
         sys.exit(int(os.environ.get('SHOW_EXIT_CODE', '0')))
-    print('  ~ resource "example" "vault" { password = (sensitive value) }')
+    print('  ~ resource "example" "sandbox" { password = (sensitive value) }')
     print('Plan: 0 to add, 1 to change, 0 to destroy.')
     sys.exit(int(os.environ.get('SHOW_EXIT_CODE', '0')))
 if sys.argv[1] == 'plan':
@@ -59,7 +59,7 @@ sys.exit(int(os.environ['PLAN_EXIT_CODE']))
             env['BAD_STAGED_PLAN'] = '1'
         return subprocess.run(
             ["python3", str(SCRIPT), "--directory", str(self.directory),
-             "--environment", "dev", "--target", "vault", "--destroy", destroy,
+             "--environment", "dev", "--target", "sandbox", "--destroy", destroy,
              "--result", str(self.result)], env=env, text=True, capture_output=True)
 
     def test_empty_plan_is_success_and_reports_no_changes(self):

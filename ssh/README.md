@@ -45,8 +45,8 @@ authenticated Proxmox API and QEMU guest agent. It reads only
 The guest must match the selected environment and target in Ansible inventory,
 the selected Terraform backend state (node, VM ID, name, pool and tag), and live
 Proxmox pool membership and configuration. Deposed instances and disabled roots
-cannot supply new trust. For `common`, the enabled sandbox and Vault states in
-the selected environment supply the managed guest identities.
+cannot supply new trust. For `common`, the enabled sandbox state in
+the selected environment supplies the managed guest identities.
 
 Enrollment uses the existing `tf-ENVIRONMENT-apply@pve!ci` token; its VM admin
 role already grants guest-agent file access within its own pool. The
@@ -114,7 +114,7 @@ their keys through the guest agent. Keep `ssh/known_hosts/dev` and `prod` for
 these pins as well as local runs.
 
 1. Assign the VM to its intended Proxmox pool (`dev` or `prod`) using an
-   authorized administrator. Add its service tag (`sandbox` or `vault`); add
+   authorized administrator. Add its service tag (`sandbox`); add
    `common` only if it should receive the shared baseline. The baseline
    currently installs `qemu-guest-agent`; omit `common` to skip that baseline.
 2. Through the guest console or an already verified connection, install the
@@ -138,7 +138,7 @@ these pins as well as local runs.
    inputs: merging them may also schedule automatic configuration for enabled
    targets. To request a manual run, select the **Infrastructure and
    configuration** workflow on `main`, mode `configuration`, scope `single`,
-   the environment, and target `sandbox`, `vault` or `common`. The existing
+   the environment, and target `sandbox` or `common`. The existing
    manual apply-environment approvals still apply. This mode runs no Terraform
    plan or apply and does not import the VM into Terraform state.
 

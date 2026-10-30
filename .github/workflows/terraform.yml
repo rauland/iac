@@ -28,8 +28,8 @@ on:
       target:
         description: Target (ignored when scope is all)
         type: choice
-        options: [common, sandbox, vault, talos, images]
-        default: vault
+        options: [common, sandbox, talos, images]
+        default: sandbox
         required: true
 
 permissions:
