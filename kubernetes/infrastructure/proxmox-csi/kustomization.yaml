@@ -1,0 +1,8 @@
+# Proxmox CSI plugin: each PersistentVolume is a Proxmox disk on the
+# cluster's Kubernetes storage, attached to the VM that runs the pod. The
+# cluster adds its config Secret and sets csi_storage through Flux.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - release.yaml

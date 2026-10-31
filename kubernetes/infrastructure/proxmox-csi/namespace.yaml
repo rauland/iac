@@ -1,0 +1,7 @@
+# The node plugin mounts host devices and kubelet directories.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: csi-proxmox
+  labels:
+    pod-security.kubernetes.io/enforce: privileged

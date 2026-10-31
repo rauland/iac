@@ -1,0 +1,12 @@
+# A Proxmox disk on k8s-dev through the default proxmox StorageClass; podinfo
+# keeps files written to its /store API here.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: podinfo-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
