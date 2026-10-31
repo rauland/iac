@@ -102,8 +102,24 @@ kubectl -n <namespace> patch deployment <name> --type=json -p \
 
 New Deployments are unaffected.
 
-Deleting a PersistentVolumeClaim deletes its disk. Annotate the PersistentVolume
-with `csi.proxmox.sinextra.dev/lifecycle: keep` to keep the disk instead.
+The StorageClass uses `reclaimPolicy: Retain`, so deleting a
+PersistentVolumeClaim, its namespace or the app that owns it never deletes the
+disk: the PersistentVolume becomes `Released` and keeps its data. To reuse the
+data, bind a new claim to that PersistentVolume. To free the space, delete the
+PersistentVolume, then the disk on the Proxmox host:
+
+```sh
+kubectl get pv <pv> -o jsonpath='{.spec.csi.volumeHandle}'   # <region>/<node>/<storage>/<volume>
+pvesm free <storage>:<volume>
+```
+
+A StorageClass's reclaim policy cannot be changed in place, so Helm fails to
+upgrade one that already exists with a different policy. Delete the
+StorageClass (`kubectl delete storageclass proxmox`) and let Flux recreate it;
+existing volumes are unaffected. Each existing PersistentVolume keeps the policy
+it was created with, so set it too:
+`kubectl patch pv <pv> -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'`.
+
 Volumes are not backed up yet.
 
 The plugin uses the `k8s-csi-dev@pve` token from
