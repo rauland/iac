@@ -63,8 +63,7 @@ Give the Proxmox storage entry a PBS API token with only the `DatastoreBackup`
 role on its datastore, and let a PBS prune job apply retention. Proxmox can
 then add backups and restore its own, but cannot delete any, so someone who
 takes over the hypervisor or its token cannot destroy the backups. `Admin`
-also allows deleting every snapshot and
-changing the datastore.
+would also allow deleting every snapshot and changing the datastore.
 
 Set retention in one place. With a PBS prune job, remove `prune-backups` from
 the Proxmox guest job so the storage default (`keep-all=1`) applies, and make
