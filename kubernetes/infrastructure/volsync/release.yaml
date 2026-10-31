@@ -1,0 +1,27 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: backube
+  namespace: volsync-system
+spec:
+  url: https://backube.github.io/helm-charts/
+  interval: 24h
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: volsync
+  namespace: volsync-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: volsync
+      version: 0.17.0
+      sourceRef:
+        kind: HelmRepository
+        name: backube
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace

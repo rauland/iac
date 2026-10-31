@@ -10,7 +10,7 @@ pulls `main` itself, about once a minute.
 | [clusters/dev](clusters/dev/kustomization.yaml) | Flux on the dev Talos cluster |
 | [clusters/dev/infrastructure.yaml](clusters/dev/infrastructure.yaml) | Flux Kustomizations that install the shared infrastructure in order |
 | [clusters/dev/podinfo](clusters/dev/podinfo) | Demo app whose UI message is a SOPS-encrypted Secret |
-| [infrastructure](infrastructure) | MetalLB, Traefik and the Proxmox CSI plugin, shared by every cluster |
+| [infrastructure](infrastructure) | MetalLB, Traefik, the Proxmox CSI plugin and VolSync, shared by every cluster |
 
 ## How Flux is installed
 
@@ -120,7 +120,12 @@ existing volumes are unaffected. Each existing PersistentVolume keeps the policy
 it was created with, so set it too:
 `kubectl patch pv <pv> -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'`.
 
-Volumes are not backed up yet.
+The `proxmox-scratch` StorageClass deletes its disks with their claims. Use it
+only for volumes that hold nothing worth keeping, such as VolSync's caches.
+
+Volumes are backed up only when their app declares it: see
+[Kubernetes volumes](../docs/backups.md#kubernetes-volumes) for opting a
+volume in and restoring it.
 
 The plugin uses the `k8s-csi-dev@pve` token from
 [`platform/access`](../terraform/platform/access/README.md#kubernetes-volumes),

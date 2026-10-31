@@ -30,12 +30,13 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "offsite" {
   }
 }
 
-# PBS prunes and garbage-collects its own chunks; object versions would keep
-# deleted chunks billable without making them restorable through PBS.
+# A cluster's key can delete objects, because restic's prune must. Versioning
+# keeps deleted or overwritten objects for deleted_retention_days, so a stolen
+# key cannot destroy the backups before someone notices.
 resource "aws_s3_bucket_versioning" "offsite" {
   bucket = aws_s3_bucket.offsite.id
   versioning_configuration {
-    status = "Disabled"
+    status = "Enabled"
   }
 }
 
@@ -49,6 +50,18 @@ resource "aws_s3_bucket_lifecycle_configuration" "offsite" {
       days_after_initiation = 7
     }
   }
+  rule {
+    id     = "expire-deleted-versions"
+    status = "Enabled"
+    filter {}
+    noncurrent_version_expiration {
+      noncurrent_days = var.deleted_retention_days
+    }
+    expiration {
+      expired_object_delete_marker = true
+    }
+  }
+  depends_on = [aws_s3_bucket_versioning.offsite]
 }
 
 resource "aws_s3_bucket_policy" "offsite" {
@@ -67,39 +80,50 @@ resource "aws_s3_bucket_policy" "offsite" {
   depends_on = [aws_s3_bucket_public_access_block.offsite]
 }
 
-# PBS authenticates to S3 only with a static access key, so this is the one IAM
-# user in the account. It can reach this bucket and nothing else. The key is
-# created outside Terraform so its secret never enters state; see the README.
-resource "aws_iam_user" "pbs" {
-  name = "pbs-offsite"
-  path = "/homelab/"
+# restic authenticates to S3 with a static access key, so each cluster gets one
+# IAM user, limited to its own prefix in this bucket. The keys are created
+# outside Terraform so their secrets never enter state; see the README.
+resource "aws_iam_user" "cluster" {
+  for_each = toset(var.clusters)
+  name     = "backup-${each.key}"
+  path     = "/homelab/"
 }
 
 locals {
   bucket_arn = "arn:aws:s3:::${var.bucket_name}"
-  pbs_policy = {
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid      = "ListBucket"
-        Effect   = "Allow"
-        Action   = ["s3:ListBucket", "s3:GetBucketLocation"]
-        Resource = [local.bucket_arn]
-      },
-      {
-        Sid      = "ManageChunks"
-        Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-        Resource = ["${local.bucket_arn}/*"]
-      },
-    ]
+  cluster_policies = {
+    for cluster in var.clusters : cluster => {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid       = "ListOwnPrefix"
+          Effect    = "Allow"
+          Action    = ["s3:ListBucket"]
+          Resource  = [local.bucket_arn]
+          Condition = { StringLike = { "s3:prefix" = ["${cluster}/*"] } }
+        },
+        {
+          Sid      = "LocateBucket"
+          Effect   = "Allow"
+          Action   = ["s3:GetBucketLocation"]
+          Resource = [local.bucket_arn]
+        },
+        {
+          Sid      = "ManageOwnObjects"
+          Effect   = "Allow"
+          Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+          Resource = ["${local.bucket_arn}/${cluster}/*"]
+        },
+      ]
+    }
   }
 }
 
-resource "aws_iam_user_policy" "pbs" {
-  name   = "pbs-offsite-bucket"
-  user   = aws_iam_user.pbs.name
-  policy = jsonencode(local.pbs_policy)
+resource "aws_iam_user_policy" "cluster" {
+  for_each = aws_iam_user.cluster
+  name     = "backup-${each.key}-prefix"
+  user     = each.value.name
+  policy   = jsonencode(local.cluster_policies[each.key])
 }
 
 resource "aws_budgets_budget" "monthly" {

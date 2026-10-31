@@ -1,0 +1,7 @@
+# VolSync copies opted-in PersistentVolumes to restic repositories, such as an
+# S3 bucket. Apps declare a ReplicationSource per volume; see docs/backups.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - release.yaml

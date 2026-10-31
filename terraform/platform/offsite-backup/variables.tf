@@ -4,9 +4,26 @@ variable "aws_region" {
 }
 
 variable "bucket_name" {
-  description = "Globally unique bucket that holds the Proxmox Backup Server off-site datastore."
+  description = "Globally unique bucket that holds the clusters' restic repositories."
   type        = string
-  default     = "rauland-homelab-pbs-offsite"
+  default     = "rauland-homelab-backups"
+}
+
+variable "clusters" {
+  description = "Clusters that back up to the bucket. Each gets an IAM user limited to the <cluster>/ prefix."
+  type        = list(string)
+  default     = ["dev"]
+
+  validation {
+    condition     = alltrue([for cluster in var.clusters : can(regex("^[a-z0-9-]+$", cluster))])
+    error_message = "Cluster names may contain only lowercase letters, digits and hyphens."
+  }
+}
+
+variable "deleted_retention_days" {
+  description = "Days that deleted or overwritten objects stay recoverable as noncurrent versions."
+  type        = number
+  default     = 30
 }
 
 variable "budget_limit_usd" {
