@@ -57,6 +57,26 @@ datastore disk is excluded:
 vzdump <pbs-vmid> --storage local --mode snapshot --compress zstd
 ```
 
+## Permissions and retention
+
+Give the Proxmox storage entry a PBS API token with only the `DatastoreBackup`
+role on its datastore, and let a PBS prune job apply retention. Proxmox can
+then add backups and restore its own, but cannot delete any, so someone who
+takes over the hypervisor or its token cannot destroy the backups. `Admin`
+also allows deleting every snapshot and
+changing the datastore.
+
+Set retention in one place. With a PBS prune job, remove `prune-backups` from
+the Proxmox guest job so the storage default (`keep-all=1`) applies, and make
+the prune job exist before narrowing the token; otherwise backups accumulate
+until the datastore is full. A dry run shows what a policy would remove:
+
+```sh
+proxmox-backup-debug api create /admin/datastore/<store>/prune \
+  --backup-type vm --backup-id <vmid> --keep-daily 7 --keep-weekly 4 \
+  --keep-monthly 6 --dry-run true
+```
+
 ## Off-site copy
 
 The [`pbs` Ansible role](../ansible/roles/pbs/README.md) configures the PBS

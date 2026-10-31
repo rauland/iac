@@ -32,7 +32,16 @@ pbs_sync_jobs:
         - group:ct/101
         - group:vm/102
 
+# PBS prunes its local datastore itself, so the Proxmox token needs no right
+# to delete backups.
 pbs_prune_jobs:
+  - id: store1-retention
+    options:
+      store: store1
+      schedule: daily
+      keep-daily: 7
+      keep-weekly: 4
+      keep-monthly: 6
   - id: offsite-retention
     options:
       store: offsite
