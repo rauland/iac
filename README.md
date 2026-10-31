@@ -87,7 +87,8 @@ Enabled deployment roots are `dev/sandbox`, `dev/talos`, and
 [`platform/images`](terraform/platform/images/README.md). `platform/access` is
 administrator-operated and excluded from deployment discovery, as is
 [`platform/state-access`](terraform/platform/state-access/README.md) for CI AWS
-state credentials.
+state credentials and [`platform/offsite-backup`](terraform/platform/offsite-backup/README.md)
+for the off-site backup bucket.
 Talos is included in automatic discovery and manual deployments. The
 `dev/flux` root installs Flux on that cluster; see [Kubernetes GitOps](kubernetes/README.md). See the
 [Talos module guide](terraform/modules/talos-cluster/README.md) for networking,
@@ -179,6 +180,6 @@ protections or the health of deployed services.
 | Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
 | Linting and validation | Partial | Ansible linting, Terraform validation, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
 | Kubernetes GitOps | Partial | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/dev` from `main`; CI builds the manifests offline. Secrets are SOPS-encrypted. MetalLB and Traefik expose Services on the LAN, and the Proxmox CSI plugin provides persistent volumes. Only the podinfo demo runs so far; TLS certificates and volume backups are not configured. |
-| Workload backups | Planned | No workload backup or restore process is configured. S3 stores Terraform state only. |
+| Workload backups | Partial | Proxmox Backup Server backs up VMs nightly, configured outside this repository. [`platform/offsite-backup`](terraform/platform/offsite-backup/README.md) defines the S3 bucket for an off-site copy; the PBS sync job and Kubernetes volume backups are not configured yet. |
 | IP address management | Planned | Addresses are supplied explicitly or through DHCP; no IPAM integration allocates addresses or manages reservations. |
 | SSH certificates | Not planned | VM access uses per-environment SSH keys, cloud-init and verified host pins. One CI identity per environment does not justify running an SSH CA. |
