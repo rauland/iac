@@ -208,6 +208,12 @@ with open(os.environ['CALL_LOG'], 'a') as log:
         self.assertIn('StrictHostKeyChecking=yes', calls[0]['ssh_args'])
         self.assertIn(f'UserKnownHostsFile="{trust}"', calls[0]['ssh_args'])
 
+    def test_pve_runs_its_own_playbook(self):
+        result, calls = self.run_target('pve')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls[0]['args'], [
+            './playbooks/pve.yml', '-i', './inventory/platform.yml', '--limit', 'pve'])
+
     def test_unknown_target_and_missing_trust_file_fail_before_playbooks(self):
         result, calls = self.run_target('sandbox')
         self.assertEqual(result.returncode, 2)

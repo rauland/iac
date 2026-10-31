@@ -1,0 +1,10 @@
+---
+pve_volume_backup_zfs_dataset: nas/k8s-dev
+pve_volume_backup_storage: k8s-dev
+pve_volume_backup_pbs_host: pbs-01
+pve_volume_backup_pbs_server: pbs.netkuki.com
+pve_volume_backup_pbs_datastore: onsite
+pve_volume_backup_pbs_namespace: k8s-dev
+pve_volume_backup_pbs_token: k8s-backup@pbs!pve
+pve_volume_backup_kube_server: https://10.0.0.50:6443
+pve_volume_backup_talos_node: 10.0.0.50

@@ -131,6 +131,8 @@ class DeploymentTargetTests(unittest.TestCase):
             "ansible/roles/pbs/tasks/main.yml", "ansible/roles/pbs/library/pbs_config.py",
             "ansible/playbooks/pbs.yml", "ansible/inventory/platform.yml",
             "ansible/inventory/group_vars/pbs.yml", "ansible/run-platform.sh",
+            "ansible/roles/pve_volume_backup/files/k8s-volume-backup.py",
+            "ansible/playbooks/pve.yml", "ansible/inventory/group_vars/pve.yml",
             "ssh/known_hosts/platform"), {})
 
     def test_mixed_changes_select_both_tools(self):

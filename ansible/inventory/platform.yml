@@ -2,8 +2,14 @@
 # Administrator-run platform hosts, used only by run-platform.sh. CI never
 # selects these hosts.
 all:
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   children:
     pbs:
       hosts:
         pbs-01:
           ansible_host: 10.0.0.9
+    pve:
+      hosts:
+        pve-01:
+          ansible_host: 10.0.0.5

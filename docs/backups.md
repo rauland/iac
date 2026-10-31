@@ -104,6 +104,69 @@ below the mount point, because a filesystem's root is never empty.
 The first sync uploads every selected snapshot, so run it when the local
 storage is healthy, not while a pool is degraded or rebuilding.
 
+## Kubernetes volumes and etcd
+
+Kubernetes nodes, images and manifests are rebuilt from Git, so only
+PersistentVolumes and the cluster's etcd database need backups. The
+[`pve_volume_backup` role](../ansible/roles/pve_volume_backup/README.md) backs
+them up from the Proxmox host into one PBS namespace per cluster. Opt a volume
+in with a label on its claim; leave caches and other data the app can
+regenerate unlabelled:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: library
+  labels:
+    backup: "true"
+```
+
+Each volume becomes a `host` backup group named `<namespace>.<claim>`, holding
+`volume.img` and `claim.conf` with the original PersistentVolume and claim.
+etcd is the group `talos-etcd`. The commands below run on the Proxmox host as
+root, with the job's repository and token:
+
+```sh
+export PBS_REPOSITORY=<token-id>@<pbs-host>:<datastore>
+export PBS_PASSWORD=$(cat /etc/k8s-volume-backup/pbs-token)
+proxmox-backup-client snapshot list --ns <namespace>
+```
+
+### Restore a volume
+
+1. Stop the app, for example by scaling its Deployment to zero, so the CSI
+   plugin detaches the disk. Suspend its Flux Kustomization first, or Flux
+   scales it back up.
+2. Find the target disk. To roll back an existing claim, read its
+   PersistentVolume's `volumeHandle` (`<region>/<node>/<storage>/<volume>`). For
+   a new claim, create it, start the app once so the disk is provisioned, then
+   stop it again.
+3. Write the image into the disk. The disk must be at least as large as the
+   backup and attached to no VM:
+   ```sh
+   proxmox-backup-client restore --ns <namespace> host/<namespace>.<claim>/<time> \
+     volume.img - | dd of=/dev/zvol/<dataset>/<volume> bs=4M conv=sparse status=progress
+   ```
+4. Resume the Kustomization and start the app.
+
+`claim.conf` records the original binding, which helps when the cluster has
+been rebuilt and claim UIDs and volume names have changed:
+`proxmox-backup-client restore --ns <namespace> host/<group>/<time> claim.conf -`.
+
+### Restore etcd onto a rebuilt control plane
+
+Restoring etcd brings back every Kubernetes object, including the
+PersistentVolumes, so the CSI plugin reattaches the existing disks itself.
+
+```sh
+proxmox-backup-client restore --ns <namespace> host/talos-etcd/<time> etcd.img etcd.db
+talosctl --nodes <control-plane> bootstrap --recover-from=./etcd.db
+```
+
+Bootstrap from the snapshot instead of an empty etcd: a node bootstraps only
+once, so recover before anything else bootstraps it.
+
 ## Checking the backups
 
 ```sh

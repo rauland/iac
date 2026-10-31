@@ -1,0 +1,36 @@
+---
+# ZFS dataset behind the Proxmox storage that the CSI plugin allocates from.
+pve_volume_backup_zfs_dataset: ""
+pve_volume_backup_storage: ""
+# Claims opt in with this label.
+pve_volume_backup_label: backup=true
+# systemd calendar event. Run before guest backups to keep the HDDs quiet.
+pve_volume_backup_schedule: "*-*-* 20:30:00"
+
+# PBS repository and the inventory host that owns the backup token.
+pve_volume_backup_pbs_host: ""
+pve_volume_backup_pbs_server: ""
+pve_volume_backup_pbs_datastore: ""
+pve_volume_backup_pbs_namespace: ""
+pve_volume_backup_pbs_token: ""
+pve_volume_backup_pbs_fingerprint: ""
+
+# Kubernetes API and the read-only service account from
+# kubernetes/infrastructure/volume-backup. Its token is issued from the
+# administrator's kubeconfig.
+pve_volume_backup_kube_server: ""
+pve_volume_backup_kube_reader_namespace: volume-backup
+pve_volume_backup_kube_reader: reader
+
+# Control-plane node for etcd snapshots; empty skips etcd. The etcd-backup
+# credential is issued from the administrator's talosconfig.
+pve_volume_backup_talos_node: ""
+pve_volume_backup_etcd_backup_id: talos-etcd
+pve_volume_backup_talosctl_version: v1.14.3
+pve_volume_backup_talosctl_sha256: a81b58b5d30af849cb5565a13fbd4bb3ca6b623881fa15c4244c890081684d7b
+
+# Credentials are issued for a year and renewed by runs after this many days.
+pve_volume_backup_credential_ttl_hours: 8760
+pve_volume_backup_renew_after_days: 300
+# Issue new credentials now, for example after a leak.
+pve_volume_backup_rotate: false

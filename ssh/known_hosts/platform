@@ -1,2 +1,4 @@
-# Administrator-run platform hosts. Verified through the Proxmox guest agent.
+# Administrator-run platform hosts. PBS was verified through the Proxmox guest
+# agent; pve matches the key already trusted by the administrator container.
 10.0.0.9 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC5VFlTcF9bFKpR5hRtu5dn0RB2PQFHDInA9qhJSY/R+
+10.0.0.5 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIPMgv/QujVbAeJvwQxyoauXztzEzmNtdGGxi6LLy/4u

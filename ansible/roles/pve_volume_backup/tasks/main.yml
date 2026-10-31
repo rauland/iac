@@ -1,0 +1,99 @@
+---
+- name: Check required settings
+  ansible.builtin.assert:
+    that:
+      - pve_volume_backup_zfs_dataset | length > 0
+      - pve_volume_backup_storage | length > 0
+      - pve_volume_backup_pbs_host in groups['all']
+      - pve_volume_backup_pbs_server | length > 0
+      - pve_volume_backup_pbs_datastore | length > 0
+      - pve_volume_backup_pbs_namespace | length > 0
+      - pve_volume_backup_pbs_token is match('^[^@!]+@[^@!]+![^@!]+$')
+      - pve_volume_backup_kube_server is match('^https://')
+    fail_msg: Set the dataset, storage, PBS repository and token, and Kubernetes API settings.
+    quiet: true
+
+- name: Show ZFS snapshots of volumes as devices
+  community.general.zfs:
+    name: "{{ pve_volume_backup_zfs_dataset }}"
+    state: present
+    extra_zfs_properties:
+      snapdev: visible
+
+- name: Create the configuration directory
+  ansible.builtin.file:
+    path: "{{ pve_volume_backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Install talosctl
+  ansible.builtin.get_url:
+    url: "{{ pve_volume_backup_talosctl_url }}"
+    dest: "{{ pve_volume_backup_talosctl }}"
+    checksum: sha256:{{ pve_volume_backup_talosctl_sha256 }}
+    owner: root
+    group: root
+    mode: "0755"
+  when: pve_volume_backup_talos_node | length > 0
+
+- name: Check existing credentials
+  ansible.builtin.stat:
+    path: "{{ pve_volume_backup_dir }}/{{ item }}"
+  loop: "{{ ['pbs-token', 'kube-token'] + (['talosconfig'] if pve_volume_backup_talos_node | length > 0 else []) }}"
+  register: pve_volume_backup_credentials
+
+- name: Select missing, ageing or rotated credentials
+  ansible.builtin.set_fact:
+    pve_volume_backup_issue: >-
+      {{ pve_volume_backup_credentials.results | map(attribute='item') | list
+         if pve_volume_backup_rotate else
+         (pve_volume_backup_credentials.results | rejectattr('stat.exists')
+          | map(attribute='item') | list)
+         + (pve_volume_backup_credentials.results | selectattr('stat.exists')
+            | selectattr('stat.mtime', 'lt', now().timestamp() - pve_volume_backup_renew_after_days * 86400)
+            | map(attribute='item') | list) }}
+
+- name: Issue credentials
+  ansible.builtin.include_tasks: credentials.yml
+  when: pve_volume_backup_issue | length > 0 and not ansible_check_mode
+
+- name: Install the backup script
+  ansible.builtin.copy:
+    src: k8s-volume-backup.py
+    dest: /usr/local/sbin/k8s-volume-backup
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write the backup configuration
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "{{ pve_volume_backup_dir }}/config.json"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Install the systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: /etc/systemd/system/{{ item }}
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - k8s-volume-backup.service
+    - k8s-volume-backup.timer
+  notify: Reload systemd
+
+- name: Apply systemd changes before enabling the timer
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable the nightly timer
+  ansible.builtin.systemd_service:
+    name: k8s-volume-backup.timer
+    enabled: true
+    state: started
+  # In check mode the unit files above are not written yet.
+  ignore_errors: "{{ ansible_check_mode }}"

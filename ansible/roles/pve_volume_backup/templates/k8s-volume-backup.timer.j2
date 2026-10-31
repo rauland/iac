@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly Kubernetes volume and etcd backup
+
+[Timer]
+OnCalendar={{ pve_volume_backup_schedule }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,7 @@
+---
+- name: Configure the Proxmox VE host
+  hosts: pve
+  remote_user: root
+  gather_facts: false
+  roles:
+    - role: pve_volume_backup

@@ -12,7 +12,9 @@ CONFIG_TARGETS = VM_TARGETS | {"common"}
 # Administrator-run platform configuration; CI never connects to these hosts.
 PLATFORM_CONFIG_PATHS = (
     "ansible/roles/pbs/", "ansible/playbooks/pbs.yml",
+    "ansible/roles/pve_volume_backup/", "ansible/playbooks/pve.yml",
     "ansible/inventory/platform.yml", "ansible/inventory/group_vars/pbs.yml",
+    "ansible/inventory/group_vars/pve.yml",
     "ansible/run-platform.sh", "ssh/known_hosts/platform",
 )
 

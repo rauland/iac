@@ -1,0 +1,5 @@
+---
+pve_volume_backup_dir: /etc/k8s-volume-backup
+pve_volume_backup_talosctl: /usr/local/lib/k8s-volume-backup-talosctl-{{ pve_volume_backup_talosctl_version }}
+pve_volume_backup_talosctl_url: >-
+  https://github.com/siderolabs/talos/releases/download/{{ pve_volume_backup_talosctl_version }}/talosctl-linux-amd64
