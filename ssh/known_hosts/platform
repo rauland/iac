@@ -1,0 +1,2 @@
+# Administrator-run platform hosts. Verified through the Proxmox guest agent.
+10.0.0.9 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC5VFlTcF9bFKpR5hRtu5dn0RB2PQFHDInA9qhJSY/R+

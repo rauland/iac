@@ -10,6 +10,7 @@ import tempfile
 import unittest
 
 RUNNER = Path(__file__).resolve().parents[1] / "run-playbook.sh"
+PLATFORM_RUNNER = RUNNER.with_name("run-platform.sh")
 
 
 class PlaybookSelectionTests(unittest.TestCase):
@@ -172,6 +173,48 @@ all:
             self.assertIn('The Podman role requires a RHEL-family host', result.stdout)
             self.assertRegex(result.stdout, r'podman-host\s+:.*changed=0.*failed=1')
             self.assertRegex(result.stdout, r'generic-sandbox\s+:.*changed=0.*failed=0')
+
+
+class PlatformRunnerTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.log = self.root / "calls.jsonl"
+        fake = self.root / "ansible-playbook"
+        fake.write_text("""#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ['CALL_LOG'], 'a') as log:
+    log.write(json.dumps({'args': sys.argv[1:],
+                         'ssh_args': os.environ.get('ANSIBLE_SSH_COMMON_ARGS')}) + '\\n')
+""")
+        fake.chmod(0o755)
+        self.env = dict(os.environ, PATH=f"{self.root}:{os.environ['PATH']}",
+                        CALL_LOG=str(self.log))
+        self.env.pop("ANSIBLE_KNOWN_HOSTS_FILE", None)
+
+    def run_target(self, *args):
+        result = subprocess.run(['bash', str(PLATFORM_RUNNER), *args], cwd=self.root,
+                                env=self.env, capture_output=True, text=True)
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
+        return result, calls
+
+    def test_pbs_uses_platform_inventory_and_pinned_host_keys(self):
+        result, calls = self.run_target('pbs', '--check')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([c['args'] for c in calls], [[
+            './playbooks/pbs.yml', '-i', './inventory/platform.yml', '--limit', 'pbs', '--check']])
+        trust = PLATFORM_RUNNER.parents[1] / 'ssh/known_hosts/platform'
+        self.assertIn('StrictHostKeyChecking=yes', calls[0]['ssh_args'])
+        self.assertIn(f'UserKnownHostsFile="{trust}"', calls[0]['ssh_args'])
+
+    def test_unknown_target_and_missing_trust_file_fail_before_playbooks(self):
+        result, calls = self.run_target('sandbox')
+        self.assertEqual(result.returncode, 2)
+        self.env['ANSIBLE_KNOWN_HOSTS_FILE'] = str(self.root / 'missing')
+        result, calls = self.run_target('pbs')
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(calls, [])
 
 
 if __name__ == '__main__':

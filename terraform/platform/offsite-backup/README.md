@@ -53,18 +53,29 @@ kind of subshell. Omit `-var budget_email=…` to skip the budget.
 
 ## Create or rotate the PBS key
 
-Create the key only when you are ready to enter it in PBS, and put it straight
-into the PBS S3 endpoint form (Configuration → S3 Endpoints) without saving it
-elsewhere:
+Create the key straight into SSM, so it is never displayed or saved in a file.
+No CI role can read parameters under `/iac/admin`:
 
 ```sh
-AWS_PROFILE=admin aws iam create-access-key --user-name pbs-offsite \
-  --query 'AccessKey.[AccessKeyId,SecretAccessKey]' --output text
+(
+  export AWS_PROFILE=admin
+  aws iam create-access-key --user-name pbs-offsite \
+    --query 'AccessKey.[AccessKeyId,SecretAccessKey]' --output text |
+    {
+      read -r id secret
+      aws ssm put-parameter --name /iac/admin/pbs-offsite/ACCESS_KEY_ID \
+        --type SecureString --overwrite --value "$id" >/dev/null &&
+      aws ssm put-parameter --name /iac/admin/pbs-offsite/SECRET_ACCESS_KEY \
+        --type SecureString --overwrite --value "$secret" >/dev/null
+    }
+)
 ```
 
-Use endpoint `s3.ap-southeast-2.amazonaws.com`, region `ap-southeast-2` and
-path-style addressing off. To rotate, create a second key (a user may have
-two), update the PBS endpoint, confirm a sync job succeeds, then delete the old
+The [`pbs` Ansible role](../../../ansible/roles/pbs/README.md) reads the key
+from the environment and creates the PBS S3 endpoint; see
+[platform hosts](../../../ansible/README.md#platform-hosts). To rotate, create a
+second key the same way (a user may have two), run the playbook with
+`-e pbs_s3_rotate_key=true`, confirm a sync job succeeds, then delete the old
 key:
 
 ```sh

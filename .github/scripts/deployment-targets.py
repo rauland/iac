@@ -9,6 +9,12 @@ import subprocess
 
 VM_TARGETS = {"sandbox"}
 CONFIG_TARGETS = VM_TARGETS | {"common"}
+# Administrator-run platform configuration; CI never connects to these hosts.
+PLATFORM_CONFIG_PATHS = (
+    "ansible/roles/pbs/", "ansible/playbooks/pbs.yml",
+    "ansible/inventory/platform.yml", "ansible/inventory/group_vars/pbs.yml",
+    "ansible/run-platform.sh", "ssh/known_hosts/platform",
+)
 
 
 def enabled_roots():
@@ -31,6 +37,8 @@ def enabled_roots():
 def configuration_path(path, root):
     """Limit known service content; shared configuration reaches enabled VM targets."""
     if root["environment"] not in {"dev", "prod"} or root["target"] not in VM_TARGETS:
+        return False
+    if path.startswith(PLATFORM_CONFIG_PATHS):
         return False
     if path.startswith("ssh/"):
         if path in {"ssh/setup-ci.sh", "ssh/enroll-hosts.py"}:

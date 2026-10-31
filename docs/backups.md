@@ -57,6 +57,34 @@ datastore disk is excluded:
 vzdump <pbs-vmid> --storage local --mode snapshot --compress zstd
 ```
 
+## Off-site copy
+
+The [`pbs` Ansible role](../ansible/roles/pbs/README.md) configures the PBS
+side: an S3 endpoint, an S3-backed datastore with a local cache, a sync job
+that copies selected backup groups from the local datastore, and a prune job
+that sets the off-site retention. The bucket and its key come from
+[`platform/offsite-backup`](../terraform/platform/offsite-backup/README.md).
+
+Copy only what cannot be rebuilt. Guests that this repository recreates need
+no off-site copy; their data does. Use `group-filter` on the sync job, such as
+`group:vm/<vmid>`, to choose them. The sync does not remove off-site backups
+when the local ones are pruned, so a deletion on PBS does not reach the
+off-site copy before its own prune job runs.
+
+Before the first sync, give PBS a cache disk for the S3 datastore, 64–128 GiB on
+fast storage, excluded from backups:
+
+```sh
+qm set <pbs-vmid> --scsi2 <ssd-storage>:64,backup=0
+```
+
+Inside PBS, format it and mount it at the cache's parent directory, such as
+`/mnt/pbs-cache`, through `/etc/fstab`. The datastore path is a directory
+below the mount point, because a filesystem's root is never empty.
+
+The first sync uploads every selected snapshot, so run it when the local
+storage is healthy, not while a pool is degraded or rebuilding.
+
 ## Checking the backups
 
 ```sh

@@ -1,0 +1,50 @@
+---
+pbs_s3_endpoints:
+  - id: aws
+    options:
+      # PBS fills in these placeholders itself, written as in its documentation.
+      endpoint: !unsafe "{{bucket}}.s3.{{region}}.amazonaws.com"  # noqa: jinja[spacing]
+      region: ap-southeast-2
+
+pbs_datastores:
+  - name: store1
+    path: /mnt/datastore/store1
+    options:
+      gc-schedule: monthly
+  - name: offsite
+    path: /mnt/pbs-cache/offsite
+    options:
+      gc-schedule: sat 05:00
+    create_only:
+      backend:
+        type: s3
+        client: aws
+        bucket: rauland-homelab-pbs-offsite
+
+# Only guests that cannot be rebuilt from this repository go off-site.
+pbs_sync_jobs:
+  - id: offsite
+    options:
+      store: offsite
+      remote-store: store1
+      schedule: "02:00"
+      group-filter:
+        - group:ct/101
+        - group:vm/102
+
+pbs_prune_jobs:
+  - id: offsite-retention
+    options:
+      store: offsite
+      schedule: daily
+      keep-daily: 7
+      keep-weekly: 4
+      keep-monthly: 6
+
+pbs_verify_jobs:
+  - id: store1-weekly
+    options:
+      store: store1
+      schedule: sun 05:00
+      ignore-verified: true
+      outdated-after: 30
