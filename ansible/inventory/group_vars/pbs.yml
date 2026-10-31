@@ -7,8 +7,8 @@ pbs_s3_endpoints:
       region: ap-southeast-2
 
 pbs_datastores:
-  - name: store1
-    path: /mnt/datastore/store1
+  - name: onsite
+    path: /mnt/datastore/onsite
     options:
       gc-schedule: monthly
   - name: offsite
@@ -26,7 +26,7 @@ pbs_sync_jobs:
   - id: offsite
     options:
       store: offsite
-      remote-store: store1
+      remote-store: onsite
       schedule: "02:00"
       group-filter:
         - group:ct/101
@@ -35,9 +35,9 @@ pbs_sync_jobs:
 # PBS prunes its local datastore itself, so the Proxmox token needs no right
 # to delete backups.
 pbs_prune_jobs:
-  - id: store1-retention
+  - id: onsite-retention
     options:
-      store: store1
+      store: onsite
       schedule: daily
       keep-daily: 7
       keep-weekly: 4
@@ -51,9 +51,9 @@ pbs_prune_jobs:
       keep-monthly: 6
 
 pbs_verify_jobs:
-  - id: store1-weekly
+  - id: onsite-weekly
     options:
-      store: store1
+      store: onsite
       schedule: sun 05:00
       ignore-verified: true
       outdated-after: 30
