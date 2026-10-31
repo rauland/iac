@@ -1,0 +1,9 @@
+---
+# Administrator-run platform hosts, used only by run-platform.sh. CI never
+# selects these hosts.
+all:
+  children:
+    pbs:
+      hosts:
+        pbs-01:
+          ansible_host: 10.0.0.9

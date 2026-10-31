@@ -1,0 +1,7 @@
+---
+- name: Configure Proxmox Backup Server
+  hosts: pbs
+  remote_user: root
+  gather_facts: false
+  roles:
+    - role: pbs

@@ -1,0 +1,41 @@
+---
+- name: Configure S3 endpoints
+  pbs_config:
+    section: [s3, endpoint]
+    id: "{{ item.id }}"
+    options: "{{ item.options }}"
+    write_only:
+      access-key: "{{ pbs_s3_access_key_id }}"
+      secret-key: "{{ pbs_s3_secret_access_key }}"
+    update_write_only: "{{ pbs_s3_rotate_key }}"
+  loop: "{{ pbs_s3_endpoints }}"
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: Configure datastores
+  pbs_config:
+    section: [datastore]
+    id: "{{ item.name }}"
+    id_key: name
+    positional: ["{{ item.path }}"]
+    options: "{{ item.options | default({}) }}"
+    create_only: >-
+      {{ (item.create_only | default({}))
+         | combine({'reuse-datastore': true} if pbs_datastore_reuse else {})
+         | combine({'overwrite-in-use': true}
+                   if pbs_datastore_reuse and 'backend' in (item.create_only | default({})) else {}) }}
+  loop: "{{ pbs_datastores }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Configure jobs
+  pbs_config:
+    section: ["{{ item.0 }}"]
+    id: "{{ item.1.id }}"
+    options: "{{ item.1.options }}"
+  loop: >-
+    {{ (['sync-job'] | product(pbs_sync_jobs) | list)
+       + (['prune-job'] | product(pbs_prune_jobs) | list)
+       + (['verify-job'] | product(pbs_verify_jobs) | list) }}
+  loop_control:
+    label: "{{ item.0 }} {{ item.1.id }}"

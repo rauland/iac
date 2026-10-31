@@ -126,6 +126,13 @@ class DeploymentTargetTests(unittest.TestCase):
             ".github/actions/ansible-lint/action.yml", ".github/workflows/terraform.yml",
             ".github/scripts/test_deployment_targets.py"), {})
 
+    def test_platform_configuration_never_deploys(self):
+        self.assertEqual(self.change(
+            "ansible/roles/pbs/tasks/main.yml", "ansible/roles/pbs/library/pbs_config.py",
+            "ansible/playbooks/pbs.yml", "ansible/inventory/platform.yml",
+            "ansible/inventory/group_vars/pbs.yml", "ansible/run-platform.sh",
+            "ssh/known_hosts/platform"), {})
+
     def test_mixed_changes_select_both_tools(self):
         self.assertEqual(self.change("terraform/workloads/dev/sandbox/main.tf",
                                      "ansible/playbooks/sandbox.yml"),

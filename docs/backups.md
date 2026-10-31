@@ -57,6 +57,53 @@ datastore disk is excluded:
 vzdump <pbs-vmid> --storage local --mode snapshot --compress zstd
 ```
 
+## Permissions and retention
+
+Give the Proxmox storage entry a PBS API token with only the `DatastoreBackup`
+role on its datastore, and let a PBS prune job apply retention. Proxmox can
+then add backups and restore its own, but cannot delete any, so someone who
+takes over the hypervisor or its token cannot destroy the backups. `Admin`
+would also allow deleting every snapshot and changing the datastore.
+
+Set retention in one place. With a PBS prune job, remove `prune-backups` from
+the Proxmox guest job so the storage default (`keep-all=1`) applies, and make
+the prune job exist before narrowing the token; otherwise backups accumulate
+until the datastore is full. A dry run shows what a policy would remove:
+
+```sh
+proxmox-backup-debug api create /admin/datastore/<store>/prune \
+  --backup-type vm --backup-id <vmid> --keep-daily 7 --keep-weekly 4 \
+  --keep-monthly 6 --dry-run true
+```
+
+## Off-site copy
+
+The [`pbs` Ansible role](../ansible/roles/pbs/README.md) configures the PBS
+side: an S3 endpoint, an S3-backed datastore with a local cache, a sync job
+that copies selected backup groups from the local datastore, and a prune job
+that sets the off-site retention. The bucket and its key come from
+[`platform/offsite-backup`](../terraform/platform/offsite-backup/README.md).
+
+Copy only what cannot be rebuilt. Guests that this repository recreates need
+no off-site copy; their data does. Use `group-filter` on the sync job, such as
+`group:vm/<vmid>`, to choose them. The sync does not remove off-site backups
+when the local ones are pruned, so a deletion on PBS does not reach the
+off-site copy before its own prune job runs.
+
+Before the first sync, give PBS a cache disk for the S3 datastore, 64–128 GiB on
+fast storage, excluded from backups:
+
+```sh
+qm set <pbs-vmid> --scsi2 <ssd-storage>:64,backup=0
+```
+
+Inside PBS, format it and mount it at the cache's parent directory, such as
+`/mnt/pbs-cache`, through `/etc/fstab`. The datastore path is a directory
+below the mount point, because a filesystem's root is never empty.
+
+The first sync uploads every selected snapshot, so run it when the local
+storage is healthy, not while a pool is degraded or rebuilding.
+
 ## Checking the backups
 
 ```sh

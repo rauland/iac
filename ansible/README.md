@@ -30,6 +30,7 @@ variables live in `inventory/group_vars/tag_common.yml`.
 | [`automation_user`](roles/automation_user/README.md) | Maintain the automation account and environment-specific SSH keys. |
 | [`system_packages`](roles/system_packages/README.md) | Install baseline and additional packages using the host's package manager. |
 | [`podman`](roles/podman/README.md) | Run the sandbox Nginx site with Podman and a systemd Quadlet. |
+| [`pbs`](roles/pbs/README.md) | Configure Proxmox Backup Server datastores, S3 endpoints and jobs on a [platform host](#platform-hosts). |
 
 Playbooks select baseline or service responsibilities. Roles handle OS differences
 using gathered `ansible_facts['os_family']`, so service playbooks do not duplicate
@@ -153,3 +154,47 @@ bash ansible/run-playbook.sh dev sandbox -i tests/inventory.yml --syntax-check
 
 Additional Ansible arguments pass through unchanged. Relative inventory paths in
 these commands are resolved from the `ansible` directory.
+
+## Platform hosts
+
+Hosts that run the platform itself, such as Proxmox Backup Server, are not
+Proxmox pool members and are never configured by CI: changes under their
+playbooks, roles and inventory select no deployment. An administrator runs
+them with `run-platform.sh`, which uses the static
+[`inventory/platform.yml`](inventory/platform.yml) and the host keys pinned in
+`ssh/known_hosts/platform`:
+
+```sh
+bash ansible/run-platform.sh pbs --check --diff
+bash ansible/run-platform.sh pbs
+```
+
+The play connects as `root` with `~/.ssh/id_ed25519`, or
+`ANSIBLE_PRIVATE_KEY_FILE`. Add that public key to the host's
+`/root/.ssh/authorized_keys` and pin its host key before the first run. For a
+Proxmox VM with a guest agent, read the key through the hypervisor rather than
+trusting the first connection:
+
+```sh
+qm guest exec <vmid> -- cat /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+| Target | Playbook | Hosts |
+| --- | --- | --- |
+| `pbs` | `pbs.yml` | Group `pbs`; settings in `inventory/group_vars/pbs.yml` |
+
+Creating the S3 endpoint needs the off-site key in the environment. Load it
+from SSM in a subshell so it leaves with the shell:
+
+```sh
+(
+  export AWS_PROFILE=admin
+  export PBS_S3_ACCESS_KEY_ID=$(aws ssm get-parameter --with-decryption \
+    --name /iac/admin/pbs-offsite/ACCESS_KEY_ID --query Parameter.Value --output text)
+  export PBS_S3_SECRET_ACCESS_KEY=$(aws ssm get-parameter --with-decryption \
+    --name /iac/admin/pbs-offsite/SECRET_ACCESS_KEY --query Parameter.Value --output text)
+  bash ansible/run-platform.sh pbs
+)
+```
+
+Later runs that create no endpoint and rotate no key need neither variable.
