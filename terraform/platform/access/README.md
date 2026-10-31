@@ -34,7 +34,7 @@ revoked by this root.
 | --- | --- | --- |
 | `dev` | Talos 104/106/107, sandbox testing VM | Dev workload roots |
 | `prod` | Initially empty | Future prod workload roots |
-| `infra` | PBS 100, Ansible 101, PDM 105, NFS 116 | This root |
+| `infra` | PBS 100, Ansible 101, NFS 116 | This root |
 
 Docker 102 stays unassigned until classified. For the initial migration only,
 add the existing dev guests through Datacenter → Pools → dev → Members. This
