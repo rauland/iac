@@ -1,87 +1,116 @@
 # Backups and recovery
 
-Proxmox Backup Server (PBS, VM 100) keeps the guest backups, so it cannot
-restore itself. This guide lists what is backed up where and how to recover
-from each disk failure. The backup jobs are configured on the Proxmox host, not
-by this repository.
+This guide describes a backup layout for a single Proxmox VE host with Proxmox
+Backup Server (PBS) running as a VM, and how to recover from losing each disk.
+The backup jobs are configured on the Proxmox host, not by this repository;
+adapt the IDs, storage names and schedules to your installation.
 
-## What is backed up
+## Layout
 
-| Data | Where it lives | Backup | Retention |
-| --- | --- | --- | --- |
-| Guests except PBS | Boot disks on `local-data` and `local-lvm` | Nightly at 21:00 to PBS (`backup_server`, datastore on the `nas` pool) | 7 daily, 4 weekly, 6 monthly |
-| PBS boot disk (`scsi0`, 32 GB) | `local-data` | Sundays at 03:00 to `local` on the Proxmox OS disk, zstd, about 3.5 GB each | Last 2 |
-| PBS datastore disk (`scsi1`) | `zfs` (`nas` pool) | None: it holds the backups themselves (`backup=0`) | — |
-| Media library | VM 116's disk on the `nas` pool | None: it can be downloaded again | — |
-| Kubernetes volumes | `k8s-dev` (`nas/k8s-dev`) | Not yet | — |
+A PBS VM keeps the guest backups, so it cannot restore itself. Give it two
+disks and back them up differently:
 
-The PBS boot disk holds the PBS configuration: datastore definitions, users,
-jobs and the encryption key, if any. Its backup sits on a different disk from
-both the PBS VM and its datastore, so losing any single disk leaves a copy.
+| Disk | Holds | Backup |
+| --- | --- | --- |
+| Boot disk | PBS itself and its configuration: datastore definitions, users, jobs and any encryption key | A regular `vzdump` job to storage on a different physical disk from both PBS disks |
+| Datastore disk | The guest backups | None (`backup=0`); an off-site copy comes from a PBS sync job |
 
-An off-site copy of the PBS datastore in S3 is planned; see
-[`platform/offsite-backup`](../terraform/platform/offsite-backup/README.md).
-Until the sync job exists, losing the `nas` pool loses every guest backup.
+Every other guest is backed up to PBS by a nightly job that excludes the PBS VM.
+With the boot-disk archive on a third disk, losing any one disk leaves a copy of
+everything needed to bring PBS back.
+
+Example layout on one host:
+
+| Storage | Physical disk | Contents |
+| --- | --- | --- |
+| `local` | Proxmox OS SSD | PBS boot-disk archives |
+| `local-data` | Separate SSD | Guest boot disks, including PBS's |
+| `zfs` | HDD pool | PBS datastore disk, bulk data |
+| `backup_server` | PBS datastore on the HDD pool | Nightly guest backups |
+
+Data that can be recreated, such as a downloaded media library, can be
+excluded with `backup=0` on its disk. Off-site storage for the datastore is
+defined in [`platform/offsite-backup`](../terraform/platform/offsite-backup/README.md).
+
+## Configuring the jobs
+
+Mark the PBS datastore disk as excluded and the boot disk as included, then
+create a job for the PBS VM. Re-specify the whole disk when you change its
+options, keeping its size:
+
+```sh
+qm set <pbs-vmid> --scsi0 <boot-storage>:<boot-volume>,size=<size>
+qm set <pbs-vmid> --scsi1 <datastore-storage>:<datastore-volume>,backup=0,size=<size>
+pvesh create /cluster/backup --vmid <pbs-vmid> --storage local \
+  --schedule 'sun 03:00' --mode snapshot --compress zstd \
+  --prune-backups keep-last=2 --notification-mode notification-system
+```
+
+Exclude the PBS VM from the guest job (`--all 1 --exclude <pbs-vmid>`), and keep
+the two schedules apart so PBS is not backed up while it receives backups.
+
+Check that the boot-disk storage has room for the archives: a 32 GB PBS boot
+disk compresses to about 3.5 GB. Run the job once by hand to confirm that the
+datastore disk is excluded:
+
+```sh
+vzdump <pbs-vmid> --storage local --mode snapshot --compress zstd
+```
 
 ## Checking the backups
 
-On the Proxmox host:
-
 ```sh
-pvesh get /cluster/backup                  # both jobs, schedules and next runs
-pvesm list local --content backup          # PBS boot-disk archives
-pvesm list backup_server --content backup  # guest backups in PBS
+pvesh get /cluster/backup                      # jobs, schedules and next runs
+pvesm list local --content backup              # PBS boot-disk archives
+pvesm list <pbs-storage> --content backup      # guest backups in PBS
 ```
-
-Each job reports through the Proxmox notification system (`mail-to-root`).
 
 ## Recovery
 
-### `local-data` SSD fails
+### The PBS boot disk is lost
 
-This loses the boot disks of PBS (100), the admin container (101), the Docker
-host (102) and the NFS VM (116). The `nas` pool, with the PBS datastore and the
-media disk, survives.
+The datastore disk survives on its own storage.
 
-1. Replace the SSD and recreate the `local-data` thin pool with the same name.
-2. Restore PBS from its newest local archive:
+1. Restore PBS from its newest local archive:
    ```sh
    pvesm list local --content backup
-   qmrestore local:backup/vzdump-qemu-100-<date>.vma.zst 100 --storage local-data
+   qmrestore local:backup/<archive> <pbs-vmid> --storage <boot-storage>
    ```
-3. Check that the datastore disk is attached. If `qm config 100` shows no
-   `scsi1`, attach the existing volume. Never let Proxmox delete it as an
-   unreferenced disk:
+2. Check that the datastore disk is attached. If `qm config <pbs-vmid>` does
+   not list it, attach the existing volume:
    ```sh
-   qm rescan --vmid 100      # lists zfs:vm-100-disk-2 as an unused disk
-   qm set 100 --scsi1 zfs:vm-100-disk-2,backup=0
+   qm rescan --vmid <pbs-vmid>   # adds the volume as an unused disk
+   qm set <pbs-vmid> --scsi1 <datastore-storage>:<datastore-volume>,backup=0
    ```
-4. Start PBS and confirm the datastore and its backups are listed.
-5. Restore 101, 102 and 116 from `backup_server`, then reattach VM 116's media
-   disk (`zfs:vm-116-disk-1`) the same way.
+3. Start PBS and confirm that the datastore lists its backups.
+4. Restore the other guests that shared the failed disk from PBS, and reattach
+   any excluded data disks the same way.
 
-Anything written since the last weekly archive is missing from PBS's
-configuration, such as jobs or users changed in the meantime. Guest backups
-themselves are unaffected, because they live on the datastore.
+Configuration changed in PBS since the last archive, such as new jobs or users,
+is missing. The guest backups are unaffected because they live on the
+datastore.
 
-### Proxmox OS disk fails
+Proxmox treats volumes named `vm-<vmid>-*` as belonging to that VM. Do not use
+"Destroy unreferenced disks" or `qm destroy --purge` on the PBS VM while its
+datastore disk is detached: either deletes the backups.
 
-This loses the PBS boot-disk archives and the dev guests on `local-lvm`
-(104 and 106–108). PBS keeps running.
+### The Proxmox OS disk is lost
 
-1. Reinstall Proxmox VE, then re-add the existing storages (`local-data`, `zfs`,
-   `k8s-dev`, `dev-images` and `backup_server`) without formatting them.
-2. Rebuild the dev guests with Terraform; they hold no unique data.
-3. Run the weekly PBS job once by hand so a local archive exists again:
-   `vzdump 100 --storage local --mode snapshot --compress zstd`.
+This loses the boot-disk archives and any guests on the OS disk. PBS keeps
+running.
 
-### `nas` pool fails
+1. Reinstall Proxmox VE, then re-add the existing storages and PBS without
+   formatting them.
+2. Restore or rebuild the guests that lived on the OS disk. Guests managed by
+   Terraform can be redeployed.
+3. Run the PBS job once by hand so a local archive exists again.
 
-This loses the PBS datastore, the media library and the Kubernetes volumes.
-The guests keep running from their SSDs.
+### The datastore storage is lost
 
-1. Rebuild the pool and recreate the PBS datastore disk.
-2. Let the nightly job take fresh backups of every guest.
+This loses the backups. Guests keep running from their own disks.
 
-The Kubernetes volumes and media are lost until the off-site sync and volume
-backups are in place.
+1. Rebuild the storage, recreate the datastore disk and the PBS datastore, or
+   restore it from the off-site copy.
+2. Run the guest job by hand so fresh backups exist.
+
+Without an off-site copy, data that lived only on that storage is lost.
