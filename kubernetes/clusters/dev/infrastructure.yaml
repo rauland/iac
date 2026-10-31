@@ -78,3 +78,18 @@ spec:
   postBuild:
     substitute:
       csi_storage: k8s-dev
+---
+# Read-only access for the volume backup job on the Proxmox host.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: volume-backup
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  path: ./kubernetes/infrastructure/volume-backup
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system

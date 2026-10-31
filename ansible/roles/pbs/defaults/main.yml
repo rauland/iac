@@ -9,6 +9,16 @@ pbs_sync_jobs: []
 pbs_prune_jobs: []
 pbs_verify_jobs: []
 
+# Namespaces as `store` and `ns`; nested namespaces use `parent/child`.
+pbs_namespaces: []
+# Users as `userid` and `options`. Users without a password can only use tokens.
+pbs_users: []
+# Tokens as `userid` and `name`. The secret shown on creation is discarded:
+# whoever uses a token regenerates its secret and keeps it.
+pbs_tokens: []
+# Permissions as `path`, `role` and `auth_id`. Existing entries are kept.
+pbs_acls: []
+
 # S3 credentials, needed only to create an endpoint or rotate its key.
 pbs_s3_access_key_id: "{{ lookup('ansible.builtin.env', 'PBS_S3_ACCESS_KEY_ID') }}"
 pbs_s3_secret_access_key: "{{ lookup('ansible.builtin.env', 'PBS_S3_SECRET_ACCESS_KEY') }}"

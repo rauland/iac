@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up Kubernetes volumes and etcd to Proxmox Backup Server
+Wants=network-online.target
+After=network-online.target zfs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/k8s-volume-backup
+Nice=10
+IOSchedulingClass=idle

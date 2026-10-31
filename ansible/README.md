@@ -30,7 +30,8 @@ variables live in `inventory/group_vars/tag_common.yml`.
 | [`automation_user`](roles/automation_user/README.md) | Maintain the automation account and environment-specific SSH keys. |
 | [`system_packages`](roles/system_packages/README.md) | Install baseline and additional packages using the host's package manager. |
 | [`podman`](roles/podman/README.md) | Run the sandbox Nginx site with Podman and a systemd Quadlet. |
-| [`pbs`](roles/pbs/README.md) | Configure Proxmox Backup Server datastores, S3 endpoints and jobs on a [platform host](#platform-hosts). |
+| [`pbs`](roles/pbs/README.md) | Configure Proxmox Backup Server datastores, S3 endpoints, access and jobs on a [platform host](#platform-hosts). |
+| [`pve_volume_backup`](roles/pve_volume_backup/README.md) | Back up opted-in Kubernetes volumes and etcd from the Proxmox host to PBS. |
 
 Playbooks select baseline or service responsibilities. Roles handle OS differences
 using gathered `ansible_facts['os_family']`, so service playbooks do not duplicate
@@ -182,6 +183,11 @@ qm guest exec <vmid> -- cat /etc/ssh/ssh_host_ed25519_key.pub
 | Target | Playbook | Hosts |
 | --- | --- | --- |
 | `pbs` | `pbs.yml` | Group `pbs`; settings in `inventory/group_vars/pbs.yml` |
+| `pve` | `pve.yml` | Group `pve`; settings in `inventory/group_vars/pve.yml` |
+
+The `pve` playbook also connects to PBS, to regenerate its token secret, and
+uses the administrator's `KUBECONFIG` and `TALOSCONFIG` to issue its other
+credentials; see the [role](roles/pve_volume_backup/README.md#credentials).
 
 Creating the S3 endpoint needs the off-site key in the environment. Load it
 from SSM in a subshell so it leaves with the shell:

@@ -1,16 +1,23 @@
 ---
-pbs_s3_endpoints:
+# The off-site copy is enabled once the nas pool has finished resilvering, so
+# the first upload does not run on a degraded pool.
+offsite_enabled: false
+
+pbs_s3_endpoints: "{{ offsite_s3_endpoints if offsite_enabled else [] }}"
+offsite_s3_endpoints:
   - id: aws
     options:
       # PBS fills in these placeholders itself, written as in its documentation.
       endpoint: !unsafe "{{bucket}}.s3.{{region}}.amazonaws.com"  # noqa: jinja[spacing]
       region: ap-southeast-2
 
-pbs_datastores:
+pbs_datastores: "{{ onsite_datastores + (offsite_datastores if offsite_enabled else []) }}"
+onsite_datastores:
   - name: onsite
     path: /mnt/datastore/onsite
     options:
       gc-schedule: monthly
+offsite_datastores:
   - name: offsite
     path: /mnt/pbs-cache/offsite
     options:
@@ -21,20 +28,54 @@ pbs_datastores:
         client: aws
         bucket: rauland-homelab-pbs-offsite
 
-# Only guests that cannot be rebuilt from this repository go off-site.
-pbs_sync_jobs:
+# Kubernetes volumes and etcd, uploaded by the Proxmox host; see group_vars/pve.yml.
+pbs_namespaces: >-
+  {{ [{'store': 'onsite', 'ns': 'k8s-dev'}]
+     + ([{'store': 'offsite', 'ns': 'k8s-dev'}] if offsite_enabled else []) }}
+pbs_users:
+  - userid: k8s-backup@pbs
+    options:
+      comment: Kubernetes volume and etcd backups from the Proxmox host
+pbs_tokens:
+  - userid: k8s-backup@pbs
+    name: pve
+# Tokens get the intersection of their own and their user's permissions. The
+# Proxmox storage token may only add backups; PBS prunes them.
+pbs_acls:
+  - path: /datastore/onsite
+    role: DatastoreBackup
+    auth_id: root@pam!backup
+  - path: /datastore/onsite/k8s-dev
+    role: DatastoreBackup
+    auth_id: k8s-backup@pbs
+  - path: /datastore/onsite/k8s-dev
+    role: DatastoreBackup
+    auth_id: k8s-backup@pbs!pve
+
+# Only data that cannot be rebuilt from this repository goes off-site.
+pbs_sync_jobs: "{{ offsite_sync_jobs if offsite_enabled else [] }}"
+offsite_sync_jobs:
   - id: offsite
     options:
       store: offsite
       remote-store: onsite
+      max-depth: 0
       schedule: "02:00"
       group-filter:
         - group:ct/101
         - group:vm/102
+  - id: offsite-k8s-dev
+    options:
+      store: offsite
+      ns: k8s-dev
+      remote-store: onsite
+      remote-ns: k8s-dev
+      schedule: "02:30"
 
-# PBS prunes its local datastore itself, so the Proxmox token needs no right
-# to delete backups.
-pbs_prune_jobs:
+# PBS prunes its datastores itself, including every namespace, so backup
+# tokens need no right to delete.
+pbs_prune_jobs: "{{ onsite_prune_jobs + (offsite_prune_jobs if offsite_enabled else []) }}"
+onsite_prune_jobs:
   - id: onsite-retention
     options:
       store: onsite
@@ -42,6 +83,7 @@ pbs_prune_jobs:
       keep-daily: 7
       keep-weekly: 4
       keep-monthly: 6
+offsite_prune_jobs:
   - id: offsite-retention
     options:
       store: offsite

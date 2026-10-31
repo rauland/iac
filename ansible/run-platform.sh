@@ -10,6 +10,7 @@ platform_target=$1
 shift
 case "$platform_target" in
   pbs) platform_playbook=pbs.yml ;;
+  pve) platform_playbook=pve.yml ;;
   *) echo "Unsupported target: $platform_target" >&2; exit 2 ;;
 esac
 

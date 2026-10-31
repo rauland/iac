@@ -1,0 +1,16 @@
+{{ {
+  "zfs_dataset": pve_volume_backup_zfs_dataset,
+  "storage": pve_volume_backup_storage,
+  "label": pve_volume_backup_label,
+  "kube_server": pve_volume_backup_kube_server,
+  "kube_ca_file": pve_volume_backup_dir ~ "/kube-ca.crt",
+  "kube_token_file": pve_volume_backup_dir ~ "/kube-token",
+  "pbs_repository": pve_volume_backup_pbs_token ~ "@" ~ pve_volume_backup_pbs_server ~ ":" ~ pve_volume_backup_pbs_datastore,
+  "pbs_namespace": pve_volume_backup_pbs_namespace,
+  "pbs_token_file": pve_volume_backup_dir ~ "/pbs-token",
+  "pbs_fingerprint": pve_volume_backup_pbs_fingerprint,
+  "talos_node": pve_volume_backup_talos_node,
+  "talosconfig_file": pve_volume_backup_dir ~ "/talosconfig",
+  "talosctl": pve_volume_backup_talosctl,
+  "etcd_backup_id": pve_volume_backup_etcd_backup_id,
+} | to_nice_json }}

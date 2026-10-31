@@ -1,0 +1,35 @@
+# Read-only identity for the volume backup job on the Proxmox host. It lists
+# PersistentVolumes and claims to find opted-in volumes and name their backups.
+# Its token is issued with `kubectl create token`; no Secret is stored.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: volume-backup
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: reader
+  namespace: volume-backup
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: volume-backup-reader
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes", "persistentvolumeclaims"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: volume-backup-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: volume-backup-reader
+subjects:
+  - kind: ServiceAccount
+    name: reader
+    namespace: volume-backup

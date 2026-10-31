@@ -28,6 +28,79 @@
   loop_control:
     label: "{{ item.name }}"
 
+- name: List namespaces
+  ansible.builtin.command:
+    argv: [proxmox-backup-debug, api, get, "/admin/datastore/{{ item }}/namespace", --output-format, json]
+  loop: "{{ pbs_namespaces | map(attribute='store') | unique }}"
+  register: pbs_namespace_lists
+  changed_when: false
+  check_mode: false
+
+- name: Create namespaces
+  ansible.builtin.command:
+    argv: >-
+      {{ ['proxmox-backup-debug', 'api', 'create', '/admin/datastore/' ~ item.store ~ '/namespace',
+          '--name', item.ns.split('/') | last]
+         + (['--parent', item.ns.split('/')[:-1] | join('/')] if '/' in item.ns else []) }}
+  loop: "{{ pbs_namespaces }}"
+  loop_control:
+    label: "{{ item.store }}:{{ item.ns }}"
+  when: >-
+    item.ns not in (pbs_namespace_lists.results | selectattr('item', 'equalto', item.store)
+                    | map(attribute='stdout') | first | from_json | map(attribute='ns') | list)
+  changed_when: true
+
+- name: Configure users
+  pbs_config:
+    section: [user]
+    id: "{{ item.userid }}"
+    id_key: userid
+    options: "{{ item.options | default({}) }}"
+  loop: "{{ pbs_users }}"
+  loop_control:
+    label: "{{ item.userid }}"
+
+- name: List tokens
+  ansible.builtin.command:
+    argv: [proxmox-backup-manager, user, list-tokens, "{{ item }}", --output-format, json]
+  loop: "{{ pbs_tokens | map(attribute='userid') | unique }}"
+  register: pbs_token_lists
+  changed_when: false
+  check_mode: false
+
+- name: Create tokens
+  ansible.builtin.command:
+    argv: [proxmox-backup-manager, user, generate-token, "{{ item.userid }}", "{{ item.name }}"]
+  loop: "{{ pbs_tokens }}"
+  loop_control:
+    label: "{{ item.userid }}!{{ item.name }}"
+  when: >-
+    item.userid ~ '!' ~ item.name not in (pbs_token_lists.results | selectattr('item', 'equalto', item.userid)
+                                          | map(attribute='stdout') | first | from_json
+                                          | map(attribute='tokenid') | list)
+  changed_when: true
+  no_log: true
+
+- name: List permissions
+  ansible.builtin.command:
+    argv: [proxmox-backup-manager, acl, list, --output-format, json]
+  register: pbs_acl_list
+  changed_when: false
+  check_mode: false
+  when: pbs_acls | length > 0
+
+- name: Grant permissions
+  ansible.builtin.command:
+    argv: [proxmox-backup-manager, acl, update, "{{ item.path }}", "{{ item.role }}", --auth-id, "{{ item.auth_id }}"]
+  loop: "{{ pbs_acls }}"
+  loop_control:
+    label: "{{ item.auth_id }} {{ item.role }} {{ item.path }}"
+  when: >-
+    (pbs_acl_list.stdout | from_json | selectattr('path', 'equalto', item.path)
+     | selectattr('roleid', 'equalto', item.role) | selectattr('ugid', 'equalto', item.auth_id)
+     | list | length) == 0
+  changed_when: true
+
 - name: Configure jobs
   pbs_config:
     section: ["{{ item.0 }}"]
