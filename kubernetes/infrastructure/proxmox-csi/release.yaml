@@ -30,7 +30,9 @@ spec:
       - name: proxmox
         storage: ${csi_storage}
         fstype: ext4
-        reclaimPolicy: Delete
+        # Keep the disk when its claim is deleted, for example when Flux prunes
+        # an app. Free unused disks deliberately; see the Kubernetes README.
+        reclaimPolicy: Retain
         volumeBindingMode: WaitForFirstConsumer
         cache: none
         ssd: true
