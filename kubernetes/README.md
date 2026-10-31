@@ -90,6 +90,18 @@ a volume follows its pod to any node. Volumes are `ReadWriteOnce`: use the
 the old pod releases the disk before the new one starts. Set `fsGroup` for
 non-root containers so they can write to the volume.
 
+Switching a running Deployment from `RollingUpdate` to `Recreate` fails the
+`flux-system` dry-run with ``spec.strategy.rollingUpdate: Forbidden``, which
+blocks every other change in the cluster. Server-side apply keeps the defaulted
+`rollingUpdate` values, so remove them once before or after merging:
+
+```sh
+kubectl -n <namespace> patch deployment <name> --type=json -p \
+  '[{"op":"remove","path":"/spec/strategy/rollingUpdate"},{"op":"replace","path":"/spec/strategy/type","value":"Recreate"}]'
+```
+
+New Deployments are unaffected.
+
 Deleting a PersistentVolumeClaim deletes its disk. Annotate the PersistentVolume
 with `csi.proxmox.sinextra.dev/lifecycle: keep` to keep the disk instead.
 Volumes are not backed up yet.
