@@ -146,7 +146,7 @@ jobs:
       - name: Validate configuration
         run: terraform validate -no-color
         working-directory: terraform/platform/offsite-backup
-      - name: Test bucket and PBS user boundaries
+      - name: Test bucket and cluster user boundaries
         run: terraform test -no-color
         working-directory: terraform/platform/offsite-backup
 
