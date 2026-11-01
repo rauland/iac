@@ -241,9 +241,11 @@ Traefik redirects HTTP to HTTPS.
 | dev | `dev.<domain>` | `podinfo.dev.<domain>` |
 | prod | `prod.<domain>` | `<app>.prod.<domain>`, plus `<app>.<domain>` |
 
-A cluster can add names to its certificate with a Kustomize patch in its
-`certificates` directory; prod adds the parent domain and `*.<domain>` so that
-household-facing apps can also answer on short names.
+A cluster can change its certificate's names with a Kustomize patch in its
+`certificates` directory; prod lists `<domain>`, `*.<domain>` and
+`*.prod.<domain>` so that household-facing apps can also answer on short
+names. Let's Encrypt rejects a name that another wildcard in the same request
+already covers, such as `prod.<domain>` next to `*.<domain>`.
 
 Let's Encrypt proves domain control through a DNS-01 challenge in Cloudflare,
 so nothing needs to be reachable from the internet. cert-manager checks the

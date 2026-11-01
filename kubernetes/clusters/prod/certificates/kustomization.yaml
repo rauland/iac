@@ -7,14 +7,16 @@ resources:
   - cloudflare.sops.yaml
 patches:
   # Household-facing apps also answer on short names under the parent domain,
-  # which the router points at prod one app at a time.
+  # which the router points at prod one app at a time. The list replaces the
+  # base's names: Let's Encrypt rejects prod.netkuki.com next to *.netkuki.com,
+  # which already covers it.
   - target:
       kind: Certificate
       name: wildcard
     patch: |
-      - op: add
-        path: /spec/dnsNames/-
-        value: netkuki.com
-      - op: add
-        path: /spec/dnsNames/-
-        value: "*.netkuki.com"
+      - op: replace
+        path: /spec/dnsNames
+        value:
+          - netkuki.com
+          - "*.netkuki.com"
+          - "*.prod.netkuki.com"
