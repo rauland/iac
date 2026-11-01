@@ -50,7 +50,7 @@ locals {
       ] : [],
       [
         { path = "/storage/${var.shared_image_datastore_id}", role = "StorageRead", name = name },
-        { path = "/storage/${var.disk_datastore_id}", role = service.operation == "apply" ? "PVEDatastoreUser" : "StorageRead", name = name },
+        { path = "/storage/${var.disk_datastores[service.environment]}", role = service.operation == "apply" ? "PVEDatastoreUser" : "StorageRead", name = name },
         { path = "/sdn/zones/localnetwork/${var.bridge}", role = service.operation == "apply" ? "PVESDNUser" : "NetworkRead", name = name }
       ],
       # The CSI plugin attaches volumes from this storage to the environment's
@@ -61,10 +61,10 @@ locals {
         { path = "/storage/k8s-${service.environment}", role = "StorageRead", name = name },
         { path = "/vms/${var.csi_volume_owner_vmid}", role = "CSIVolumeRead", name = name }
       ] : [],
-      service.environment == "dev" ? [
-        { path = "/storage/dev-images", role = service.operation == "apply" ? "SeedPublisher" : "StorageRead", name = name }
-      ] : [],
-      service.operation == "apply" && service.environment == "dev" ? [
+      [
+        { path = "/storage/${service.environment}-images", role = service.operation == "apply" ? "SeedPublisher" : "StorageRead", name = name }
+      ],
+      service.operation == "apply" ? [
         { path = "/nodes/${var.node_name}", role = "DownloadAccess", name = name }
       ] : []
     )
@@ -78,11 +78,11 @@ locals {
         [{ group = "${environment}-viewers", path = "/pool/${environment}", role = "PVEAuditor" }],
         [for suffix in ["admins", "viewers"] : { group = "${environment}-${suffix}", path = "/nodes/${var.node_name}", role = "NodeAudit" }],
         [
-          { group = "${environment}-admins", path = "/storage/${var.disk_datastore_id}", role = "PVEDatastoreUser" },
+          { group = "${environment}-admins", path = "/storage/${var.disk_datastores[environment]}", role = "PVEDatastoreUser" },
           { group = "${environment}-admins", path = "/storage/${var.shared_image_datastore_id}", role = "StorageRead" },
           { group = "${environment}-admins", path = "/sdn/zones/localnetwork/${var.bridge}", role = "PVESDNUser" }
         ],
-        environment == "dev" ? [{ group = "dev-admins", path = "/storage/dev-images", role = "StorageRead" }] : []
+        [{ group = "${environment}-admins", path = "/storage/${environment}-images", role = "StorageRead" }]
       )
     ])
   )
@@ -97,13 +97,22 @@ resource "proxmox_virtual_environment_pool" "environment" {
   }
 }
 
-resource "proxmox_storage_directory" "dev_images" {
-  id      = "dev-images"
-  path    = var.dev_images_path
-  nodes   = [var.node_name]
-  content = ["iso"]
-  shared  = false
-  disable = false
+# Each environment's Talos installer ISOs live in its own directory storage,
+# outside the shared local directory, so environments cannot delete each
+# other's media.
+moved {
+  from = proxmox_storage_directory.dev_images
+  to   = proxmox_storage_directory.environment_images["dev"]
+}
+
+resource "proxmox_storage_directory" "environment_images" {
+  for_each = var.image_paths
+  id       = "${each.key}-images"
+  path     = each.value
+  nodes    = [var.node_name]
+  content  = ["iso"]
+  shared   = false
+  disable  = false
   lifecycle {
     prevent_destroy = true
   }
@@ -172,7 +181,7 @@ resource "proxmox_acl" "service_user" {
   depends_on = [
     proxmox_virtual_environment_pool.environment,
     proxmox_virtual_environment_role.custom,
-    proxmox_storage_directory.dev_images,
+    proxmox_storage_directory.environment_images,
     proxmox_storage_zfspool.kubernetes,
   ]
 }
@@ -186,7 +195,7 @@ resource "proxmox_acl" "service_token" {
   depends_on = [
     proxmox_virtual_environment_pool.environment,
     proxmox_virtual_environment_role.custom,
-    proxmox_storage_directory.dev_images,
+    proxmox_storage_directory.environment_images,
     proxmox_storage_zfspool.kubernetes,
   ]
 }
@@ -200,7 +209,7 @@ resource "proxmox_acl" "human" {
   depends_on = [
     proxmox_virtual_environment_pool.environment,
     proxmox_virtual_environment_role.custom,
-    proxmox_storage_directory.dev_images,
+    proxmox_storage_directory.environment_images,
     proxmox_storage_zfspool.kubernetes,
   ]
 }
