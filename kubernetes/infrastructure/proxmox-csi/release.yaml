@@ -38,6 +38,14 @@ spec:
         ssd: true
         annotations:
           storageclass.kubernetes.io/is-default-class: "true"
+        # LUKS-encrypt every volume on the node with the passphrase in the
+        # cluster's proxmox-csi-encryption Secret, so Proxmox stores only
+        # ciphertext. See the Kubernetes README.
+        extraParameters:
+          csi.storage.k8s.io/node-stage-secret-name: proxmox-csi-encryption
+          csi.storage.k8s.io/node-stage-secret-namespace: csi-proxmox
+          csi.storage.k8s.io/node-expand-secret-name: proxmox-csi-encryption
+          csi.storage.k8s.io/node-expand-secret-namespace: csi-proxmox
       # For volumes that hold nothing worth keeping, such as VolSync's restic
       # caches, which would otherwise leave a retained disk behind each time
       # their ReplicationSource is removed.
@@ -48,3 +56,8 @@ spec:
         volumeBindingMode: WaitForFirstConsumer
         cache: none
         ssd: true
+        extraParameters:
+          csi.storage.k8s.io/node-stage-secret-name: proxmox-csi-encryption
+          csi.storage.k8s.io/node-stage-secret-namespace: csi-proxmox
+          csi.storage.k8s.io/node-expand-secret-name: proxmox-csi-encryption
+          csi.storage.k8s.io/node-expand-secret-namespace: csi-proxmox

@@ -94,7 +94,9 @@ through Terraform variables.
 The default etcd, container-runtime, kubelet, and log directories live under
 `EPHEMERAL` and inherit its encryption. If additional configuration patches place
 them on dedicated partitions, configure encryption for those volumes separately.
-CSI-managed disks and remote persistent volumes need their own encryption settings.
+CSI-managed disks and remote persistent volumes need their own encryption settings;
+the Proxmox CSI StorageClasses in this repository encrypt their volumes with LUKS
+(see [volume encryption](../../../kubernetes/README.md#volume-encryption)).
 Custom global/per-node patches run last and can override the module defaults;
 review any changes to boot or encryption settings carefully.
 
