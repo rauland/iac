@@ -65,6 +65,22 @@ them.
 Talos enforces the Kubernetes `baseline` Pod Security standard by default, so
 privileged workloads need a namespace labelled for it.
 
+### Apps in a private repository
+
+The apps you run can live in a separate, private repository, keeping this one
+a reusable platform. Each cluster's `homelab-apps.yaml` adds that repository as
+a second Flux `GitRepository`, read over SSH with a **read-only deploy key**,
+and a Kustomization that applies its `clusters/<environment>` directory. That
+directory lists one Flux Kustomization per app, as `apps.yaml` does here.
+
+- Give each cluster its own deploy key, so either can be revoked alone. Store
+  the private half and GitHub's host keys as the SOPS-encrypted Secret
+  `flux-system/homelab-apps-deploy-key` (`identity` and `known_hosts`).
+- Use the same age keys in the private repository's `.sops.yaml`, so Flux
+  decrypts its Secrets with the key it already holds.
+- Apps there use this platform's storage, backups, certificates and ingress
+  in the same way as the examples here.
+
 ## Load balancing and ingress
 
 [MetalLB](https://metallb.io) gives LoadBalancer Services an address from the
