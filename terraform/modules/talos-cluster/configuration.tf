@@ -3,6 +3,10 @@ locals {
   # node documents, and rejects the matching v1alpha1 fields alongside them.
   split_machine_config = tonumber(split(".", trimprefix(var.talos_version, "v"))[0]) > 1 || tonumber(split(".", trimprefix(var.talos_version, "v"))[1]) >= 14
   # The Proxmox CSI plugin places volumes by these labels; see README.md.
+  service_account_issuer_args = {
+    "service-account-issuer" = [var.service_account_issuer, var.cluster_endpoint]
+    "api-audiences"          = var.cluster_endpoint
+  }
   topology_labels = {
     for key, node in var.talos_nodes : key => {
       "topology.kubernetes.io/region" = var.proxmox_region
@@ -100,15 +104,14 @@ data "talos_machine_configuration" "node" {
     })], each.value.node_type == "controlplane" && var.service_account_issuer != null ? [
     # Sign service account tokens as the public issuer, keep accepting tokens
     # from the old one, and keep their audience so existing clients still pass.
-    yamlencode({
-      cluster = {
-        apiServer = {
-          extraArgs = {
-            "service-account-issuer" = [var.service_account_issuer, var.cluster_endpoint]
-            "api-audiences"          = var.cluster_endpoint
-          }
-        }
-      }
+    # Talos 1.14 configures the API server through its own document and
+    # rejects .cluster.apiServer alongside it; this merges into the generated one.
+    local.split_machine_config ? yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "KubeAPIServerConfig"
+      extraArgs  = local.service_account_issuer_args
+      }) : yamlencode({
+      cluster = { apiServer = { extraArgs = local.service_account_issuer_args } }
     })
   ] : [], var.config_patches, each.value.config_patches)
 }
