@@ -73,8 +73,9 @@ ignores changes to its disks; otherwise an apply would detach them from
 running pods. To grow a node's boot disk, resize it in Proxmox
 (`qm disk resize <vmid> scsi0 <size>`) and update `disk_size` to match.
 Refreshing a VM reads every attached disk, so the Terraform identities need
-`Datastore.Audit` on the Kubernetes storage, which
-[`platform/access`](../../platform/access/README.md) grants.
+`Datastore.Audit` on the Kubernetes storage and `VM.Config.Disk` on the
+plugin's placeholder volume owner, `/vms/9999`. [`platform/access`](../../platform/access/README.md)
+grants both; neither allows deleting a volume.
 
 ## Secure Boot and system-volume encryption
 
