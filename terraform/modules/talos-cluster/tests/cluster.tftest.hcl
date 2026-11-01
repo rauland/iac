@@ -150,7 +150,7 @@ run "reject_worker_bootstrap" {
 run "vms_carry_no_tags" {
   command = plan
   assert {
-    condition     = alltrue([for node in proxmox_virtual_environment_vm.node : node.tags == null || length(node.tags) == 0])
+    condition     = alltrue([for node in proxmox_virtual_environment_vm.node : node.tags == []])
     error_message = "Pool-scoped tokens cannot set create-time tags, and nothing reads them; the pool and VM name identify each node."
   }
 }
