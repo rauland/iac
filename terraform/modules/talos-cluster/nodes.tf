@@ -1,10 +1,12 @@
 resource "proxmox_virtual_environment_vm" "node" {
   for_each = var.talos_nodes
 
-  name                = each.value.node_name
-  node_name           = each.value.pve_node
-  vm_id               = each.value.vm_id
-  pool_id             = var.pool_id
+  name      = each.value.node_name
+  node_name = each.value.pve_node
+  vm_id     = each.value.vm_id
+  pool_id   = var.pool_id
+  # Explicitly empty, so tags set before they were removed are cleared too.
+  tags                = []
   bios                = "ovmf"
   machine             = "q35"
   scsi_hardware       = "virtio-scsi-pci"
