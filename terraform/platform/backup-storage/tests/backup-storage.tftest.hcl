@@ -62,8 +62,8 @@ run "bucket_is_private_and_clusters_are_scoped" {
     error_message = "Versioning keeps objects deleted with a cluster key recoverable."
   }
   assert {
-    condition     = keys(aws_iam_role.cluster) == ["dev"]
-    error_message = "Only the dev cluster has a backup role by default."
+    condition     = keys(aws_iam_role.cluster) == ["dev", "prod"]
+    error_message = "Each cluster has its own backup role by default."
   }
   assert {
     condition = (

@@ -17,7 +17,7 @@ variable "state_bucket" {
 variable "clusters" {
   description = "Clusters that back up to the bucket. Each gets an IAM role limited to the <cluster>/ prefix; each must be published by platform/cluster-oidc."
   type        = list(string)
-  default     = ["dev"]
+  default     = ["dev", "prod"]
 
   validation {
     condition     = alltrue([for cluster in var.clusters : can(regex("^[a-z0-9-]+$", cluster))])

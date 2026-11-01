@@ -18,7 +18,8 @@ variable "clusters" {
   description = "Clusters to publish, mapped to the state key of the Talos root that outputs kubernetes_client_configuration."
   type        = map(string)
   default = {
-    dev = "terraform/dev/talos.tfstate"
+    dev  = "terraform/dev/talos.tfstate"
+    prod = "terraform/prod/talos.tfstate"
   }
 
   validation {
