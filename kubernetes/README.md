@@ -143,6 +143,26 @@ kubectl get pv <pv> -o jsonpath='{.spec.csi.volumeHandle}'   # <region>/<node>/<
 pvesm free <storage>:<volume>
 ```
 
+Retained disks are easy to forget, so check for them after removing an app and
+after rebuilding a cluster. `Released` volumes are disks whose claim is gone:
+
+```sh
+kubectl get pv -o jsonpath='{range .items[?(@.status.phase=="Released")]}{.metadata.name}{"\t"}{.spec.claimRef.namespace}/{.spec.claimRef.name}{"\t"}{.spec.capacity.storage}{"\n"}{end}'
+```
+
+A rebuilt cluster has no volume objects for the old cluster's disks, so compare
+the storage with the volumes the cluster knows; on the Proxmox host, disks
+listed only by `pvesm` belong to no volume:
+
+```sh
+storage=k8s-dev
+kubectl get pv -o jsonpath='{range .items[*]}{.spec.csi.volumeHandle}{"\n"}{end}' | awk -F/ '{print $4}' | sort > known
+pvesm list "$storage" | awk 'NR > 1 {sub(/^[^:]*:/, "", $1); print $1}' | sort | comm -13 known -
+```
+
+Restore or copy anything still needed before freeing a disk; see
+[restore a volume](../docs/backups.md#restore-a-volume).
+
 A StorageClass's reclaim policy and parameters cannot be changed in place, so
 Helm fails to upgrade one that already exists with different settings. Delete
 the StorageClass (`kubectl delete storageclass proxmox`) and let Flux recreate
