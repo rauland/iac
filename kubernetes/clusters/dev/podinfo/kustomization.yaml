@@ -10,5 +10,5 @@ resources:
   - service.yaml
   - ingress.yaml
   - volume.yaml
-  - podinfo-data-backup.sops.yaml
+  - podinfo-data-backup.yaml
   - backup.yaml

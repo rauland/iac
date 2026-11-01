@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: backup-restic
+    namespace: flux-system
+stringData:
+    restic_repository: ENC[AES256_GCM,data:B6uLTkrZ4nexrp1q67AiFkG2a0HZmgjIuWAh2dNO8MKZ4yF+ct3hfnSVV57edxwefLgGBjbAlssc9M/kLHWYoji7muc6PQ==,iv:kA96Ui87vGfuir189QaOQ/Qacx68eWLBWXA21hdEfhU=,tag:9qVFR0t6/wmfV9Lk9Ps+dg==,type:str]
+    restic_password: ENC[AES256_GCM,data:Ufgog1oq6boq/yTflgylXk37O/2kq9HpHfHLSv2uIRQziT4Z8eaqUjVK3mU=,iv:xsLZIxPWcHPGlyhn94QfYe8/OVq5KNqrsDvJtWSQxZY=,tag:dd7UCkpu6GPIfIUadfONqw==,type:str]
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    age:
+        - recipient: age1qxll9dznkk8drf06frwf574z6uc4snjtl3wt2gtyj2e65kt8xerq0lnd6z
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBqb1U2SFhXU3lBUkpXeXZs
+            UlcrbGpSNzJibHVGUWdvUDZuRDVCSmFRbzF3ClJtbnYvMUF0NUhPR0dxV2RNRGM2
+            ajFsUVc0MXVFNEpiRXRNU3JDbXNUZzgKLS0tIFI0VVA3Zi8xWFd2MTJBRFgzalFv
+            eDMvZ0M2MVlFaXZ5YjhZV2ZLNVZyeU0KbWkfdlf3CbB+9U4A5eoVvW1AoC8ehKGO
+            u2NoEjv4uKYLMKuKq2AAxTC9dl081UcBDUjXWsrtjI4MJigdLWuNIQ==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-11-01T10:04:23Z"
+    mac: ENC[AES256_GCM,data:8XvEc39R6zGVp1vumuAgJ7c+3dMyrXpPjv6HnT5mdHYdq5hfB5aKWV4wcZ766CiJPbhqRqQLOQt5hPQPl65sc6k5K/IkXOFldaYztwaX0/gh22Np69oy3oqvWZ+Q1awcRY0w0ZW146LalK7k00t6WyB3HLPOL6dzpgQN9MMI+wQ=,iv:wBi01cI2R1iT6/ryoeo+yBw5V6tmT5ZbrSSHP24Or5g=,tag:Y30O5+tTeIYBxlAp4a8Cug==,type:str]
+    pgp: []
+    encrypted_regex: ^(data|stringData)$
+    version: 3.9.4
