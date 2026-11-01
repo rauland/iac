@@ -75,7 +75,8 @@ a host over SSH; see the [platform direction](docs/decisions/0001-kubernetes-fir
 | [.github/workflows](.github/workflows) | Infrastructure, Talos upgrade, and state unlock workflows |
 | [.github/actions](.github/actions) | The shared Tailscale action |
 
-Enabled deployment roots are `dev/talos` and `dev/flux`. `platform/access` is
+Enabled deployment roots are `dev/talos`, `dev/flux`, `prod/talos` and
+`prod/flux`. `platform/access` is
 administrator-operated and excluded from deployment discovery, as is
 [`platform/state-access`](terraform/platform/state-access/README.md) for CI AWS
 state credentials, [`platform/backup-storage`](terraform/platform/backup-storage/README.md)

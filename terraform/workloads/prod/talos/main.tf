@@ -1,0 +1,40 @@
+# See ../../../modules/talos-cluster/README.md for lifecycle procedures.
+module "talos_cluster" {
+  source            = "../../../modules/talos-cluster"
+  pool_id           = "prod"
+  iso_datastore_id  = "prod-images"
+  disk_datastore_id = "local-data"
+  providers = {
+    talos   = talos
+    proxmox = proxmox
+  }
+  cluster_name           = var.cluster_name
+  cluster_endpoint       = var.cluster_endpoint
+  service_account_issuer = var.service_account_issuer
+  bootstrap_node         = var.bootstrap_node
+  talos_version          = var.talos_version
+  kubernetes_version     = var.kubernetes_version
+  talos_nodes            = var.talos_nodes
+  dns_servers            = var.dns_servers
+}
+
+output "upgrade_inventory" {
+  description = "Read by .github/workflows/talos-upgrade.yml."
+  value       = module.talos_cluster.upgrade_inventory
+}
+
+output "talosconfig" {
+  value     = module.talos_cluster.talosconfig
+  sensitive = true
+}
+
+# Read by the flux root through terraform_remote_state.
+output "kubernetes_client_configuration" {
+  value     = module.talos_cluster.kubernetes_client_configuration
+  sensitive = true
+}
+
+output "kubeconfig" {
+  value     = module.talos_cluster.kubeconfig
+  sensitive = true
+}

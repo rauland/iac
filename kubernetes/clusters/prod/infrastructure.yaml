@@ -1,0 +1,141 @@
+# Separate Flux Kustomizations so each step waits for the one before it:
+# MetalLB's CRDs exist before the pool, and the pool before Traefik asks it
+# for an address.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: metallb
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./kubernetes/infrastructure/metallb
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: metallb-pool
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: metallb
+  interval: 10m
+  retryInterval: 1m
+  path: ./kubernetes/clusters/prod/metallb-pool
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: traefik
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: metallb-pool
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./kubernetes/infrastructure/traefik
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substitute:
+      ingress_ip: 10.0.0.70
+---
+# Unlike the root, this Kustomization is not patched by the FluxInstance, so
+# it declares SOPS decryption itself for the plugin's config Secret.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: proxmox-csi
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./kubernetes/clusters/prod/proxmox-csi
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  postBuild:
+    substitute:
+      csi_storage: k8s-prod
+---
+# VolSync's controller waits for the VolumeSnapshot API before it starts, even
+# though backups use copyMethod Direct because the Proxmox CSI driver's
+# snapshots need root@pam. Only the three CRDs are taken from upstream.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: external-snapshotter
+  namespace: flux-system
+spec:
+  url: https://github.com/kubernetes-csi/external-snapshotter
+  ref:
+    tag: v8.4.0
+  interval: 24h
+  ignore: |
+    /*
+    !/client/
+    /client/*
+    !/client/config/
+    /client/config/*
+    !/client/config/crd/
+    /client/config/crd/*
+    !/client/config/crd/snapshot.storage.k8s.io_*.yaml
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: snapshot-crds
+  namespace: flux-system
+spec:
+  interval: 1h
+  retryInterval: 1m
+  path: ./client/config/crd
+  prune: false
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: external-snapshotter
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: volsync
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: snapshot-crds
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./kubernetes/infrastructure/volsync
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  postBuild:
+    substitute:
+      # Output cluster_roles of terraform/platform/backup-storage.
+      backup_role_arn: arn:aws:iam::533245699488:role/homelab/backup-prod
+      backup_aws_region: ap-southeast-2

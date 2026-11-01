@@ -4,3 +4,6 @@ creation_rules:
   - path_regex: ^kubernetes/clusters/dev/.*\.sops\.ya?ml$
     encrypted_regex: ^(data|stringData)$
     age: age1qxll9dznkk8drf06frwf574z6uc4snjtl3wt2gtyj2e65kt8xerq0lnd6z
+  - path_regex: ^kubernetes/clusters/prod/.*\.sops\.ya?ml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1n26yufce4gck08za6nsktpf48jnx6uc7aj5darjmtvkyeg0vg3ks3uqy8q

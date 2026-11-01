@@ -1,0 +1,7 @@
+# Flux reconciles this directory on the prod cluster from main. Infrastructure
+# and each app are Flux Kustomizations of their own; add apps to apps.yaml
+# once the first one moves here, after trying it in kubernetes/clusters/dev.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - infrastructure.yaml

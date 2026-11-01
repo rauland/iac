@@ -43,18 +43,19 @@ run "environment_boundaries" {
   }
   assert {
     condition = (
-      toset(keys(local.services)) == toset(["tf-dev-plan", "tf-dev-apply", "tf-prod-plan", "tf-prod-apply", "k8s-csi-dev"]) &&
+      toset(keys(local.services)) == toset(["tf-dev-plan", "tf-dev-apply", "tf-prod-plan", "tf-prod-apply", "k8s-csi-dev", "k8s-csi-prod"]) &&
       alltrue([for grant in local.service_grants : grant.role == "StorageRead" if grant.path == "/storage/local"]) &&
-      proxmox_storage_directory.dev_images.path != "/var/lib/vz"
+      alltrue([for storage in proxmox_storage_directory.environment_images : !startswith(storage.path, "/var/lib/vz")])
     )
     error_message = "Only the Terraform and CSI identities exist, and none can write to shared image storage."
   }
   assert {
     condition = (
       toset(local.roles.SeedPublisher) == toset(["Datastore.Audit", "Datastore.AllocateTemplate", "Datastore.Allocate"]) &&
-      alltrue([for grant in local.service_grants : grant.name == "tf-dev-apply" && grant.path == "/storage/dev-images" if grant.role == "SeedPublisher"])
+      toset([for grant in local.service_grants : "${grant.name}:${grant.path}" if grant.role == "SeedPublisher"]) == toset(["tf-dev-apply:/storage/dev-images", "tf-prod-apply:/storage/prod-images"]) &&
+      alltrue([for grant in local.service_grants : grant.path == "/storage/${local.services[grant.name].environment}-images" if endswith(grant.path, "-images")])
     )
-    error_message = "ISO cleanup belongs only to dev apply on dedicated dev-images storage, never shared images or read identities."
+    error_message = "ISO cleanup belongs only to each environment's apply identity on its own images storage, never another environment's, shared images or read identities."
   }
   assert {
     condition = (
@@ -67,7 +68,7 @@ run "environment_boundaries" {
     condition = (
       toset(local.roles.KubernetesDisk) == toset(["VM.Audit", "VM.Config.Disk"]) &&
       toset(local.roles.KubernetesStorage) == toset(["Datastore.Audit", "Datastore.Allocate", "Datastore.AllocateSpace"]) &&
-      toset([for name, service in local.services : name if service.operation == "csi"]) == toset(["k8s-csi-dev"]) &&
+      toset([for name, service in local.services : name if service.operation == "csi"]) == toset(["k8s-csi-dev", "k8s-csi-prod"]) &&
       alltrue([
         for grant in local.service_grants : contains([
           "${grant.role}:/nodes/${var.node_name}" == "NodeAudit:${grant.path}",
@@ -83,7 +84,7 @@ run "environment_boundaries" {
     condition = (
       toset([for grant in local.service_grants : grant.name if grant.path == "/storage/k8s-dev" && grant.role == "StorageRead"]) == toset(["tf-dev-plan", "tf-dev-apply"]) &&
       alltrue([for grant in local.service_grants : contains(["StorageRead", "KubernetesStorage"], grant.role) if startswith(grant.path, "/storage/k8s-")]) &&
-      toset([for grant in local.service_grants : "${grant.name}:${grant.role}" if grant.path == "/vms/9999"]) == toset(["tf-dev-plan:CSIVolumeRead", "tf-dev-apply:CSIVolumeRead"]) &&
+      toset([for grant in local.service_grants : "${grant.name}:${grant.role}" if grant.path == "/vms/9999"]) == toset(["tf-dev-plan:CSIVolumeRead", "tf-dev-apply:CSIVolumeRead", "tf-prod-plan:CSIVolumeRead", "tf-prod-apply:CSIVolumeRead"]) &&
       alltrue([for grant in local.service_grants : grant.path == "/vms/9999" if grant.role == "CSIVolumeRead"])
     )
     error_message = "Terraform identities may only read their environment's Kubernetes storage, so VM refreshes can see CSI disks."

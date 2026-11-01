@@ -8,6 +8,7 @@ pulls `main` itself, about once a minute.
 | Path | Reconciled by |
 | --- | --- |
 | [clusters/dev](clusters/dev/kustomization.yaml) | Flux on the dev Talos cluster |
+| [clusters/prod](clusters/prod/kustomization.yaml) | Flux on the prod Talos cluster: the same infrastructure, with apps added once they have been tried in dev |
 | [clusters/dev/infrastructure.yaml](clusters/dev/infrastructure.yaml) | Flux Kustomizations that install the shared infrastructure in order |
 | [clusters/dev/apps.yaml](clusters/dev/apps.yaml) | One Flux Kustomization per app |
 | [clusters/dev/podinfo](clusters/dev/podinfo) | Demo app whose UI message is a SOPS-encrypted Secret |
