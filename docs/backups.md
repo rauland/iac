@@ -132,8 +132,10 @@ schedule: `kubectl -n <namespace> patch replicationsource <claim> --type=merge
 
 ### Restore a volume
 
-1. Stop the app so nothing writes to the volume: suspend the Flux
-   Kustomization that applies it, then scale it to zero.
+1. Stop the app so nothing writes to the volume: suspend its Flux
+   Kustomization (`flux suspend kustomization <app>`), then scale it to zero.
+   The app needs a Kustomization of its own; see
+   [adding manifests](../kubernetes/README.md#adding-manifests).
 2. Restore into the claim, choosing the backup with `restoreAsOf` (the latest
    at or before a time) or `previous` (how many backups back):
    ```yaml
