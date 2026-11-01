@@ -5,3 +5,16 @@ kind: Kustomization
 resources:
   - ../../../infrastructure/certificates
   - cloudflare.sops.yaml
+patches:
+  # Household-facing apps also answer on short names under the parent domain,
+  # which the router points at prod one app at a time.
+  - target:
+      kind: Certificate
+      name: wildcard
+    patch: |
+      - op: add
+        path: /spec/dnsNames/-
+        value: netkuki.com
+      - op: add
+        path: /spec/dnsNames/-
+        value: "*.netkuki.com"

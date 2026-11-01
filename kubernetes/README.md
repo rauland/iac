@@ -239,7 +239,11 @@ Traefik redirects HTTP to HTTPS.
 | Cluster | `cluster_domain` | Example app |
 | --- | --- | --- |
 | dev | `dev.<domain>` | `podinfo.dev.<domain>` |
-| prod | `<domain>` | `<app>.<domain>` |
+| prod | `prod.<domain>` | `<app>.prod.<domain>`, plus `<app>.<domain>` |
+
+A cluster can add names to its certificate with a Kustomize patch in its
+`certificates` directory; prod adds the parent domain and `*.<domain>` so that
+household-facing apps can also answer on short names.
 
 Let's Encrypt proves domain control through a DNS-01 challenge in Cloudflare,
 so nothing needs to be reachable from the internet. cert-manager checks the
@@ -268,16 +272,20 @@ Check issuance with `kubectl -n traefik get certificate wildcard` and
 ### Internal DNS
 
 Clients on the LAN need each cluster's names to resolve to its ingress IP.
-With a split-horizon resolver, add a wildcard for the dev domain, for example
-in dnsmasq (OpenWrt: *DHCP and DNS → Addresses*):
+With a split-horizon resolver, add a wildcard for each cluster's domain, for
+example in dnsmasq (OpenWrt: *DHCP and DNS → Addresses*):
 
 ```text
 /dev.<domain>/<dev ingress IP>
+/prod.<domain>/<prod ingress IP>
 ```
 
-For prod, point each app's name at prod's ingress IP when it moves; a
-wildcard for the whole domain would also capture the bare domain and every
-other name. Public access is separate and optional, for example a Cloudflare
+A new prod app is then reachable at `<app>.prod.<domain>` as soon as it is
+deployed, so it can be checked before its short name moves. Point each short
+name at prod's ingress IP when the app moves, for example
+`/<app>.<domain>/<prod ingress IP>`; a wildcard for the whole domain would also
+capture the bare domain and every other name. Apps that build their own links
+or sign-in redirects should be configured with the short name. Public access is separate and optional, for example a Cloudflare
 Tunnel to Traefik; the certificate does not depend on either.
 
 ## Secrets
