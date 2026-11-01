@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: podinfo-data-backup
+stringData:
+    RESTIC_REPOSITORY: ENC[AES256_GCM,data:zg93O3oUEONIWG5yA5Hxu3I+TxAZVY26l3LwfOFX9iKbht+HCyfyu4yNw1M1ltEvrQkJMmB5rl0FQMBXy9tNAuMV3CxtIjEc22TI8/qPaRUc3uA1zc36F6CY3g==,iv:PrBrtznBS3G10vNqbyHKYhTl3iZBYvGC2vu6I3EzG7o=,tag:UEC7RHHd/ZGydZ39O1QQzA==,type:str]
+    RESTIC_PASSWORD: ENC[AES256_GCM,data:NkCqRKvrepWSwI8kulY1/VmAQV+cAvZYryHU3e3A0Q/W/Tt9Py62GpW8VUw=,iv:0NNGzC79wER8BSqgvaQccW6kdNB5CnVcxwhsIK3AJM0=,tag:y2/ZQbHt30LAEyI/lpMfUg==,type:str]
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    age:
+        - recipient: age1qxll9dznkk8drf06frwf574z6uc4snjtl3wt2gtyj2e65kt8xerq0lnd6z
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBEODRrQ0ZFamx5SE1FK2J5
+            QU9KVlBteWtwNTBsTThHVTBaaXh4VVhGTUU0Clc3WlBlNkxKeFZ1LzJhZ3NFTExT
+            MS93OGdMSEpnVnhyNWxYQ2wyaCtvT2MKLS0tIDBLOERiYThScjZpUUt5U3ZCdXZN
+            TEI2NmszMjJTRStxcmdlUUdQTUdEZkUKeb1tg0o0WmaoKKBGwfEhzhYq9vgbTSR+
+            EmIqtMO27L+q7VqIlDBinyKIH+SZ1hPQQly19mgV8q+OUgjpaix2aA==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-11-01T02:02:27Z"
+    mac: ENC[AES256_GCM,data:lnMBw3rIwfTOaztXKkzjfzdYw3HkLNnqa0aqgkM+OMYtA1vCtiYIDrP0gA7YH026IKkUEx8jxj2mBFT4zv6j/y1tKMr9ERGEbDZ4t2Nctb1/AflVWgZKEE2VK3MYVpU8zH8y9PjLIWvwntgBm8rHr25zWlMitx42RBBKs1H0mSk=,iv:fGIj1FLjTtopOfAtBqZXxd2ekn3S/n5Tg8DA9SIYues=,tag:mduwTa4YtEuad1hMjdtn0A==,type:str]
+    pgp: []
+    encrypted_regex: ^(data|stringData)$
+    version: 3.9.4

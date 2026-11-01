@@ -1,0 +1,28 @@
+# Nightly encrypted backup of podinfo's data volume to the cluster's restic
+# repository in S3; see docs/backups.md. The mover runs as podinfo's user so it
+# can read the files and passes the namespace's restricted Pod Security level.
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: podinfo-data
+spec:
+  sourcePVC: podinfo-data
+  trigger:
+    schedule: "30 2 * * *"
+  restic:
+    repository: podinfo-data-backup
+    copyMethod: Direct
+    retain:
+      daily: 7
+      weekly: 4
+      monthly: 6
+    pruneIntervalDays: 7
+    cacheStorageClassName: proxmox-scratch
+    cacheCapacity: 1Gi
+    moverSecurityContext:
+      runAsUser: 100
+      runAsGroup: 101
+      fsGroup: 101
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
