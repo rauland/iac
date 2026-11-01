@@ -4,7 +4,6 @@ locals {
     NodeAudit      = ["Sys.Audit"]
     StorageRead    = ["Datastore.Audit"]
     NetworkRead    = ["SDN.Audit"]
-    ImagePublisher = ["Datastore.Audit", "Datastore.AllocateTemplate"]
     SeedPublisher  = ["Datastore.Audit", "Datastore.AllocateTemplate", "Datastore.Allocate"]
     DownloadAccess = ["Sys.AccessNetwork"]
     PlanDiskAccess = ["VM.Config.Disk"]
@@ -24,16 +23,13 @@ locals {
   ]...))
   services = merge(merge([
     for environment in local.environments : {
-      for operation in ["plan", "apply", "ansible"] :
-      (operation == "ansible" ? "ansible-${environment}" : "tf-${environment}-${operation}") => {
+      for operation in ["plan", "apply"] :
+      "tf-${environment}-${operation}" => {
         environment = environment
         operation   = operation
       }
     }
     ]...), {
-    "tf-platform-images-plan"  = { environment = "platform", operation = "plan" }
-    "tf-platform-images-apply" = { environment = "platform", operation = "apply" }
-    }, {
     for environment in keys(var.kubernetes_storage_pools) :
     "k8s-csi-${environment}" => { environment = environment, operation = "csi" }
   })
@@ -45,17 +41,15 @@ locals {
       { path = "/storage/k8s-${service.environment}", role = "KubernetesStorage", name = name }
       ] : concat(
       [{ path = "/nodes/${var.node_name}", role = "NodeAudit", name = name }],
-      service.environment == "platform" ? [] : [
+      [
         for role in(service.operation == "apply" ? ["PVEVMAdmin", "PVEPoolAdmin"] : ["PVEAuditor"]) :
         { path = "/pool/${service.environment}", role = role, name = name }
       ],
-      service.environment != "platform" && service.operation == "plan" ? [
+      service.operation == "plan" ? [
         { path = "/pool/${service.environment}", role = "PlanDiskAccess", name = name }
       ] : [],
-      service.operation == "ansible" ? [] : [
-        { path = "/storage/${var.shared_image_datastore_id}", role = service.environment == "platform" && service.operation == "apply" ? "ImagePublisher" : "StorageRead", name = name }
-      ],
-      service.environment == "platform" || service.operation == "ansible" ? [] : [
+      [
+        { path = "/storage/${var.shared_image_datastore_id}", role = "StorageRead", name = name },
         { path = "/storage/${var.disk_datastore_id}", role = service.operation == "apply" ? "PVEDatastoreUser" : "StorageRead", name = name },
         { path = "/sdn/zones/localnetwork/${var.bridge}", role = service.operation == "apply" ? "PVESDNUser" : "NetworkRead", name = name }
       ],
@@ -67,10 +61,10 @@ locals {
         { path = "/storage/k8s-${service.environment}", role = "StorageRead", name = name },
         { path = "/vms/${var.csi_volume_owner_vmid}", role = "CSIVolumeRead", name = name }
       ] : [],
-      service.environment == "dev" && service.operation != "ansible" ? [
+      service.environment == "dev" ? [
         { path = "/storage/dev-images", role = service.operation == "apply" ? "SeedPublisher" : "StorageRead", name = name }
       ] : [],
-      service.operation == "apply" && contains(["dev", "platform"], service.environment) ? [
+      service.operation == "apply" && service.environment == "dev" ? [
         { path = "/nodes/${var.node_name}", role = "DownloadAccess", name = name }
       ] : []
     )
@@ -154,7 +148,7 @@ resource "proxmox_virtual_environment_user" "service" {
   groups   = []
   comment  = "${each.value.environment} ${each.value.operation}; managed by terraform/platform/access"
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false # TEMPORARY: lets the reviewed apply remove the Ansible and image identities; restored before merge.
   }
 }
 
@@ -165,7 +159,7 @@ resource "proxmox_user_token" "ci" {
   privileges_separation = true
   comment               = "${each.value.environment} ${each.value.operation} automation"
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false # TEMPORARY: lets the reviewed apply remove the Ansible and image identities; restored before merge.
   }
 }
 

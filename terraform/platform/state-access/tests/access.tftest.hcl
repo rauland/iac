@@ -5,11 +5,10 @@ run "state_scope_boundaries" {
 
   assert {
     condition = alltrue([
-      for name, identity in local.identities : identity.scope == "platform" ?
-      identity.state_key == "terraform/platform/images.tfstate" :
+      for name, identity in local.identities :
       identity.state_key == "terraform/${identity.scope}/*.tfstate"
-    ])
-    error_message = "State access must be limited to the matching workload prefix or shared image state."
+    ]) && toset(keys(local.identities)) == toset(["tf-dev-plan", "tf-dev-apply", "tf-prod-plan", "tf-prod-apply"])
+    error_message = "Only dev and prod roles exist, each limited to its workload state prefix."
   }
   assert {
     condition = alltrue([
@@ -106,17 +105,15 @@ run "parameter_read_boundaries" {
     condition = alltrue([
       for name, identity in local.identities : alltrue([
         for path in identity.parameter_paths :
-        !contains(["shared/apply", "${identity.scope}/apply", "${identity.scope}/ansible", "${identity.scope}/flux"], path)
+        !contains(["shared/apply", "${identity.scope}/apply", "${identity.scope}/flux"], path)
       ]) if identity.operation == "plan"
     ])
-    error_message = "Plan roles must not read apply secrets (plan key, apply or Ansible tokens, or the SOPS key)."
+    error_message = "Plan roles must not read apply secrets (plan key, apply tokens, or the SOPS key)."
   }
   assert {
     condition = (
-      contains(local.identities["tf-prod-apply"].parameter_paths, "prod/ansible") &&
+      local.identities["tf-prod-apply"].parameter_paths == ["shared/proxmox", "shared/wireguard", "prod/apply", "shared/apply", "prod/flux"] &&
       contains(local.identities["tf-dev-apply"].parameter_paths, "dev/flux") &&
-      !contains(local.identities["tf-platform-images-apply"].parameter_paths, "platform/ansible") &&
-      !contains(local.identities["tf-platform-images-apply"].parameter_paths, "platform/flux") &&
       local.identities["tf-dev-plan"].parameter_paths == ["shared/proxmox", "shared/wireguard", "dev/plan"]
     )
     error_message = "Unexpected parameter paths for the sample roles."

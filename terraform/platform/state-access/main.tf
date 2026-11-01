@@ -1,11 +1,11 @@
 locals {
   identities = merge([
-    for scope in ["dev", "prod", "platform"] : {
+    for scope in ["dev", "prod"] : {
       for operation in ["plan", "apply"] :
-      (scope == "platform" ? "tf-platform-images-${operation}" : "tf-${scope}-${operation}") => {
+      "tf-${scope}-${operation}" => {
         scope     = scope
         operation = operation
-        state_key = scope == "platform" ? "terraform/platform/images.tfstate" : "terraform/${scope}/*.tfstate"
+        state_key = "terraform/${scope}/*.tfstate"
         # GitHub environments whose OIDC tokens may assume this identity's role.
         github_environments = concat(
           ["proxmox-${scope}-${operation}"],
@@ -15,7 +15,7 @@ locals {
         parameter_paths = concat(
           ["shared/proxmox", "shared/wireguard", "${scope}/${operation}"],
           operation == "apply" ? ["shared/apply"] : [],
-          operation == "apply" && scope != "platform" ? ["${scope}/ansible", "${scope}/flux"] : [],
+          operation == "apply" ? ["${scope}/flux"] : [],
         )
       }
     }

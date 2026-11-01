@@ -2,9 +2,8 @@
 
 This administrator-operated root owns pools, groups, service users, API tokens,
 ACLs, shared infrastructure membership, and the `dev-images` directory storage.
-Deployment discovery explicitly excludes this root; only `platform/images` is
-automatically deployable under platform. Workload roots own their VM membership
-through `pool_id`.
+Deployment discovery excludes every root under `platform`. Workload roots own
+their VM membership through `pool_id`.
 
 Use a platform administrator's credentials for this root. Do not give its token
 or state access to workload CI. The state contains all generated token secrets.
@@ -45,12 +44,10 @@ Human groups are initially empty. Assign existing human accounts explicitly:
 `platform-admins` has Administrator on `/`; `dev-admins` and `prod-admins` have
 VM administration in their own pool, and viewers have audit privileges there.
 Administrators also receive disk allocation, shared image read access, bridge
-use, and node audit privileges. They do not manage access assignments or publish
-shared images.
+use, and node audit privileges. They do not manage access assignments.
 
-Automation is separated into plan/apply users for dev/prod, read-only Ansible
-inventory users for dev/prod, plan/apply shared image publishers, and Kubernetes
-CSI users for environments with Kubernetes storage. Every token
+Automation is separated into plan/apply users for dev/prod and Kubernetes CSI
+users for environments with Kubernetes storage. Every token
 has privilege separation enabled and matching explicit user/token ACLs. No
 automation identity created here has a global `/` or `/vms` grant.
 
@@ -65,17 +62,10 @@ Dev/prod plan identities additionally receive `PlanDiskAccess`
 metadata through an endpoint that requires this permission. These plan tokens
 can modify disks in their own environment; they are not strictly read-only.
 They cannot change memory, power, CPU or access another environment's guests.
-Ansible inventory and shared-image plan tokens remain strictly read-only.
-
-CI SSH host enrollment uses the existing environment apply identity's
-guest-agent file access; inventory identities receive no additional privileges.
-File-read grants cover arbitrary guest files, not just public host keys. Keep
-`VM.GuestAgent.FileRead`, `VM.GuestAgent.FileWrite` and
-`VM.GuestAgent.Unrestricted` off inventory identities. The live verifier checks
-these denials and rejects guest-agent file reads from both own and other pools.
-SSH enrollment and Ansible were removed (see the
-[platform direction](../../../docs/decisions/0001-kubernetes-first.md)); their
-identities remain until this root drops them.
+Only the apply identities, which administer their own pool's VMs, have
+guest-agent access; the live verifier checks that plan identities cannot read
+guest files. Nothing logs in to guests; see the
+[platform direction](../../../docs/decisions/0001-kubernetes-first.md).
 
 `dev-images` stores ISOs under `/var/lib/proxmox-dev-images`, outside the shared
 `local` directory. Dev apply receives `SeedPublisher` only on `/storage/dev-images`:
@@ -115,9 +105,6 @@ The token secret goes into the cluster as a SOPS-encrypted Secret; see the
 
 ## Credential export and GitHub cutover
 
-See the [cutover and old-secret cleanup checklist](GITHUB-CUTOVER.md) for the
-uploaded environment configuration and remaining AWS console setup.
-
 Token values are sensitive. Export them only into a private, ignored directory:
 
 ```sh
@@ -128,29 +115,19 @@ terraform -chdir=terraform/platform/access output -json automation_credentials \
 ```
 
 Each entry contains `user_id`, `token_name`, `token_id`, `secret`, and the full
-`api_token`. The full API token is the Terraform secret; Ansible uses the three
-separate user/name/secret fields.
+`api_token`. The full API token is the Terraform secret.
 
-| GitHub environment | Terraform identity | Inventory identity |
-| --- | --- | --- |
-| `proxmox-dev-plan` | `tf-dev-plan` | — |
-| `proxmox-dev-apply` | `tf-dev-apply` | `ansible-dev` |
-| `proxmox-dev-auto-apply` | `tf-dev-apply` | `ansible-dev` |
-| `proxmox-prod-plan` | `tf-prod-plan` | — |
-| `proxmox-prod-apply` | `tf-prod-apply` | `ansible-prod` |
-| `proxmox-platform-plan` | `tf-platform-images-plan` | — |
-| `proxmox-platform-apply` | `tf-platform-images-apply` | — |
-
-The removed `platform/images` root used platform image credentials
-and state key `terraform/platform/images.tfstate`: its output is shared by dev
-workloads too.
+| GitHub environment | Terraform identity |
+| --- | --- |
+| `proxmox-dev-plan` | `tf-dev-plan` |
+| `proxmox-dev-apply` | `tf-dev-apply` |
+| `proxmox-dev-auto-apply` | `tf-dev-apply` |
+| `proxmox-prod-plan` | `tf-prod-plan` |
+| `proxmox-prod-apply` | `tf-prod-apply` |
 
 Store each identity's full token as the matching
-`/iac/<scope>/<plan|apply>/TF_VAR_virtual_environment_api_token` SSM parameter,
-and the inventory identity's `user_id`, `token_name` and `secret` as
-`/iac/<scope>/ansible/PROXMOX_USER_ANSIBLE`, `PROXMOX_TOKEN_ID_ANSIBLE` and
-`PROXMOX_TOKEN_SECRET_ANSIBLE`. The full layout, including the API URL, saved
-plan key and Ansible SSH keys, is in
+`/iac/<scope>/<plan|apply>/TF_VAR_virtual_environment_api_token` SSM parameter.
+The full layout, including the API URL and saved plan key, is in
 [CI parameters](../state-access/README.md#ci-parameters). Runners reach Proxmox
 through Tailscale and need no network secret.
 Keep the public plan encryption key in the repository variable.
@@ -158,22 +135,21 @@ Keep the public plan encryption key in the repository variable.
 Allow deployment only from `main` for all apply environments. Dev Terraform
 apply uses `proxmox-dev-auto-apply` without required reviewers, with the same
 scoped credentials and variables as `proxmox-dev-apply`. Keep reviewers on
-`proxmox-dev-apply` for explicit destroy, state unlock, and standalone Ansible,
-and on the prod/platform apply environments. Also require reviewers for
-`proxmox-prod-plan`, because
-its credentials permit disk changes. Dev plan and shared-image plan environments
-can run without reviewers. Configure all secrets and deployment protections
+`proxmox-dev-apply` for explicit destroy and state unlock, and on
+`proxmox-prod-apply`. Also require reviewers for `proxmox-prod-plan`, because
+its credentials permit disk changes. The dev plan environment can run without
+reviewers. Configure all secrets and deployment protections
 before running the workflows.
 
 **AWS permissions must be scoped before retiring legacy access.** Workload CI
 credentials must not be able to read `terraform/platform/access.tfstate`, its
 S3 lock file or historical versions. Scope dev and prod credentials to their own
-state prefixes; scope image CI to `terraform/platform/images.tfstate`. Scope plan
+state prefixes. Scope plan
 credentials to reading state (planning uses `-lock=false`); apply credentials
 also need the corresponding state write/lock permissions. Shared AWS credentials
 that can read every state would bypass the Proxmox separation. Backend
 encryption alone does not provide this separation.
-The [state-access root](../state-access/README.md) provisions these six scoped
+The [state-access root](../state-access/README.md) provisions these four scoped
 AWS identities using an IAM administrator's credentials.
 
 Verify normal plans and disposable guest lifecycle operations before revoking
@@ -182,9 +158,8 @@ Then remove the propagated `PVEVMAdmin` ACLs on `/vms` for both
 `proxmox-ro@pve` and `proxmox-ro@pve!proxmox-ro`, and retire the old
 `proxmox-rw` CI identity/token after all workflows have moved. The local
 `terraform@pve` administrator remains the bootstrap identity for this root until
-a replacement platform administration mechanism is configured. Also retire or
-rescope the old global Ansible inventory identity after the new ones are in use.
-Remove obsolete CI secrets from the old environments and repository scope.
+a replacement platform administration mechanism is configured. Remove obsolete
+CI secrets from the old environments and repository scope.
 
 ## Validation and live verification
 
