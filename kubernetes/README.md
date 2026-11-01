@@ -212,6 +212,43 @@ unset secret token_id
 The plugin is its own Flux Kustomization, `proxmox-csi`, which declares SOPS
 decryption itself; only the root Kustomization gets it from the FluxInstance.
 
+## TLS certificates
+
+[cert-manager](https://cert-manager.io) issues one wildcard certificate per
+cluster from Let's Encrypt, `*.<cluster_domain>` and the bare domain, and
+Traefik serves it as its default certificate. Apps need no TLS configuration:
+an Ingress for any name under the cluster's domain is served over HTTPS, and
+Traefik redirects HTTP to HTTPS.
+
+| Cluster | `cluster_domain` | Example app |
+| --- | --- | --- |
+| dev | `dev.<domain>` | `podinfo.dev.<domain>` |
+| prod | `<domain>` | `<app>.<domain>` |
+
+Let's Encrypt proves domain control through a DNS-01 challenge in Cloudflare,
+so nothing needs to be reachable from the internet. cert-manager checks the
+challenge record against public resolvers, because a LAN resolver that
+answers for the domain itself would never see it. Each cluster's
+`certificates` Flux Kustomization sets `cluster_domain` and `acme_issuer`, and
+adds the Cloudflare token as a SOPS-encrypted Secret. Start with
+`letsencrypt-staging`, whose untrusted certificates have generous rate limits,
+and switch to `letsencrypt` once a staging certificate is issued.
+
+Create a Cloudflare API token with only **Zone → DNS → Edit** on the zone, then
+encrypt it into the cluster's Secret without it touching disk unencrypted:
+
+```sh
+cluster=dev
+file=kubernetes/clusters/$cluster/certificates/cloudflare.sops.yaml
+read -rs -p 'Cloudflare API token: ' token; echo
+printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: cloudflare-api-token\n  namespace: cert-manager\nstringData:\n  api-token: %s\n' "$token" |
+  sops --encrypt --filename-override "$file" --input-type yaml --output-type yaml /dev/stdin > "$file"
+unset token
+```
+
+Check issuance with `kubectl -n traefik get certificate wildcard` and
+`kubectl describe certificaterequest -n traefik`.
+
 ## Secrets
 
 Secrets are committed encrypted with [SOPS](https://getsops.io) and an age key.

@@ -1,0 +1,6 @@
+# cert-manager issues TLS certificates; see kubernetes/README.md#tls-certificates.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - release.yaml

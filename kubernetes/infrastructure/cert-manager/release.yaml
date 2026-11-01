@@ -1,0 +1,32 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: jetstack
+  namespace: cert-manager
+spec:
+  url: https://charts.jetstack.io
+  interval: 24h
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: cert-manager
+      version: v1.21.3
+      sourceRef:
+        kind: HelmRepository
+        name: jetstack
+  values:
+    crds:
+      enabled: true
+      keep: true
+    # The LAN resolver answers for the domain itself (split DNS), so it would
+    # never see the ACME TXT record. Check propagation against public DNS.
+    extraArgs:
+      - --dns01-recursive-nameservers-only
+      - --dns01-recursive-nameservers=1.1.1.1:53,1.0.0.1:53
