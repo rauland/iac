@@ -63,11 +63,11 @@ def verify(endpoint, credentials, node):
             other_path = f"/nodes/{node}/qemu/{guests[other]}/config"
             owner = f"tf-{environment}-apply"
             wait(owner, call(owner, "POST", own_path, data={"memory": 192}))
-            for identity in [owner, f"tf-{environment}-plan", f"ansible-{environment}"]:
+            for identity in [owner, f"tf-{environment}-plan"]:
                 call(identity, "GET", own_path)
                 call(identity, "GET", other_path, expected=403)
                 call(identity, "POST", other_path, expected=403, data={"memory": 256})
-            for identity in [f"tf-{environment}-plan", f"ansible-{environment}"]:
+            for identity in [f"tf-{environment}-plan"]:
                 call(identity, "POST", own_path, expected=403, data={"memory": 256})
                 privileges = call(identity, "GET", "/access/permissions", params={"path": f"/vms/{guests[environment]}"})
                 # Values indicate ACL propagation; presence means access is granted.
@@ -78,11 +78,8 @@ def verify(endpoint, credentials, node):
                 for vm_id in (guests[environment], guests[other]):
                     call(identity, "GET", f"/nodes/{node}/qemu/{vm_id}/agent/file-read",
                          expected=403, params={"file": "/etc/ssh/ssh_host_ed25519_key.pub"})
-                assert ("VM.Config.Disk" in vm_privileges) == identity.startswith("tf-")
-            for identity in ["tf-platform-images-plan", "tf-platform-images-apply"]:
-                call(identity, "GET", own_path, expected=403)
-                call(identity, "POST", own_path, expected=403, data={"memory": 256})
-        print("PASS: pool-scoped creation then tagging and owner lifecycle access work; plan tokens have only the approved disk-write exception; memory changes, cross-environment access and image-publisher VM access are denied to read identities.")
+                assert "VM.Config.Disk" in vm_privileges
+        print("PASS: pool-scoped creation then tagging and owner lifecycle access work; plan tokens have only the approved disk-write exception; memory changes and cross-environment access are denied to read identities.")
 
         if "k8s-csi-dev" in credentials:
             csi, vm_id = "k8s-csi-dev", guests["dev"]

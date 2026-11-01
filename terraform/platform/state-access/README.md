@@ -1,6 +1,6 @@
 # CI state access
 
-This administrator-operated root creates six scoped IAM roles that GitHub Actions
+This administrator-operated root creates four scoped IAM roles that GitHub Actions
 assumes through OIDC, one per dev, prod and shared-image plan/apply identity.
 Workflows receive temporary credentials for one hour; no AWS keys are stored in
 GitHub. It is excluded from automatic deployment discovery. Keep its state
@@ -19,15 +19,13 @@ assume them without passing environment protection. Each role carries a
 | `iac-tf-dev-apply` | `proxmox-dev-apply`, `proxmox-dev-auto-apply` |
 | `iac-tf-prod-plan` | `proxmox-prod-plan` |
 | `iac-tf-prod-apply` | `proxmox-prod-apply` |
-| `iac-tf-platform-images-plan` | `proxmox-platform-plan` |
-| `iac-tf-platform-images-apply` | `proxmox-platform-apply` |
 
 The plan, deploy and state-unlock jobs request `id-token: write` and call
 `aws-actions/configure-aws-credentials` with the environment's `AWS_ROLE_ARN`.
 
 ### CI parameters
 
-CI reads its Proxmox, Ansible and saved-plan secrets from SSM
+CI reads its Proxmox, saved-plan and Flux secrets from SSM
 Parameter Store instead of GitHub environment secrets. Each parameter's last
 path segment is the environment variable it becomes. The plan and deploy jobs
 run [load-parameters.py](../../../.github/scripts/load-parameters.py) right after
@@ -41,11 +39,9 @@ be masked reliably. Roles can only read, and only these prefixes:
 | `/iac/shared/apply/TF_PLAN_PRIVATE_KEY` | SecureString | Apply roles |
 | `/iac/<scope>/plan/TF_VAR_virtual_environment_api_token` | SecureString | That scope's plan role |
 | `/iac/<scope>/apply/TF_VAR_virtual_environment_api_token` | SecureString | That scope's apply role |
-| `/iac/<scope>/ansible/PROXMOX_TOKEN_SECRET_ANSIBLE`, `.../SSH_PRIVATE_KEY_ANSIBLE` | SecureString | Dev and prod apply roles |
-| `/iac/<scope>/ansible/PROXMOX_USER_ANSIBLE`, `.../PROXMOX_TOKEN_ID_ANSIBLE` | String | Dev and prod apply roles |
 | `/iac/<scope>/flux/SOPS_AGE_KEY` | SecureString | Dev and prod apply roles; loaded only by Flux deployments |
 
-`<scope>` is `dev`, `prod` or `platform`. No role can read another scope's
+`<scope>` is `dev` or `prod`. No role can read another scope's
 values, and plan roles cannot read apply values. Roles may also read
 `/iac/shared/wireguard/`, which is unused since CI moved to Tailscale.
 `String` parameters hold non-secret identifiers and are
@@ -65,7 +61,7 @@ shell, so it stays out of shell history.
 ### Roll out
 
 1. [Apply this root](#initialize-review-and-apply) as an administrator. It adds
-   the GitHub OIDC provider, six roles and their policies. If the account
+   the GitHub OIDC provider, four roles and their policies. If the account
    already has a
    `token.actions.githubusercontent.com` provider, import it first:
    `terraform import aws_iam_openid_connect_provider.github <provider-arn>`.
@@ -105,12 +101,10 @@ To create the roles in the IAM console instead of applying this root:
 | `iac-tf-dev-apply` | [tf-dev-apply.json](policies/tf-dev-apply.json) | `proxmox-dev-apply`, `proxmox-dev-auto-apply` |
 | `iac-tf-prod-plan` | [tf-prod-plan.json](policies/tf-prod-plan.json) | `proxmox-prod-plan` |
 | `iac-tf-prod-apply` | [tf-prod-apply.json](policies/tf-prod-apply.json) | `proxmox-prod-apply` |
-| `iac-tf-platform-images-plan` | [tf-platform-images-plan.json](policies/tf-platform-images-plan.json) | `proxmox-platform-plan` |
-| `iac-tf-platform-images-apply` | [tf-platform-images-apply.json](policies/tf-platform-images-apply.json) | `proxmox-platform-apply` |
 
 The files target bucket `rauland-iac-homelab`. Before running CI,
 verify that plan roles can read only their state,
-apply roles can write their state/manage locks, and all six are denied access to
+apply roles can write their state/manage locks, and all four are denied access to
 `terraform/platform/access.tfstate` and `terraform/platform/state-access.tfstate`.
 
 The JSON files are exported from a mocked Terraform plan, not a second policy
@@ -121,7 +115,7 @@ implementation. Regenerate after changes using `python3 export_policies.py`
 
 Run these commands from the repository root on the machine where Terraform will
 run. `init` configures the backend and installs providers; `apply` creates the
-GitHub OIDC provider, six roles and their inline policies.
+GitHub OIDC provider, four roles and their inline policies.
 
 Do not apply this root against roles already created in the console without
 importing the provider, roles and inline policies first. Console setup does not
@@ -207,8 +201,7 @@ aws sso logout
 Plan roles can read matching state objects. Apply roles can also write those
 objects and manage their `.tflock` files. They cannot delete state objects.
 Dev/prod object access is restricted to `terraform/dev/*.tfstate` or
-`terraform/prod/*.tfstate`; image access is restricted to
-`terraform/platform/images.tfstate`. An explicit deny prevents access to objects
+`terraform/prod/*.tfstate`. An explicit deny prevents access to objects
 outside the selected state scope, including both administrator access states
 and their historical versions. Bucket listing exposes key metadata only.
 Only the default Terraform workspace is supported by these policies.

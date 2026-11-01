@@ -43,17 +43,16 @@ run "environment_boundaries" {
   }
   assert {
     condition = (
-      alltrue([for grant in local.service_grants : !contains(["PVEVMAdmin", "PVEPoolAdmin", "Administrator"], grant.role) if local.services[grant.name].environment == "platform"]) &&
-      alltrue([for grant in local.service_grants : grant.role != "ImagePublisher" if local.services[grant.name].environment == "dev" && grant.path == "/storage/local"]) &&
+      toset(keys(local.services)) == toset(["tf-dev-plan", "tf-dev-apply", "tf-prod-plan", "tf-prod-apply", "k8s-csi-dev"]) &&
+      alltrue([for grant in local.service_grants : grant.role == "StorageRead" if grant.path == "/storage/local"]) &&
       proxmox_storage_directory.dev_images.path != "/var/lib/vz"
     )
-    error_message = "Shared image publishers must have no VM administration, and dev must not publish to shared image storage."
+    error_message = "Only the Terraform and CSI identities exist, and none can write to shared image storage."
   }
   assert {
     condition = (
       toset(local.roles.SeedPublisher) == toset(["Datastore.Audit", "Datastore.AllocateTemplate", "Datastore.Allocate"]) &&
-      alltrue([for grant in local.service_grants : grant.name == "tf-dev-apply" && grant.path == "/storage/dev-images" if grant.role == "SeedPublisher"]) &&
-      !contains(local.roles.ImagePublisher, "Datastore.Allocate")
+      alltrue([for grant in local.service_grants : grant.name == "tf-dev-apply" && grant.path == "/storage/dev-images" if grant.role == "SeedPublisher"])
     )
     error_message = "ISO cleanup belongs only to dev apply on dedicated dev-images storage, never shared images or read identities."
   }
