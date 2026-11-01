@@ -28,7 +28,9 @@ runs. Forks must adapt the example configuration to their own infrastructure.
 3. Ensure the runner can reach every node on Talos API port 50000 and the
    Kubernetes API on port 6443 through Tailscale. The nodes need the routes and
    DNS necessary to reach Image Factory and container registries. Set
-   `dns_servers` for static nodes (for example, your LAN resolver). A load-balanced
+   `dns_servers` for static nodes (for example, your LAN resolver). On Talos
+   1.14 and later, nodes ignore search domains from DHCP and search only
+   `cluster.local`, so pods do not inherit the LAN's local domain. A load-balanced
    `cluster_endpoint` must already exist; the module does not create a load
    balancer or a virtual IP.
 4. Apply the [platform access root](../../platform/access/README.md) to create
