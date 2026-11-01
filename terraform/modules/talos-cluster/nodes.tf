@@ -65,4 +65,11 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   serial_device {}
+
+  # The Proxmox CSI plugin hot-plugs PersistentVolume disks into worker VMs.
+  # Without this, an apply would detach them from running pods. The boot disk
+  # is therefore not resized by Terraform; see README.md.
+  lifecycle {
+    ignore_changes = [disk]
+  }
 }

@@ -40,6 +40,12 @@ variable "infra_vm_ids" {
   default     = [100, 101, 116]
 }
 
+variable "csi_volume_owner_vmid" {
+  description = "Placeholder VM ID in the Proxmox CSI plugin's volume names (vm-<id>-pvc-...). No VM may use it."
+  type        = number
+  default     = 9999
+}
+
 variable "kubernetes_storage_pools" {
   description = "Existing ZFS dataset per environment for Kubernetes volumes. Each becomes storage k8s-<environment>, the only storage that environment's CSI identity can allocate on or delete from. Create the dataset before applying."
   type        = map(string)
