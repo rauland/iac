@@ -27,7 +27,7 @@ def infrastructure_path(path, root):
     if path == root["directory"] + "/.disabled":
         return True
     if path in {".github/scripts/terraform-plan.py", ".github/scripts/terraform-apply.py",
-                ".github/scripts/vm_tags.py", ".github/scripts/terraform-plan-artifact.sh"}:
+                ".github/scripts/plan_manifest.py", ".github/scripts/terraform-plan-artifact.sh"}:
         return True
     if not (path.endswith((".tf", ".tfvars", ".tfvars.json"))
             or Path(path).name == ".terraform.lock.hcl"):

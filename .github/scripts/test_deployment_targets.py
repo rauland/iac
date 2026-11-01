@@ -66,8 +66,8 @@ class DeploymentTargetTests(unittest.TestCase):
     def test_infrastructure_change_only_selects_its_root(self):
         self.assertEqual(self.change("terraform/workloads/dev/talos/main.tf"), {("dev", "talos")})
 
-    def test_tag_staging_and_plan_helpers_select_every_root(self):
-        self.assertEqual(len(self.change(".github/scripts/vm_tags.py",
+    def test_plan_helpers_select_every_root(self):
+        self.assertEqual(len(self.change(".github/scripts/plan_manifest.py",
                                          ".github/scripts/terraform-apply.py")), 3)
 
     def test_shared_terraform_module_selects_all_enabled_roots(self):

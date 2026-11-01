@@ -57,7 +57,7 @@ run "boot_and_configuration_contract" {
 
   assert {
     condition = (
-      alltrue([for node in proxmox_virtual_environment_vm.node : node.pool_id == "dev" && contains(node.tags, "dev")]) &&
+      alltrue([for node in proxmox_virtual_environment_vm.node : node.pool_id == "dev"]) &&
       alltrue([for iso in proxmox_download_file.environment_iso : iso.datastore_id == "dev-images"])
     )
     error_message = "Keep every Talos VM and its boot media within the selected environment."
@@ -147,18 +147,11 @@ run "reject_worker_bootstrap" {
   expect_failures = [var.bootstrap_node]
 }
 
-run "defer_only_selected_vm_tags" {
+run "vms_carry_no_tags" {
   command = plan
-  variables {
-    deferred_vm_tags = ["pve-a/cp-01"]
-  }
   assert {
-    condition = (
-      length(proxmox_virtual_environment_vm.node["cp-01"].tags) == 0 &&
-      proxmox_virtual_environment_vm.node["cp-01"].pool_id == "dev" &&
-      contains(proxmox_virtual_environment_vm.node["worker-01"].tags, "dev")
-    )
-    error_message = "Stage only the selected node's tags while preserving pool assignment and other nodes."
+    condition     = alltrue([for node in proxmox_virtual_environment_vm.node : node.tags == null || length(node.tags) == 0])
+    error_message = "Pool-scoped tokens cannot set create-time tags, and nothing reads them; the pool and VM name identify each node."
   }
 }
 

@@ -43,9 +43,7 @@ class PlanArtifactTests(unittest.TestCase):
         self.destination.mkdir()
         (self.source / "tfplan").write_bytes(b"secret plan contents\x00\xff")
         (self.source / ".terraform.lock.hcl").write_text("exact provider selections\n")
-        (self.source / ".tf-tags.json").write_text('{"version":1,"guests":[]}\n')
-        (self.source / ".cloud-init").mkdir()
-        (self.source / ".cloud-init/seed.iso").write_bytes(b"exact reviewed seed bytes")
+        (self.source / ".tf-plan.json").write_text('{"version":2}\n')
         self.artifact = self.root / "tfplan.tar.gpg"
 
     def tearDown(self):
@@ -68,7 +66,7 @@ class PlanArtifactTests(unittest.TestCase):
         self.assertNotIn(b"secret plan contents", self.artifact.read_bytes())
         result = self.run_script("decrypt", self.destination, TF_PLAN_PRIVATE_KEY=self.private)
         self.assertEqual(result.returncode, 0, result.stderr)
-        for name in ("tfplan", ".terraform.lock.hcl", ".tf-tags.json", ".cloud-init/seed.iso"):
+        for name in ("tfplan", ".terraform.lock.hcl", ".tf-plan.json"):
             self.assertEqual((self.source / name).read_bytes(),
                              (self.destination / name).read_bytes())
 
@@ -93,7 +91,7 @@ class PlanArtifactTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
 
     def test_missing_tag_manifest_fails(self):
-        (self.source / ".tf-tags.json").unlink()
+        (self.source / ".tf-plan.json").unlink()
         result = self.run_script("encrypt", self.source, TF_PLAN_PUBLIC_KEY=self.public)
         self.assertNotEqual(result.returncode, 0)
 

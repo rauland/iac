@@ -7,7 +7,6 @@ from failed runs. For initial configuration, follow the [setup guide](setup.md).
 - [Manual modes](#manual-modes)
 - [Main branch protection](#main-branch-protection)
 - [Approval and saved plans](#approval-and-saved-plans)
-- [VM tag staging](#vm-tag-staging)
 - [Concurrency and networking](#concurrency-and-networking)
 
 ## Deployment selection
@@ -99,9 +98,7 @@ were needed. Fork PRs do not publish a comment.
 
 Only changed plans from `main` are encrypted and uploaded together with their
 provider lock file and a manifest bound to the plan, target, commit and run.
-Apply executes the saved infrastructure plan. For newly created VMs, such as
-Talos nodes, tags are deferred until pool assignment; see
-[VM tag staging](#vm-tag-staging).
+The apply job checks that manifest, then applies the saved plan unchanged.
 
 The Terraform API token remains ephemeral and is supplied by the job's selected
 environment. Result artifacts contain routing flags,
@@ -116,41 +113,6 @@ rerun **all jobs** so the plan, result metadata, and approval summary match.
 Automatic dev applies may delete or replace resources when an ordinary plan
 contains those actions; explicit destroy approval is not a deletion filter on
 normal plans. Terraform deployment jobs use version `1.15.8`.
-
-## VM tag staging
-
-Some Proxmox releases check create-time tags on `/vms/ID` before assigning the
-new guest to its requested pool. A token with VM administration only on its
-own pool therefore cannot create a tagged guest in one request. Keep the
-pool-scoped ACLs; CI stages the tags using the same apply identity.
-
-The shared planning helper first saves and renders the intended final plan.
-For each VM create or replacement with tags, it records the exact resource
-address, node, name, pool and desired tags. It then saves the infrastructure
-plan with tags deferred only for those `node/name` selectors. Validation rejects
-any other resource or output difference between the plans. The PR preview
-shows the intended tags and explicitly identifies staged VM resources.
-
-The encrypted artifact contains the executable infrastructure plan, its exact
-provider lock file and `.tf-tags.json`. The manifest binds the target, commit,
-run and attempt to hashes of the saved plan and provider selections. The apply
-helper checks this identity before changing infrastructure.
-
-After the infrastructure plan completes, the helper binds every staged guest
-to its actual VM ID from state. It saves a follow-up plan with refresh disabled
-and `deferred_vm_tags = []`. Before applying it, validation requires the exact
-reviewed tags on the same node, VM ID, name and pool, with no other resource or
-VM-setting changes. Provider-computed network observations may become unknown;
-empty CPU flags can normalize from `null` to `[]`. Read-only data sources
-already present in the reviewed plan, such as Talos health checks, may run again.
-The configuration and ordinary input values must also match the reviewed plan,
-including its Proxmox endpoint; the ephemeral API token may change from the
-plan identity to the existing scoped apply identity. Existing VM tag updates
-and destroy plans use their original saved plan directly.
-
-`deferred_vm_tags` is an internal staging input, defaulting to an empty set.
-Leave it empty in normal configuration; the Talos module forwards it. Do not
-permanently suppress tags in a tfvars file.
 
 ## Concurrency and networking
 
