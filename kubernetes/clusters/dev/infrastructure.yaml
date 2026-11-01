@@ -136,6 +136,6 @@ spec:
     name: flux-system
   postBuild:
     substitute:
-      # Output cluster_roles of terraform/platform/offsite-backup.
+      # Output cluster_roles of terraform/platform/backup-storage.
       backup_role_arn: arn:aws:iam::533245699488:role/homelab/backup-dev
       backup_aws_region: ap-southeast-2

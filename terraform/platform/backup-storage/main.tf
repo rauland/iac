@@ -1,4 +1,4 @@
-resource "aws_s3_bucket" "offsite" {
+resource "aws_s3_bucket" "backups" {
   bucket = var.bucket_name
 
   lifecycle {
@@ -6,23 +6,23 @@ resource "aws_s3_bucket" "offsite" {
   }
 }
 
-resource "aws_s3_bucket_ownership_controls" "offsite" {
-  bucket = aws_s3_bucket.offsite.id
+resource "aws_s3_bucket_ownership_controls" "backups" {
+  bucket = aws_s3_bucket.backups.id
   rule {
     object_ownership = "BucketOwnerEnforced"
   }
 }
 
-resource "aws_s3_bucket_public_access_block" "offsite" {
-  bucket                  = aws_s3_bucket.offsite.id
+resource "aws_s3_bucket_public_access_block" "backups" {
+  bucket                  = aws_s3_bucket.backups.id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "offsite" {
-  bucket = aws_s3_bucket.offsite.id
+resource "aws_s3_bucket_server_side_encryption_configuration" "backups" {
+  bucket = aws_s3_bucket.backups.id
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
@@ -33,15 +33,15 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "offsite" {
 # A cluster's key can delete objects, because restic's prune must. Versioning
 # keeps deleted or overwritten objects for deleted_retention_days, so a stolen
 # key cannot destroy the backups before someone notices.
-resource "aws_s3_bucket_versioning" "offsite" {
-  bucket = aws_s3_bucket.offsite.id
+resource "aws_s3_bucket_versioning" "backups" {
+  bucket = aws_s3_bucket.backups.id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "offsite" {
-  bucket = aws_s3_bucket.offsite.id
+resource "aws_s3_bucket_lifecycle_configuration" "backups" {
+  bucket = aws_s3_bucket.backups.id
   rule {
     id     = "abort-incomplete-uploads"
     status = "Enabled"
@@ -61,11 +61,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "offsite" {
       expired_object_delete_marker = true
     }
   }
-  depends_on = [aws_s3_bucket_versioning.offsite]
+  depends_on = [aws_s3_bucket_versioning.backups]
 }
 
-resource "aws_s3_bucket_policy" "offsite" {
-  bucket = aws_s3_bucket.offsite.id
+resource "aws_s3_bucket_policy" "backups" {
+  bucket = aws_s3_bucket.backups.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -73,11 +73,11 @@ resource "aws_s3_bucket_policy" "offsite" {
       Effect    = "Deny"
       Principal = "*"
       Action    = "s3:*"
-      Resource  = [aws_s3_bucket.offsite.arn, "${aws_s3_bucket.offsite.arn}/*"]
+      Resource  = [aws_s3_bucket.backups.arn, "${aws_s3_bucket.backups.arn}/*"]
       Condition = { Bool = { "aws:SecureTransport" = "false" } }
     }]
   })
-  depends_on = [aws_s3_bucket_public_access_block.offsite]
+  depends_on = [aws_s3_bucket_public_access_block.backups]
 }
 
 # Each cluster's VolSync movers exchange their service account token for this

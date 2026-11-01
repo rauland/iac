@@ -15,7 +15,7 @@ public S3 bucket, and registers each cluster as an IAM identity provider.
 | Resource | Notes |
 | --- | --- |
 | S3 bucket (`bucket_name`) | Serves `<cluster>/.well-known/openid-configuration` and `<cluster>/openid/v1/jwks` publicly, and nothing else. The documents hold only public keys. TLS only. |
-| IAM OIDC identity provider per cluster | Issuer `https://<bucket>.s3.<region>.amazonaws.com/<cluster>`, audience `sts.amazonaws.com`. Roles that trust it are defined where they are used, such as [`platform/offsite-backup`](../offsite-backup/README.md). |
+| IAM OIDC identity provider per cluster | Issuer `https://<bucket>.s3.<region>.amazonaws.com/<cluster>`, audience `sts.amazonaws.com`. Roles that trust it are defined where they are used, such as [`platform/backup-storage`](../backup-storage/README.md). |
 
 The provider alone grants nothing: a pod gets AWS access only through a role
 whose trust policy names the provider, the audience and the pod's service

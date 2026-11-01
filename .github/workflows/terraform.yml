@@ -132,8 +132,8 @@ jobs:
           python3 terraform/modules/talos-cluster/scripts/test_upgrade_node.py
           python3 terraform/modules/talos-cluster/scripts/test_rolling_upgrade.py
 
-  offsite_backup_checks:
-    name: Off-site backup tests (offline)
+  backup_storage_checks:
+    name: Backup storage tests (offline)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -142,13 +142,13 @@ jobs:
           terraform_version: "1.15.8"
       - name: Initialize providers
         run: terraform init -backend=false -input=false
-        working-directory: terraform/platform/offsite-backup
+        working-directory: terraform/platform/backup-storage
       - name: Validate configuration
         run: terraform validate -no-color
-        working-directory: terraform/platform/offsite-backup
+        working-directory: terraform/platform/backup-storage
       - name: Test bucket and cluster role boundaries
         run: terraform test -no-color
-        working-directory: terraform/platform/offsite-backup
+        working-directory: terraform/platform/backup-storage
 
   cluster_oidc_checks:
     name: Cluster OIDC tests (offline)
@@ -206,7 +206,7 @@ jobs:
   ci:
     name: CI
     if: always()
-    needs: [discover, ansible_lint, access_checks, talos_checks, offsite_backup_checks, cluster_oidc_checks, kubernetes_checks, terraform_validate]
+    needs: [discover, ansible_lint, access_checks, talos_checks, backup_storage_checks, cluster_oidc_checks, kubernetes_checks, terraform_validate]
     runs-on: ubuntu-latest
     steps:
       - name: Require every validation job to succeed

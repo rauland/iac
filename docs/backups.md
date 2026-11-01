@@ -16,7 +16,7 @@ need no backup; their data does. Decide per kind of data:
 
 [VolSync](https://volsync.readthedocs.io) copies selected PersistentVolumes to
 restic repositories in the bucket from
-[`platform/offsite-backup`](../terraform/platform/offsite-backup/README.md),
+[`platform/backup-storage`](../terraform/platform/backup-storage/README.md),
 one repository per volume. restic encrypts the data before upload and only
 sends what changed since the last run. Nothing runs on the Proxmox host, and
 the cluster holds no hypervisor credentials and no AWS keys.
@@ -32,7 +32,7 @@ admin setup per cluster makes AWS trust it:
    [public service account issuer](../terraform/modules/talos-cluster/README.md#public-service-account-issuer).
 2. Apply [`platform/cluster-oidc`](../terraform/platform/cluster-oidc/README.md),
    which publishes the issuer and registers it with AWS.
-3. Apply [`platform/offsite-backup`](../terraform/platform/offsite-backup/README.md)
+3. Apply [`platform/backup-storage`](../terraform/platform/backup-storage/README.md)
    and create the cluster's repository password.
 
 The Proxmox CSI plugin's volume snapshots need a `root@pam` login, so backups

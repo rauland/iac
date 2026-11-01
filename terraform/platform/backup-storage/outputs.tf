@@ -1,7 +1,7 @@
 output "bucket" {
   description = "Bucket and endpoint for the clusters' restic repositories."
   value = {
-    name     = aws_s3_bucket.offsite.bucket
+    name     = aws_s3_bucket.backups.bucket
     region   = var.aws_region
     endpoint = "s3.${var.aws_region}.amazonaws.com"
   }

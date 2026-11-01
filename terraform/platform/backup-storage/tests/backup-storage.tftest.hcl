@@ -29,12 +29,12 @@ run "bucket_is_private_and_clusters_are_scoped" {
 
   assert {
     condition = (
-      aws_s3_bucket_public_access_block.offsite.block_public_acls &&
-      aws_s3_bucket_public_access_block.offsite.block_public_policy &&
-      aws_s3_bucket_public_access_block.offsite.ignore_public_acls &&
-      aws_s3_bucket_public_access_block.offsite.restrict_public_buckets
+      aws_s3_bucket_public_access_block.backups.block_public_acls &&
+      aws_s3_bucket_public_access_block.backups.block_public_policy &&
+      aws_s3_bucket_public_access_block.backups.ignore_public_acls &&
+      aws_s3_bucket_public_access_block.backups.restrict_public_buckets
     )
-    error_message = "The off-site bucket must block all public access."
+    error_message = "The backup bucket must block all public access."
   }
   assert {
     condition = alltrue(flatten([
@@ -58,7 +58,7 @@ run "bucket_is_private_and_clusters_are_scoped" {
     error_message = "Listing is limited to the cluster's own prefix."
   }
   assert {
-    condition     = aws_s3_bucket_versioning.offsite.versioning_configuration[0].status == "Enabled"
+    condition     = aws_s3_bucket_versioning.backups.versioning_configuration[0].status == "Enabled"
     error_message = "Versioning keeps objects deleted with a cluster key recoverable."
   }
   assert {

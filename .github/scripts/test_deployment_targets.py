@@ -21,7 +21,7 @@ class DeploymentTargetTests(unittest.TestCase):
         self.git("config", "user.name", "Test")
         for root in ("dev/sandbox", "dev/talos", "prod/sandbox"):
             self.write(f"terraform/workloads/{root}/main.tf", "# root\n")
-        for root in ("images", "access", "state-access", "offsite-backup"):
+        for root in ("images", "access", "state-access", "backup-storage"):
             self.write(f"terraform/platform/{root}/main.tf", "# platform\n")
         self.base = self.commit()
 
@@ -177,7 +177,7 @@ class DeploymentTargetTests(unittest.TestCase):
     def test_privileged_platform_roots_do_not_deploy(self):
         self.assertEqual(self.change("terraform/platform/access/main.tf",
                                      "terraform/platform/state-access/main.tf",
-                                     "terraform/platform/offsite-backup/main.tf",
+                                     "terraform/platform/backup-storage/main.tf",
                                      "terraform/platform/cluster-oidc/main.tf"), {})
 
     def test_manual_configuration_does_not_need_a_terraform_root(self):

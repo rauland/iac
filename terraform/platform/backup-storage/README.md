@@ -1,7 +1,7 @@
-# Off-site backup storage
+# Backup storage
 
 This administrator-operated root creates the S3 bucket that holds the clusters'
-off-site backups, and one IAM role per cluster to write them. It is excluded
+encrypted backups, and one IAM role per cluster to write them. It is excluded
 from automatic deployment discovery; CI cannot plan or apply it.
 
 Each cluster's [VolSync](../../../docs/backups.md#kubernetes-volumes) backups
@@ -47,17 +47,17 @@ then from the repository root:
   unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN
   export AWS_PROFILE=admin
   aws sts get-caller-identity &&
-  terraform -chdir=terraform/platform/offsite-backup init \
+  terraform -chdir=terraform/platform/backup-storage init \
     -backend-config=bucket=rauland-iac-homelab \
     -backend-config=region=ap-southeast-2 \
-    -backend-config=key=terraform/platform/offsite-backup.tfstate &&
-  terraform -chdir=terraform/platform/offsite-backup plan -out=tfplan \
+    -backend-config=key=terraform/platform/backup-storage.tfstate &&
+  terraform -chdir=terraform/platform/backup-storage plan -out=tfplan \
     -var state_bucket=rauland-iac-homelab -var budget_email=you@example.com
 )
 ```
 
 Review the plan, then apply it with
-`terraform -chdir=terraform/platform/offsite-backup apply tfplan` in the same
+`terraform -chdir=terraform/platform/backup-storage apply tfplan` in the same
 kind of subshell. Omit `-var budget_email=…` to skip the budget. Bucket names
 are global, so a fork must set its own `bucket_name`. Apply
 [`platform/cluster-oidc`](../cluster-oidc/README.md) first: each role trusts
