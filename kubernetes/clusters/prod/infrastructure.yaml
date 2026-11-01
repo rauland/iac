@@ -180,5 +180,5 @@ spec:
       name: sops-age
   postBuild:
     substitute:
-      cluster_domain: netkuki.com
+      cluster_domain: prod.netkuki.com
       acme_issuer: letsencrypt
