@@ -5,7 +5,6 @@ resource "proxmox_virtual_environment_vm" "node" {
   node_name           = each.value.pve_node
   vm_id               = each.value.vm_id
   pool_id             = var.pool_id
-  tags                = contains(var.deferred_vm_tags, "${each.value.pve_node}/${each.value.node_name}") ? [] : ["talos", var.cluster_name, each.value.node_type, var.pool_id]
   bios                = "ovmf"
   machine             = "q35"
   scsi_hardware       = "virtio-scsi-pci"

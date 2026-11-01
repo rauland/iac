@@ -51,11 +51,8 @@ users for environments with Kubernetes storage. Every token
 has privilege separation enabled and matching explicit user/token ACLs. No
 automation identity created here has a global `/` or `/vms` grant.
 
-VM creation stages tags after pool assignment to handle Proxmox's create-time
-tag permission check. Both stages use the existing environment apply token;
-no additional ACLs are needed. The tag-only follow-up plan is validated against
-the original reviewed intent. See [VM tag staging](../../../docs/deployments.md#vm-tag-staging)
-for the plan/artifact checks and recovery procedure.
+Talos VMs are created without tags: Proxmox checks create-time tags on
+`/vms/ID` before pool assignment, which pool-scoped tokens cannot pass.
 
 Dev/prod plan identities additionally receive `PlanDiskAccess`
 (`VM.Config.Disk`) only on their own pool. The pinned provider reads disk

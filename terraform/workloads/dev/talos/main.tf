@@ -2,7 +2,6 @@
 module "talos_cluster" {
   source           = "../../../modules/talos-cluster"
   pool_id          = "dev"
-  deferred_vm_tags = var.deferred_vm_tags
   iso_datastore_id = "dev-images"
   providers = {
     talos   = talos

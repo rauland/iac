@@ -7,10 +7,9 @@ and exposes sensitive client configurations.
 It does not use cloud-init, snippets, Proxmox-host SSH, or runner-local credential
 resources.
 
-CI uses the shared [VM tag staging](../../../docs/deployments.md#vm-tag-staging)
-path when creating or replacing nodes: create each guest in its pool, then
-apply only its reviewed tags after pool-scoped permissions take effect. The
-internal `deferred_vm_tags` input defaults to an empty set.
+Node VMs carry no Proxmox tags: Proxmox checks create-time tags before it
+assigns a guest to its pool, which the pool-scoped CI tokens cannot pass, and
+nothing reads them. The pool and VM name identify each node.
 
 ## Deploying the example environment
 
