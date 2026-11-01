@@ -1,8 +1,0 @@
----
-- name: Install each package
-  ansible.builtin.package:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ system_packages_list }}"
-  loop_control:
-    label: "{{ item }}"

@@ -1,3 +1,0 @@
----
-system_packages_base:
-  - qemu-guest-agent

@@ -1,7 +1,0 @@
----
-- name: Restart Podman Nginx
-  ansible.builtin.systemd_service:
-    name: podman-nginx.service
-    daemon_reload: true
-    state: restarted
-  when: not ansible_check_mode

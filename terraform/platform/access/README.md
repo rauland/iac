@@ -57,7 +57,7 @@ automation identity created here has a global `/` or `/vms` grant.
 VM creation stages tags after pool assignment to handle Proxmox's create-time
 tag permission check. Both stages use the existing environment apply token;
 no additional ACLs are needed. The tag-only follow-up plan is validated against
-the original reviewed intent. See [VM tag staging](../../modules/virtual-machine/README.md#pool-scoped-creation-and-tags)
+the original reviewed intent. See [VM tag staging](../../../docs/deployments.md#vm-tag-staging)
 for the plan/artifact checks and recovery procedure.
 
 Dev/prod plan identities additionally receive `PlanDiskAccess`
@@ -73,7 +73,9 @@ File-read grants cover arbitrary guest files, not just public host keys. Keep
 `VM.GuestAgent.FileRead`, `VM.GuestAgent.FileWrite` and
 `VM.GuestAgent.Unrestricted` off inventory identities. The live verifier checks
 these denials and rejects guest-agent file reads from both own and other pools.
-See [SSH enrollment](../../../ssh/README.md) for the state and identity checks.
+SSH enrollment and Ansible were removed (see the
+[platform direction](../../../docs/decisions/0001-kubernetes-first.md)); their
+identities remain until this root drops them.
 
 `dev-images` stores ISOs under `/var/lib/proxmox-dev-images`, outside the shared
 `local` directory. Dev apply receives `SeedPublisher` only on `/storage/dev-images`:
@@ -139,7 +141,7 @@ separate user/name/secret fields.
 | `proxmox-platform-plan` | `tf-platform-images-plan` | — |
 | `proxmox-platform-apply` | `tf-platform-images-apply` | — |
 
-The [platform/images root](../images/README.md) uses platform image credentials
+The removed `platform/images` root used platform image credentials
 and state key `terraform/platform/images.tfstate`: its output is shared by dev
 workloads too.
 
@@ -150,7 +152,7 @@ and the inventory identity's `user_id`, `token_name` and `secret` as
 `PROXMOX_TOKEN_SECRET_ANSIBLE`. The full layout, including the API URL, saved
 plan key and Ansible SSH keys, is in
 [CI parameters](../state-access/README.md#ci-parameters). Runners reach Proxmox
-through Tailscale and need no network secret. See [SSH access and rotation](../../../ssh/README.md).
+through Tailscale and need no network secret.
 Keep the public plan encryption key in the repository variable.
 
 Allow deployment only from `main` for all apply environments. Dev Terraform
