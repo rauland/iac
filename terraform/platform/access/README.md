@@ -80,12 +80,13 @@ this does not introduce a quota or a separate disk.
 
 Each environment in `kubernetes_storage_pools` gets a ZFS storage named
 `k8s-<environment>` and a `k8s-csi-<environment>@pve` identity for the
-[Proxmox CSI plugin](../../../kubernetes/README.md#persistent-storage). Dev uses
-the `nas/k8s-dev` dataset. Create the dataset on the host before the first apply:
-the provider registers storage but cannot create ZFS datasets.
+[Proxmox CSI plugin](../../../kubernetes/README.md#persistent-storage), on the
+dataset `nas/k8s-<environment>`. The Proxmox API registers storage but cannot
+create ZFS datasets, so create them once, as root from the host console, before
+the first apply. The script skips datasets that already exist:
 
 ```sh
-zfs create nas/k8s-dev
+bash terraform/platform/access/scripts/prepare-host.sh nas dev prod
 ```
 
 The identity has `KubernetesDisk` (`VM.Audit`, `VM.Config.Disk`) on its

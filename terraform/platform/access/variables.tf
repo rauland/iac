@@ -54,7 +54,7 @@ variable "csi_volume_owner_vmid" {
 }
 
 variable "kubernetes_storage_pools" {
-  description = "Existing ZFS dataset per environment for Kubernetes volumes. Each becomes storage k8s-<environment>, the only storage that environment's CSI identity can allocate on or delete from. Create the dataset before applying."
+  description = "Existing ZFS dataset per environment for Kubernetes volumes. Each becomes storage k8s-<environment>, the only storage that environment's CSI identity can allocate on or delete from. Create the datasets first with scripts/prepare-host.sh."
   type        = map(string)
   default     = { dev = "nas/k8s-dev", prod = "nas/k8s-prod" }
   validation {

@@ -92,7 +92,11 @@ target, and lock ID for the corresponding state.
 
 ## 3. Configure scoped Proxmox and AWS access
 
-Use the administrator-operated [Proxmox access root](../terraform/platform/access/README.md)
+First prepare the Proxmox host once, as root from its console: the
+[host preparation script](../terraform/platform/access/scripts/prepare-host.sh)
+creates the ZFS datasets for each environment's Kubernetes storage, which the
+Proxmox API cannot create. Then use the administrator-operated
+[Proxmox access root](../terraform/platform/access/README.md)
 to configure pools, users, API tokens, storage and ACLs. Follow its credential
 export instructions for the matching GitHub environments. Keep this root's
 state inaccessible to workload CI.
