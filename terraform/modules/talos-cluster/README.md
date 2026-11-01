@@ -68,6 +68,14 @@ Every node is labelled `topology.kubernetes.io/region` with `proxmox_region`
 Proxmox CSI plugin needs both to create and attach volumes, and its config must
 use the same region. Changing them applies without a reboot.
 
+The plugin attaches volumes to the VMs as extra disks, so the VM resource
+ignores changes to its disks; otherwise an apply would detach them from
+running pods. To grow a node's boot disk, resize it in Proxmox
+(`qm disk resize <vmid> scsi0 <size>`) and update `disk_size` to match.
+Refreshing a VM reads every attached disk, so the Terraform identities need
+`Datastore.Audit` on the Kubernetes storage, which
+[`platform/access`](../../platform/access/README.md) grants.
+
 ## Secure Boot and system-volume encryption
 
 Both boot media and installation/upgrade images use Image Factory's Secure Boot

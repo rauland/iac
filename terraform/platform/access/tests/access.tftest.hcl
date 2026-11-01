@@ -82,6 +82,13 @@ run "environment_boundaries" {
   }
   assert {
     condition = (
+      toset([for grant in local.service_grants : grant.name if grant.path == "/storage/k8s-dev" && grant.role == "StorageRead"]) == toset(["tf-dev-plan", "tf-dev-apply"]) &&
+      alltrue([for grant in local.service_grants : contains(["StorageRead", "KubernetesStorage"], grant.role) if startswith(grant.path, "/storage/k8s-")])
+    )
+    error_message = "Terraform identities may only read their environment's Kubernetes storage, so VM refreshes can see CSI disks."
+  }
+  assert {
+    condition = (
       proxmox_storage_zfspool.kubernetes["dev"].id == "k8s-dev" &&
       proxmox_storage_zfspool.kubernetes["dev"].zfs_pool != "nas" &&
       toset(proxmox_storage_zfspool.kubernetes["dev"].content) == toset(["images"])

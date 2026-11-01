@@ -56,6 +56,11 @@ locals {
         { path = "/storage/${var.disk_datastore_id}", role = service.operation == "apply" ? "PVEDatastoreUser" : "StorageRead", name = name },
         { path = "/sdn/zones/localnetwork/${var.bridge}", role = service.operation == "apply" ? "PVESDNUser" : "NetworkRead", name = name }
       ],
+      # The CSI plugin attaches volumes from this storage to the environment's
+      # VMs, and refreshing a VM reads every attached disk.
+      contains(["plan", "apply"], service.operation) && contains(keys(var.kubernetes_storage_pools), service.environment) ? [
+        { path = "/storage/k8s-${service.environment}", role = "StorageRead", name = name }
+      ] : [],
       service.environment == "dev" && service.operation != "ansible" ? [
         { path = "/storage/dev-images", role = service.operation == "apply" ? "SeedPublisher" : "StorageRead", name = name }
       ] : [],
