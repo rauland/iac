@@ -149,10 +149,15 @@ run "public_service_account_issuer_on_control_planes_only" {
 
   assert {
     condition = (
-      yamldecode(split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration)[0]).cluster.apiServer.extraArgs["service-account-issuer"] == ["https://issuer.example/test-cluster", "https://192.0.2.10:6443"] &&
-      yamldecode(split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration)[0]).cluster.apiServer.extraArgs["api-audiences"] == "https://192.0.2.10:6443"
+      one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "KubeAPIServerConfig"]).extraArgs["service-account-issuer"] == ["https://issuer.example/test-cluster", "https://192.0.2.10:6443"] &&
+      one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "KubeAPIServerConfig"]).extraArgs["api-audiences"] == "https://192.0.2.10:6443"
     )
     error_message = "Control planes sign with the public issuer, still accept the old one, and keep the token audience."
+  }
+  assert {
+    # Talos 1.14 nodes reject .cluster.apiServer next to KubeAPIServerConfig.
+    condition     = try(yamldecode(split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration)[0]).cluster.apiServer, null) == null
+    error_message = "The API server is configured only through its own document on Talos 1.14."
   }
   assert {
     condition     = !strcontains(data.talos_machine_configuration.node["worker-01"].machine_configuration, "issuer.example")
