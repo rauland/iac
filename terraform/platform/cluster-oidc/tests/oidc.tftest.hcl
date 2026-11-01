@@ -22,7 +22,7 @@ override_data {
   target = data.http.document["dev/.well-known/openid-configuration"]
   values = {
     status_code   = 200
-    response_body = "{\"issuer\":\"https://rauland-homelab-oidc.s3.ap-southeast-2.amazonaws.com/dev\",\"jwks_uri\":\"https://rauland-homelab-oidc.s3.ap-southeast-2.amazonaws.com/dev/openid/v1/jwks\"}"
+    response_body = "{\"issuer\":\"https://rauland-homelab-oidc.s3.ap-southeast-2.amazonaws.com/dev\",\"jwks_uri\":\"https://192.0.2.10:6443/openid/v1/jwks\"}"
   }
 }
 override_data {
@@ -51,6 +51,10 @@ run "publishes_only_the_discovery_documents" {
   assert {
     condition     = aws_iam_openid_connect_provider.cluster["dev"].url == "https://rauland-homelab-oidc.s3.ap-southeast-2.amazonaws.com/dev" && aws_iam_openid_connect_provider.cluster["dev"].client_id_list == toset(["sts.amazonaws.com"])
     error_message = "The provider trusts the published issuer for the STS audience."
+  }
+  assert {
+    condition     = jsondecode(aws_s3_object.document["dev/.well-known/openid-configuration"].content).jwks_uri == "https://rauland-homelab-oidc.s3.ap-southeast-2.amazonaws.com/dev/openid/v1/jwks"
+    error_message = "The published discovery document points AWS at the published key set, not the private API server."
   }
 }
 

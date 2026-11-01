@@ -107,9 +107,14 @@ resource "aws_s3_bucket_policy" "oidc" {
 resource "aws_s3_object" "document" {
   for_each = local.documents
 
-  bucket       = aws_s3_bucket.oidc.id
-  key          = each.key
-  content      = data.http.document[each.key].response_body
+  bucket = aws_s3_bucket.oidc.id
+  key    = each.key
+  # The API server points jwks_uri at its own private address; AWS must fetch
+  # the keys from the copy published next to this document instead.
+  content = each.value.path == ".well-known/openid-configuration" ? jsonencode(merge(
+    jsondecode(data.http.document[each.key].response_body),
+    { jwks_uri = "${local.issuers[each.value.cluster]}/openid/v1/jwks" }
+  )) : data.http.document[each.key].response_body
   content_type = "application/json"
 }
 
