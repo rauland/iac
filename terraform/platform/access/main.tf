@@ -148,7 +148,7 @@ resource "proxmox_virtual_environment_user" "service" {
   groups   = []
   comment  = "${each.value.environment} ${each.value.operation}; managed by terraform/platform/access"
   lifecycle {
-    prevent_destroy = false # TEMPORARY: lets the reviewed apply remove the Ansible and image identities; restored before merge.
+    prevent_destroy = true
   }
 }
 
@@ -159,7 +159,7 @@ resource "proxmox_user_token" "ci" {
   privileges_separation = true
   comment               = "${each.value.environment} ${each.value.operation} automation"
   lifecycle {
-    prevent_destroy = false # TEMPORARY: lets the reviewed apply remove the Ansible and image identities; restored before merge.
+    prevent_destroy = true
   }
 }
 
