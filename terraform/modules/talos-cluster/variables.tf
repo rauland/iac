@@ -95,6 +95,16 @@ variable "dns_servers" {
   }
 }
 
+variable "service_account_issuer" {
+  description = "Public HTTPS URL that serves the cluster's OIDC discovery documents, so AWS and other services can trust its service account tokens. Null keeps the API endpoint as the only issuer. See README.md."
+  type        = string
+  default     = null
+  validation {
+    condition     = var.service_account_issuer == null || can(regex("^https://[^?#]+[^/]$", var.service_account_issuer))
+    error_message = "service_account_issuer must be an https:// URL without a trailing slash, query or fragment."
+  }
+}
+
 variable "config_patches" {
   description = "Additional Talos YAML patches applied to every node. Per-node patches follow these. Configuration changes that require reboot fail rather than rebooting the whole cluster in parallel."
   type        = list(string)

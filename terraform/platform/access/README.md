@@ -34,7 +34,7 @@ revoked by this root.
 | --- | --- | --- |
 | `dev` | Talos 104/106/107, sandbox testing VM | Dev workload roots |
 | `prod` | Initially empty | Future prod workload roots |
-| `infra` | PBS 100, Ansible 101, NFS 116 | This root |
+| `infra` | Existing shared guests in `infra_vm_ids` | This root |
 
 Docker 102 stays unassigned until classified. For the initial migration only,
 add the existing dev guests through Datacenter → Pools → dev → Members. This
@@ -103,8 +103,8 @@ The identity has `KubernetesDisk` (`VM.Audit`, `VM.Config.Disk`) on its
 environment's pool and `KubernetesStorage` (`Datastore.Audit`,
 `Datastore.Allocate`, `Datastore.AllocateSpace`) only on its own storage.
 `Datastore.Allocate` deletes any volume on a storage, which is why Kubernetes
-volumes do not use the shared `zfs` storage: there it could delete the NFS
-media disk or the Proxmox Backup Server datastore. `VM.Config.Disk` covers every
+volumes do not use a shared storage: there it could delete other guests'
+disks. `VM.Config.Disk` covers every
 guest in the pool, so the token can detach a disk from any dev VM, though it
 cannot delete disks outside `k8s-dev`. It cannot change memory, power or CPU.
 

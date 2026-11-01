@@ -140,3 +140,22 @@ run "generate_legacy_talos_configuration_offline" {
     error_message = "Talos releases before 1.14 take the CSI topology labels in machine.nodeLabels."
   }
 }
+
+run "public_service_account_issuer_on_control_planes_only" {
+  command = apply
+  variables {
+    service_account_issuer = "https://issuer.example/test-cluster"
+  }
+
+  assert {
+    condition = (
+      yamldecode(split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration)[0]).cluster.apiServer.extraArgs["service-account-issuer"] == ["https://issuer.example/test-cluster", "https://192.0.2.10:6443"] &&
+      yamldecode(split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration)[0]).cluster.apiServer.extraArgs["api-audiences"] == "https://192.0.2.10:6443"
+    )
+    error_message = "Control planes sign with the public issuer, still accept the old one, and keep the token audience."
+  }
+  assert {
+    condition     = !strcontains(data.talos_machine_configuration.node["worker-01"].machine_configuration, "issuer.example")
+    error_message = "Workers do not run the API server and get no issuer settings."
+  }
+}

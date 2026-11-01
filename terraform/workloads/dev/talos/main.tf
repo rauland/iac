@@ -8,13 +8,14 @@ module "talos_cluster" {
     talos   = talos
     proxmox = proxmox
   }
-  cluster_name       = var.cluster_name
-  cluster_endpoint   = var.cluster_endpoint
-  bootstrap_node     = var.bootstrap_node
-  talos_version      = var.talos_version
-  kubernetes_version = var.kubernetes_version
-  talos_nodes        = var.talos_nodes
-  dns_servers        = var.dns_servers
+  cluster_name           = var.cluster_name
+  cluster_endpoint       = var.cluster_endpoint
+  service_account_issuer = var.service_account_issuer
+  bootstrap_node         = var.bootstrap_node
+  talos_version          = var.talos_version
+  kubernetes_version     = var.kubernetes_version
+  talos_nodes            = var.talos_nodes
+  dns_servers            = var.dns_servers
 }
 
 output "upgrade_inventory" {

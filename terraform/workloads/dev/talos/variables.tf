@@ -17,6 +17,12 @@ variable "cluster_name" {
   }
 }
 
+variable "service_account_issuer" {
+  description = "Public HTTPS URL serving the cluster's OIDC discovery documents; null keeps the API endpoint as the issuer."
+  type        = string
+  default     = null
+}
+
 variable "cluster_endpoint" {
   description = "Kubernetes API URL, including https:// and port 6443; provide a stable load balancer or control-plane address."
   type        = string

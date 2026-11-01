@@ -38,3 +38,13 @@ spec:
         ssd: true
         annotations:
           storageclass.kubernetes.io/is-default-class: "true"
+      # For volumes that hold nothing worth keeping, such as VolSync's restic
+      # caches, which would otherwise leave a retained disk behind each time
+      # their ReplicationSource is removed.
+      - name: proxmox-scratch
+        storage: ${csi_storage}
+        fstype: ext4
+        reclaimPolicy: Delete
+        volumeBindingMode: WaitForFirstConsumer
+        cache: none
+        ssd: true

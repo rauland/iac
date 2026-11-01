@@ -6,6 +6,10 @@ talos_version      = "v1.14.3"
 kubernetes_version = "v1.37.1"
 dns_servers        = ["10.0.0.1"]
 
+# Served by terraform/platform/cluster-oidc, so AWS trusts the cluster's
+# service account tokens; see the Talos module README.
+service_account_issuer = "https://rauland-homelab-oidc.s3.ap-southeast-2.amazonaws.com/dev"
+
 # These api_address values require matching DHCP reservations before the ISO boots.
 # MACs below are examples: reserve these addresses on your DHCP server or replace
 # both MACs and addresses with your own reservations. No cloud-init is used.
