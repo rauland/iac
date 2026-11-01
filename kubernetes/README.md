@@ -265,6 +265,21 @@ unset token
 Check issuance with `kubectl -n traefik get certificate wildcard` and
 `kubectl describe certificaterequest -n traefik`.
 
+### Internal DNS
+
+Clients on the LAN need each cluster's names to resolve to its ingress IP.
+With a split-horizon resolver, add a wildcard for the dev domain, for example
+in dnsmasq (OpenWrt: *DHCP and DNS → Addresses*):
+
+```text
+/dev.<domain>/<dev ingress IP>
+```
+
+For prod, point each app's name at prod's ingress IP when it moves; a
+wildcard for the whole domain would also capture the bare domain and every
+other name. Public access is separate and optional, for example a Cloudflare
+Tunnel to Traefik; the certificate does not depend on either.
+
 ## Secrets
 
 Secrets are committed encrypted with [SOPS](https://getsops.io) and an age key.
