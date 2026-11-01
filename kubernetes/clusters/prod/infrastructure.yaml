@@ -139,3 +139,46 @@ spec:
       # Output cluster_roles of terraform/platform/backup-storage.
       backup_role_arn: arn:aws:iam::533245699488:role/homelab/backup-prod
       backup_aws_region: ap-southeast-2
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cert-manager
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./kubernetes/infrastructure/cert-manager
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+---
+# Issuers and the cluster's wildcard certificate. Switch acme_issuer from
+# letsencrypt-staging to letsencrypt once a staging certificate is issued.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: certificates
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: cert-manager
+    - name: traefik
+  interval: 10m
+  retryInterval: 1m
+  path: ./kubernetes/clusters/prod/certificates
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  postBuild:
+    substitute:
+      cluster_domain: netkuki.com
+      acme_issuer: letsencrypt-staging

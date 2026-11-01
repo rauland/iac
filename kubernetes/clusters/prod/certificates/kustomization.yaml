@@ -1,0 +1,7 @@
+# Applied by the certificates Flux Kustomization with this cluster's
+# Cloudflare token; the root kustomization does not list it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../infrastructure/certificates
+  - cloudflare.sops.yaml

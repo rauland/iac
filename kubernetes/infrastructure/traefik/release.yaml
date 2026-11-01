@@ -25,3 +25,17 @@ spec:
     service:
       annotations:
         metallb.io/loadBalancerIPs: ${ingress_ip}
+    ports:
+      web:
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+              permanent: true
+    # The cluster's wildcard certificate from cert-manager; until it is issued,
+    # Traefik serves its own self-signed certificate.
+    tlsStore:
+      default:
+        defaultCertificate:
+          secretName: wildcard-tls

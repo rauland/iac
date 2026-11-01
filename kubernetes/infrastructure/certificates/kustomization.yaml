@@ -1,0 +1,7 @@
+# Applied by each cluster's certificates Flux Kustomization, which adds the
+# Cloudflare token Secret and sets cluster_domain and acme_issuer.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - issuers.yaml
+  - certificate.yaml
