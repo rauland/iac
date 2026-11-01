@@ -9,6 +9,7 @@ pulls `main` itself, about once a minute.
 | --- | --- |
 | [clusters/dev](clusters/dev/kustomization.yaml) | Flux on the dev Talos cluster |
 | [clusters/dev/infrastructure.yaml](clusters/dev/infrastructure.yaml) | Flux Kustomizations that install the shared infrastructure in order |
+| [clusters/dev/apps.yaml](clusters/dev/apps.yaml) | One Flux Kustomization per app |
 | [clusters/dev/podinfo](clusters/dev/podinfo) | Demo app whose UI message is a SOPS-encrypted Secret |
 | [infrastructure](infrastructure) | MetalLB, Traefik, the Proxmox CSI plugin and VolSync, shared by every cluster |
 
@@ -43,10 +44,22 @@ that existed before that push.
 
 ## Adding manifests
 
-Add resources, or directories with their own `kustomization.yaml`, under
-`resources` in the cluster's `kustomization.yaml`. CI runs
-`kubectl kustomize` on every cluster directory, so a build error fails the
-pull request before Flux ever sees it. Flux applies only after merge to `main`.
+Give each app its own directory under `kubernetes/clusters/<environment>` and
+its own Flux Kustomization in the cluster's [`apps.yaml`](clusters/dev/apps.yaml),
+pointing at that directory, with `dependsOn` for the infrastructure it uses and
+SOPS decryption if it has Secrets. Each app can then be paused on its own with
+`flux suspend kustomization <app>`, for example during a volume restore. The
+root `flux-system` Kustomization cannot be paused: the Flux Operator resumes it.
+
+CI runs `kubectl kustomize` on every directory with a `kustomization.yaml`, so
+a build error fails the pull request before Flux ever sees it. Flux applies
+only after merge to `main`.
+
+To move existing objects from one Flux Kustomization to another, annotate them
+first with `kustomize.toolkit.fluxcd.io/prune=disabled`; otherwise the old
+Kustomization deletes them, namespace and volumes included, when it stops
+listing them. Remove the annotation once the new Kustomization has applied
+them.
 
 Talos enforces the Kubernetes `baseline` Pod Security standard by default, so
 privileged workloads need a namespace labelled for it.
