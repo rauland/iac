@@ -5,3 +5,4 @@ kind: Kustomization
 resources:
   - ../../../infrastructure/proxmox-csi
   - config.sops.yaml
+  - encryption.sops.yaml

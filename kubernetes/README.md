@@ -113,12 +113,49 @@ kubectl get pv <pv> -o jsonpath='{.spec.csi.volumeHandle}'   # <region>/<node>/<
 pvesm free <storage>:<volume>
 ```
 
-A StorageClass's reclaim policy cannot be changed in place, so Helm fails to
-upgrade one that already exists with a different policy. Delete the
-StorageClass (`kubectl delete storageclass proxmox`) and let Flux recreate it;
-existing volumes are unaffected. Each existing PersistentVolume keeps the policy
-it was created with, so set it too:
+A StorageClass's reclaim policy and parameters cannot be changed in place, so
+Helm fails to upgrade one that already exists with different settings. Delete
+the StorageClass (`kubectl delete storageclass proxmox`) and let Flux recreate
+it; existing volumes are unaffected. Each existing PersistentVolume keeps the
+policy it was created with, so set it too:
 `kubectl patch pv <pv> -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'`.
+
+### Volume encryption
+
+Both StorageClasses encrypt their volumes with LUKS on the node: the plugin
+formats each new volume as LUKS, opens it before mounting, and the pod sees
+only the decrypted filesystem. Proxmox and the ZFS pool hold only ciphertext,
+so the host, its backups and disks that leave the house never see the data.
+
+The passphrase is the `encryption-passphrase` key of the SOPS-encrypted Secret
+`csi-proxmox/proxmox-csi-encryption`
+([`encryption.sops.yaml`](clusters/dev/proxmox-csi/encryption.sops.yaml)). The
+kubelet hands it to the plugin when it stages a volume, so volumes unlock on
+their own after a reboot or when a pod moves to another node. A rebuilt cluster
+gets the same Secret from Git and can open retained volumes.
+
+Without the passphrase, every volume is unreadable; restic backups are
+encrypted separately and still restore. Keep a copy outside the cluster. As an
+administrator, create it in SSM and the Secret together, without the value
+touching disk unencrypted:
+
+```sh
+(
+  export AWS_PROFILE=admin
+  file=kubernetes/clusters/dev/proxmox-csi/encryption.sops.yaml
+  p=$(openssl rand -base64 48)
+  aws ssm put-parameter --name /iac/admin/k8s-dev/CSI_ENCRYPTION_PASSPHRASE \
+    --type SecureString --value "$p" >/dev/null &&
+  printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: proxmox-csi-encryption\n  namespace: csi-proxmox\nstringData:\n  encryption-passphrase: %s\n' "$p" |
+    sops --encrypt --filename-override "$file" --input-type yaml --output-type yaml /dev/stdin > "$file"
+)
+```
+
+The parameter has no `--overwrite`: existing volumes keep the passphrase they
+were formatted with, so replacing it locks them out. Encryption applies only to
+volumes created after it is enabled. To encrypt an existing volume, back it up,
+recreate its claim on the encrypted class and restore it; see
+[restore a volume](../docs/backups.md#restore-a-volume).
 
 The `proxmox-scratch` StorageClass deletes its disks with their claims. Use it
 only for volumes that hold nothing worth keeping, such as VolSync's caches.
