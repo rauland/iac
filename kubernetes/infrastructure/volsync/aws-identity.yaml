@@ -15,15 +15,20 @@ spec:
         operations: [CREATE]
         resources: [pods]
   matchConditions:
+    # Static pods' mirror pods have no service account, so check for the field
+    # before reading it.
     - name: volsync-mover
       expression: >
-        object.spec.serviceAccountName.startsWith("volsync-src-") ||
-        object.spec.serviceAccountName.startsWith("volsync-dst-")
+        has(object.spec.serviceAccountName) &&
+        (object.spec.serviceAccountName.startsWith("volsync-src-") ||
+        object.spec.serviceAccountName.startsWith("volsync-dst-"))
     # Movers have one container and always set env, volumes and volumeMounts,
     # so the patch can append to them.
     - name: one-container
       expression: object.spec.containers.size() == 1
-  failurePolicy: Fail
+  # An error must never block unrelated pods, such as the API server's mirror
+  # pod. A mover admitted without its identity fails its backup visibly.
+  failurePolicy: Ignore
   reinvocationPolicy: Never
   mutations:
     # JSONPatch, because a projected volume's sources list cannot be merged.
