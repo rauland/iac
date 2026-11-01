@@ -1,7 +1,9 @@
-# Flux reconciles this directory on the prod cluster from main. Infrastructure
-# and each app are Flux Kustomizations of their own; add apps to apps.yaml
-# once the first one moves here, after trying it in kubernetes/clusters/dev.
+# Flux reconciles this directory on the prod cluster from main: the platform's
+# infrastructure here, and the apps from the private repository that
+# homelab-apps.yaml points at.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - infrastructure.yaml
+  - homelab-apps-deploy-key.sops.yaml
+  - homelab-apps.yaml
