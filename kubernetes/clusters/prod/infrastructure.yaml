@@ -156,8 +156,8 @@ spec:
     kind: GitRepository
     name: flux-system
 ---
-# Issuers and the cluster's wildcard certificate. Switch acme_issuer from
-# letsencrypt-staging to letsencrypt once a staging certificate is issued.
+# Issuers and the cluster's wildcard certificate from Let's Encrypt. Use
+# letsencrypt-staging while changing the setup, to avoid rate limits.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -181,4 +181,4 @@ spec:
   postBuild:
     substitute:
       cluster_domain: netkuki.com
-      acme_issuer: letsencrypt-staging
+      acme_issuer: letsencrypt
