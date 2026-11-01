@@ -33,6 +33,34 @@ override_data {
   }
 }
 
+override_data {
+  target = data.terraform_remote_state.cluster["prod"]
+  values = {
+    outputs = {
+      kubernetes_client_configuration = {
+        host               = "https://192.0.2.20:6443"
+        ca_certificate     = "Y2E="
+        client_certificate = "Y2VydA=="
+        client_key         = "a2V5"
+      }
+    }
+  }
+}
+override_data {
+  target = data.http.document["prod/.well-known/openid-configuration"]
+  values = {
+    status_code   = 200
+    response_body = "{\"issuer\":\"https://rauland-homelab-oidc.s3.ap-southeast-2.amazonaws.com/prod\",\"jwks_uri\":\"https://192.0.2.20:6443/openid/v1/jwks\"}"
+  }
+}
+override_data {
+  target = data.http.document["prod/openid/v1/jwks"]
+  values = {
+    status_code   = 200
+    response_body = "{\"keys\":[]}"
+  }
+}
+
 run "publishes_only_the_discovery_documents" {
   command = plan
 
@@ -41,7 +69,7 @@ run "publishes_only_the_discovery_documents" {
     error_message = "The key set is read from the cluster's API server."
   }
   assert {
-    condition     = local.bucket_policy.Statement[0].Resource == ["arn:aws:s3:::rauland-homelab-oidc/dev/.well-known/openid-configuration", "arn:aws:s3:::rauland-homelab-oidc/dev/openid/v1/jwks"]
+    condition     = toset(local.bucket_policy.Statement[0].Resource) == toset(flatten([for cluster in ["dev", "prod"] : [for path in [".well-known/openid-configuration", "openid/v1/jwks"] : "arn:aws:s3:::rauland-homelab-oidc/${cluster}/${path}"]]))
     error_message = "Only the discovery documents are public."
   }
   assert {
