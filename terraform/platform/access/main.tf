@@ -12,6 +12,9 @@ locals {
     # and deletes them only on its environment's dedicated Kubernetes storage.
     KubernetesDisk    = ["VM.Audit", "VM.Config.Disk"]
     KubernetesStorage = ["Datastore.Audit", "Datastore.Allocate", "Datastore.AllocateSpace"]
+    # Lets Terraform identities read CSI volumes when refreshing the VMs they
+    # are attached to; deleting them still needs Datastore.Allocate.
+    CSIVolumeRead = ["VM.Config.Disk"]
   }
   groups = merge({ "platform-admins" = "Platform administrators" }, merge([
     for environment in local.environments : {
@@ -57,9 +60,12 @@ locals {
         { path = "/sdn/zones/localnetwork/${var.bridge}", role = service.operation == "apply" ? "PVESDNUser" : "NetworkRead", name = name }
       ],
       # The CSI plugin attaches volumes from this storage to the environment's
-      # VMs, and refreshing a VM reads every attached disk.
+      # VMs, and refreshing a VM reads every attached disk. The volumes are
+      # named for placeholder VM 9999, and Proxmox requires VM.Config.Disk on
+      # a volume's owner to read it.
       contains(["plan", "apply"], service.operation) && contains(keys(var.kubernetes_storage_pools), service.environment) ? [
-        { path = "/storage/k8s-${service.environment}", role = "StorageRead", name = name }
+        { path = "/storage/k8s-${service.environment}", role = "StorageRead", name = name },
+        { path = "/vms/${var.csi_volume_owner_vmid}", role = "CSIVolumeRead", name = name }
       ] : [],
       service.environment == "dev" && service.operation != "ansible" ? [
         { path = "/storage/dev-images", role = service.operation == "apply" ? "SeedPublisher" : "StorageRead", name = name }

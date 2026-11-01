@@ -21,10 +21,10 @@ run "environment_boundaries" {
     condition = alltrue([
       for name, service in local.services : contains(["apply", "csi"], service.operation) || alltrue([
         for grant in local.service_grants :
-        contains(concat(["PVEAuditor", "NodeAudit", "StorageRead", "NetworkRead"], service.operation == "plan" ? ["PlanDiskAccess"] : []), grant.role) if grant.name == name
+        contains(concat(["PVEAuditor", "NodeAudit", "StorageRead", "NetworkRead"], service.operation == "plan" ? ["PlanDiskAccess", "CSIVolumeRead"] : []), grant.role) if grant.name == name
       ])
     ])
-    error_message = "Read identities must have only audit privileges plus the explicit plan-only disk permission."
+    error_message = "Read identities must have only audit privileges plus the explicit plan-only disk permissions."
   }
   assert {
     condition = (
@@ -83,7 +83,9 @@ run "environment_boundaries" {
   assert {
     condition = (
       toset([for grant in local.service_grants : grant.name if grant.path == "/storage/k8s-dev" && grant.role == "StorageRead"]) == toset(["tf-dev-plan", "tf-dev-apply"]) &&
-      alltrue([for grant in local.service_grants : contains(["StorageRead", "KubernetesStorage"], grant.role) if startswith(grant.path, "/storage/k8s-")])
+      alltrue([for grant in local.service_grants : contains(["StorageRead", "KubernetesStorage"], grant.role) if startswith(grant.path, "/storage/k8s-")]) &&
+      toset([for grant in local.service_grants : "${grant.name}:${grant.role}" if grant.path == "/vms/9999"]) == toset(["tf-dev-plan:CSIVolumeRead", "tf-dev-apply:CSIVolumeRead"]) &&
+      alltrue([for grant in local.service_grants : grant.path == "/vms/9999" if grant.role == "CSIVolumeRead"])
     )
     error_message = "Terraform identities may only read their environment's Kubernetes storage, so VM refreshes can see CSI disks."
   }
