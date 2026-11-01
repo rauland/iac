@@ -1,7 +1,8 @@
 # One Flux Kustomization per app, so each can be paused on its own, for
 # example during a volume restore, and waits for the infrastructure it uses.
 # The root flux-system Kustomization cannot be paused: the Flux Operator
-# resumes it. Unlike the root, these declare SOPS decryption themselves.
+# resumes it. Unlike the root, these declare SOPS decryption themselves, and
+# substitute the cluster's restic repository and password into backup Secrets.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -25,3 +26,7 @@ spec:
     provider: sops
     secretRef:
       name: sops-age
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: backup-restic

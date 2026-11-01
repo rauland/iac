@@ -35,6 +35,25 @@ class CheckSecretsTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("plain Secret", result.stdout)
 
+    def test_substituted_template_passes(self):
+        text = SECRET.format(value="${restic_password}") + "  repository: ${restic_repository}/app/app-data\n"
+        result = self.check({"clusters/dev/app.yaml": "---\n" + text})
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_template_with_a_literal_value_fails(self):
+        for extra in ("  token: hunter2\n", "data:\n  password: aHVudGVyMg==\n",
+                      "  key: |\n    ${multi}\n"):
+            with self.subTest(extra=extra):
+                text = SECRET.format(value="${restic_password}") + extra
+                result = self.check({"clusters/dev/app.yaml": text})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("plain Secret", result.stdout)
+
+    def test_plain_secret_beside_a_template_fails(self):
+        text = SECRET.format(value="${restic_password}") + "---\n" + SECRET.format(value="hunter2")
+        result = self.check({"clusters/dev/app.yaml": text})
+        self.assertNotEqual(result.returncode, 0)
+
     def test_unencrypted_sops_file_fails(self):
         result = self.check({"clusters/dev/app.sops.yaml": SECRET.format(value="hunter2")})
         self.assertNotEqual(result.returncode, 0)

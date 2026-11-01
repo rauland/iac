@@ -32,8 +32,9 @@ admin setup per cluster makes AWS trust it:
    [public service account issuer](../terraform/modules/talos-cluster/README.md#public-service-account-issuer).
 2. Apply [`platform/cluster-oidc`](../terraform/platform/cluster-oidc/README.md),
    which publishes the issuer and registers it with AWS.
-3. Apply [`platform/backup-storage`](../terraform/platform/backup-storage/README.md)
-   and create the cluster's repository password.
+3. Apply [`platform/backup-storage`](../terraform/platform/backup-storage/README.md),
+   create the cluster's repository password, and add the cluster's
+   `backup-restic` Secret; see [back up a volume](#back-up-a-volume).
 
 The Proxmox CSI plugin's volume snapshots need a `root@pam` login, so backups
 use `copyMethod: Direct`: VolSync starts a mover pod on the app's node, mounts
@@ -58,13 +59,13 @@ app expects it there.
 
 ### Back up a volume
 
-Each volume needs a SOPS-encrypted Secret that names its repository and holds
-the cluster's restic password. As an administrator, write it from SSM without
-the password touching disk unencrypted:
+Each cluster keeps its restic repository prefix and password in one
+SOPS-encrypted Secret, `flux-system/backup-restic`. As an administrator, write
+it once per cluster from SSM, without the password touching disk unencrypted:
 
 ```sh
-cluster=dev namespace=<namespace> claim=<claim> bucket=<bucket> region=<region>
-file=kubernetes/clusters/$cluster/<app>/$claim-backup.sops.yaml
+cluster=dev bucket=<bucket> region=<region>
+file=kubernetes/clusters/$cluster/backup-restic.sops.yaml
 get() {
   AWS_PROFILE=admin aws ssm get-parameter --with-decryption \
     --name "/iac/admin/backup-$cluster/$1" --query Parameter.Value --output text
@@ -74,12 +75,40 @@ cat <<YAML | sops --encrypt --filename-override "$file" \
 apiVersion: v1
 kind: Secret
 metadata:
-  name: $claim-backup
+  name: backup-restic
+  namespace: flux-system
 stringData:
-  RESTIC_REPOSITORY: s3:https://s3.$region.amazonaws.com/$bucket/$cluster/$namespace/$claim
-  RESTIC_PASSWORD: $(get RESTIC_PASSWORD)
+  restic_repository: s3:https://s3.$region.amazonaws.com/$bucket/$cluster
+  restic_password: $(get RESTIC_PASSWORD)
 YAML
 ```
+
+An app's Flux Kustomization substitutes both values into its manifests:
+
+```yaml
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: backup-restic
+```
+
+Each volume then needs a Secret that names its repository, written in plain
+YAML because it holds only variables; the Secret check accepts a Secret whose
+every value takes one:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: <claim>-backup
+stringData:
+  RESTIC_REPOSITORY: ${restic_repository}/<namespace>/<claim>
+  RESTIC_PASSWORD: ${restic_password}
+```
+
+Flux replaces every `${variable}` in that app's manifests; a manifest that
+needs a literal `${` can opt out with the annotation
+`kustomize.toolkit.fluxcd.io/substitute: disabled`.
 
 Add the Secret and a ReplicationSource to the app's `resources`:
 

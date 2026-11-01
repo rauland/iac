@@ -1,0 +1,10 @@
+# Names the volume's restic repository and holds the cluster's restic password.
+# Flux fills in both variables from flux-system/backup-restic when it applies
+# podinfo (see apps.yaml), so this file stores no secret.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: podinfo-data-backup
+stringData:
+  RESTIC_REPOSITORY: ${restic_repository}/podinfo/podinfo-data
+  RESTIC_PASSWORD: ${restic_password}
