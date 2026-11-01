@@ -1,8 +1,0 @@
----
-- name: Configure sandbox
-  hosts: tag_sandbox
-  remote_user: ansible
-  become: true
-  roles:
-    - role: podman
-      when: "'tag_podman' in group_names"

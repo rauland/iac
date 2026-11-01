@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build approval jobs only for real infrastructure or requested configuration work."""
+"""Build approval jobs only for targets whose saved plan has changes."""
 
 import html
 import json
@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 
-VM_TARGETS = {"sandbox"}
+TARGETS = {"talos", "flux"}
 
 
 def preview(targets, result_directory, rows, context):
@@ -16,7 +16,7 @@ def preview(targets, result_directory, rows, context):
                f"{context['GITHUB_RUN_ID']}/attempts/{context['GITHUB_RUN_ATTEMPT']}")
     commit = context.get("PR_HEAD_SHA") or context["GITHUB_SHA"]
     body = (f"## Deployment preview\n\nCommit: `{commit}` · [Workflow run]({run_url})\n\n"
-            "| Target | Terraform | Ansible |\n| --- | --- | --- |\n"
+            "| Target | Terraform |\n| --- | --- |\n"
             + "\n".join(rows) + "\n\n")
     plans = [target for target in targets if target["terraform"]]
     if not plans:
@@ -40,8 +40,7 @@ def preview(targets, result_directory, rows, context):
         if truncated:
             body += f"Plan text truncated to fit the comment. [Full plan in job logs]({run_url}).\n\n"
         body += "</details>\n\n"
-    body += ("Production changes require approval in `proxmox-prod-apply`. "
-             "Ansible entries describe intended runs, not a saved change plan.\n")
+    body += "Production changes require approval in `proxmox-prod-apply`.\n"
     return body
 
 
@@ -55,12 +54,9 @@ def prepare(targets, result_directory, context):
         if key in seen:
             raise ValueError("Duplicate deployment target")
         seen.add(key)
-        if ((environment == "platform" and name != "images")
-                or (environment in {"dev", "prod"}
-                    and name not in VM_TARGETS | {"common", "talos", "flux"})
-                or environment not in {"dev", "prod", "platform"}):
+        if environment not in {"dev", "prod"} or name not in TARGETS:
             raise ValueError("Invalid deployment target")
-        for flag in ("terraform", "ansible", "destroy"):
+        for flag in ("terraform", "destroy"):
             if type(target[flag]) is not bool:
                 raise ValueError(f"Invalid {flag} flag")
         if target["destroy"] and (context["GITHUB_EVENT_NAME"] != "workflow_dispatch"
@@ -69,9 +65,8 @@ def prepare(targets, result_directory, context):
             raise ValueError("Destroy requires an explicit manual request on main")
         changes = False
         if target["terraform"]:
-            directory = (f"terraform/platform/{name}" if environment == "platform"
-                         else f"terraform/workloads/{environment}/{name}")
-            if target["directory"] != directory or name == "common":
+            directory = f"terraform/workloads/{environment}/{name}"
+            if target["directory"] != directory:
                 raise ValueError("Invalid infrastructure directory")
             result = json.loads((result_directory / f"{environment}--{name}.json").read_text())
             expected = {"environment": environment, "target": name,
@@ -84,19 +79,14 @@ def prepare(targets, result_directory, context):
             changes = result["changes"]
         elif target["destroy"]:
             raise ValueError("Destroy requires a Terraform plan")
-        ansible = (not target["destroy"] and
-                   (target["ansible"] or (changes and name in VM_TARGETS)))
-        if ansible and (environment == "platform" or name not in VM_TARGETS | {"common"}):
-            raise ValueError("Invalid Ansible target")
         rows.append(f"| {environment}/{name} | "
-                    f"{'destroy' if changes and target['destroy'] else 'apply' if changes else 'skip'} | "
-                    f"{'run' if ansible else 'skip'} |")
-        if changes or ansible:
+                    f"{'destroy' if changes and target['destroy'] else 'apply' if changes else 'skip'} |")
+        if changes:
             automatic_dev = (environment == "dev" and context["GITHUB_EVENT_NAME"] == "push"
                              and context["GITHUB_REF"] == "refs/heads/main")
             approval = ("proxmox-dev-auto-apply" if automatic_dev else
                         f"proxmox-{environment}-apply")
-            deployments.append(dict(target, terraform=changes, ansible=ansible,
+            deployments.append(dict(target, terraform=changes,
                                     approval_environment=approval))
     return deployments, rows
 

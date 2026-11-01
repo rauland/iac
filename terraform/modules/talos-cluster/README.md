@@ -7,7 +7,7 @@ and exposes sensitive client configurations.
 It does not use cloud-init, snippets, Proxmox-host SSH, or runner-local credential
 resources.
 
-CI uses the shared [VM tag staging](../virtual-machine/README.md#pool-scoped-creation-and-tags)
+CI uses the shared [VM tag staging](../../../docs/deployments.md#vm-tag-staging)
 path when creating or replacing nodes: create each guest in its pool, then
 apply only its reviewed tags after pool-scoped permissions take effect. The
 internal `deferred_vm_tags` input defaults to an empty set.
@@ -37,9 +37,9 @@ runs. Forks must adapt the example configuration to their own infrastructure.
    `pool_id = "dev"` and uses `iso_datastore_id = "dev-images"`.
    Ensure each selected Proxmox host has `iso_datastore_id` with ISO support and
    `disk_datastore_id` for VM disks. The defaults are `local` and `local-lvm`.
-5. Run the Terraform workflow on `main` with environment `dev`, mode `single`,
-   and target `talos`. Review the plan before approving apply. Mode `all` for
-   `dev` also includes Sandbox.
+5. Run the Terraform workflow on `main` with environment `dev`, scope `single`,
+   and target `talos`. Review the plan before approving apply. Scope `all` for
+   `dev` also includes the Flux root.
 
 To opt out of GitHub Actions deployments, add a `.disabled` file in the root
 directory. The marker excludes it from automatic and manual discovery without

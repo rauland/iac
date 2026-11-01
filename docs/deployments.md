@@ -7,57 +7,42 @@ from failed runs. For initial configuration, follow the [setup guide](setup.md).
 - [Manual modes](#manual-modes)
 - [Main branch protection](#main-branch-protection)
 - [Approval and saved plans](#approval-and-saved-plans)
+- [VM tag staging](#vm-tag-staging)
 - [Concurrency and networking](#concurrency-and-networking)
-- [VM configuration with Ansible](#vm-configuration-with-ansible)
 
 ## Deployment selection
 
-The [deployment workflow](../.github/workflows/terraform.yml) handles Terraform and
-Ansible independently. It runs on every pull request to `main`, every push to
-`main`, merge-queue validation, and manual requests. Feature branches use the
+The [deployment workflow](../.github/workflows/terraform.yml) plans and applies
+the Terraform roots that build the clusters: `talos` and `flux` per
+environment. Workloads are Kubernetes manifests that Flux pulls from Git; CI
+never applies them, and no job connects to a host over SSH (see the
+[platform direction](decisions/0001-kubernetes-first.md)). It runs on every
+pull request to `main`, every push to `main`, merge-queue validation, and
+manual requests. Feature branches use the
 same PR checks; they cannot deploy. The stable **CI** check runs without
 infrastructure secrets and reports even for documentation-only pull requests.
 
 | Change | Work selected |
 | --- | --- |
 | Workload Terraform files | Plan that enabled root; apply only if the plan has changes. |
-| Shared Terraform modules | Plan all enabled roots conservatively. |
-| Ansible role, playbook, inventory, or runtime requirements | Configure affected VM targets without requiring Terraform. |
-| Environment SSH public keys | Plan that environment's roots and configure its VM targets. |
-| Verified SSH host keys or a running guest agent for managed guests | Configure VM targets; CI can enroll unpinned guests through the scoped Proxmox apply identity. |
-| Documentation, tests, lint policy, or pipeline implementation only | Run CI; no deployment. |
+| Shared Terraform modules or plan/apply helpers | Plan all enabled roots conservatively. |
+| Kubernetes manifests | None in CI; Flux applies them after merge. |
+| Documentation, tests, or pipeline implementation only | Run CI; no deployment. |
 
-Shared baseline roles select enabled VM targets. Service-specific files select
-only their own target. Images, Talos and Flux never run Ansible. Any actual infrastructure
-change to a VM target also runs Ansible after the saved plan is successfully
-applied. A no-op Terraform plan does not suppress separately requested Ansible
-work. Removed roots are never destroyed automatically: destroy them explicitly
+Administrator roots under `terraform/platform` are never planned or applied by
+CI. Removed roots are never destroyed automatically: destroy them explicitly
 before removing their configuration.
 
 ## Manual modes
 
-Run the deployment workflow from `main`, choose an environment (`dev`, `prod`,
-or `platform`), and choose `single` or `all` scope. Single scope also requires a
+Run the deployment workflow from `main`, choose an environment (`dev` or
+`prod`), and choose `single` or `all` scope. Single scope also requires a
 target; all scope selects enabled targets in the chosen environment.
 
 | Mode | Behavior |
 | --- | --- |
-| `auto` | Reconcile the selected infrastructure and VM configuration, including Ansible when Terraform has no changes. |
-| `infrastructure` | Plan/apply the selected roots; configure VM targets after actual infrastructure changes. |
-| `configuration` | Run Ansible only; no Terraform plan or apply. |
-| `destroy` | Generate and apply an explicitly requested destroy plan after approval; never run Ansible. |
-
-For configuration-only single runs, targets are `common` or `sandbox`
-in dev/prod. They may configure existing guests without a matching Terraform
-root. All-scope configuration selects enabled VM workload roots. Use
-`platform/images` for shared cloud-image publishing.
-
-For guests without agents or VMs created outside Terraform, keep a verified
-entry in `ssh/known_hosts/ENVIRONMENT` and use `configuration` mode. Pinned
-guests do not require guest-agent enrollment or Terraform state. See the
-[manual onboarding procedure](../ssh/README.md#manual-onboarding-without-a-guest-agent)
-for pool membership, inventory addresses, SSH access and optional Terraform
-import outside CI.
+| `auto` | Plan the selected roots and apply their changes after approval. |
+| `destroy` | Generate and apply an explicitly requested destroy plan after approval. |
 
 ## Main branch protection
 
@@ -82,18 +67,15 @@ credentials and enforce the following deployment policies:
 | --- | --- | --- |
 | `proxmox-dev-plan` | Dev audit credentials plus refresh permissions | No required reviewers |
 | `proxmox-prod-plan` | Prod audit credentials plus refresh permissions | Required human approval, including PR previews |
-| `proxmox-dev-auto-apply` | Dev write/inventory credentials and plan decryption key | Automatic deployments from pushes to `main` only |
+| `proxmox-dev-auto-apply` | Dev write credentials and plan decryption key | Automatic deployments from pushes to `main` only |
 | `proxmox-dev-apply` | Dev write credentials for manual reconciliation, destroy, and state unlock | Required reviewers; `main` only |
-| `proxmox-prod-apply` | Prod write/inventory credentials and plan decryption key | Required human approval for infrastructure and Ansible-only changes; `main` only |
-| `proxmox-platform-plan` | Shared-image audit credentials | No required reviewers |
-| `proxmox-platform-apply` | Image publishing credentials and plan decryption key | Required reviewers; `main` only |
+| `proxmox-prod-apply` | Prod write credentials and plan decryption key | Required human approval; `main` only |
 
 Required reviewers and branch restrictions must exist in GitHub environment
 settings; referencing an environment in YAML alone does not require approval.
 Production currently names the repository owner as required reviewer, allows
 that human to approve their own initiated run, and disables administrator
-bypasses. Plan approval and deployment approval remain separate. When Terraform
-and Ansible both need to run, one deployment approval covers both tools.
+bypasses. Plan approval and deployment approval remain separate.
 
 Live plans are allowed only for same-repository PRs and trusted `main` runs.
 Fork PRs and merge queues run the credential-free checks without live plans.
@@ -105,30 +87,21 @@ error fails the run. Each matrix target uploads its own non-secret result,
 bound to the commit, workflow run, attempt, target, and destroy mode. The
 preparation job validates every expected result and publishes a deployment
 summary before any deployment approval is requested. Missing or mismatched
-results fail closed. No-op targets with no Ansible work do not create deployment
-jobs or request deployment approval.
+results fail closed. No-op targets do not create deployment jobs or request
+deployment approval.
 
 Same-repository PRs receive one deployment preview comment with the readable
 Terraform plan for every selected target, including no-change plans. Later runs
 update the comment and identify the PR commit and workflow run. Large plans are
 truncated with a link to the full job logs. The same preview appears in the
-workflow run summary; configuration-only changes explicitly say no plans were
-needed. Fork PRs do not publish a comment.
+workflow run summary; changes that select no roots explicitly say no plans
+were needed. Fork PRs do not publish a comment.
 
 Only changed plans from `main` are encrypted and uploaded together with their
 provider lock file and a manifest bound to the plan, target, commit and run.
-Sandbox's API-uploaded cloud-init seed ISO is included in that encrypted
-artifact and verified against its saved SHA256 before apply. It enables
-agent-based SSH enrollment with SELinux enforcing and needs no Proxmox-host
-SSH. Other VM roots retain their existing initialization path.
-Apply executes the saved infrastructure plan. For newly created VMs, tags are
-deferred until pool assignment so the existing pool-scoped token can set them.
-A follow-up saved plan is allowed to apply only the exact reviewed tags to
-those new VM IDs; unrelated changes fail validation before that plan is applied.
-The preview shows the intended final tags and identifies staged resources.
-Existing VM updates and destroy plans use their original saved plan directly.
-See [VM tag staging](../terraform/modules/virtual-machine/README.md#pool-scoped-creation-and-tags)
-for the validation boundaries and recovery procedure.
+Apply executes the saved infrastructure plan. For newly created VMs, such as
+Talos nodes, tags are deferred until pool assignment; see
+[VM tag staging](#vm-tag-staging).
 
 The Terraform API token remains ephemeral and is supplied by the job's selected
 environment. Result artifacts contain routing flags,
@@ -144,6 +117,41 @@ Automatic dev applies may delete or replace resources when an ordinary plan
 contains those actions; explicit destroy approval is not a deletion filter on
 normal plans. Terraform deployment jobs use version `1.15.8`.
 
+## VM tag staging
+
+Some Proxmox releases check create-time tags on `/vms/ID` before assigning the
+new guest to its requested pool. A token with VM administration only on its
+own pool therefore cannot create a tagged guest in one request. Keep the
+pool-scoped ACLs; CI stages the tags using the same apply identity.
+
+The shared planning helper first saves and renders the intended final plan.
+For each VM create or replacement with tags, it records the exact resource
+address, node, name, pool and desired tags. It then saves the infrastructure
+plan with tags deferred only for those `node/name` selectors. Validation rejects
+any other resource or output difference between the plans. The PR preview
+shows the intended tags and explicitly identifies staged VM resources.
+
+The encrypted artifact contains the executable infrastructure plan, its exact
+provider lock file and `.tf-tags.json`. The manifest binds the target, commit,
+run and attempt to hashes of the saved plan and provider selections. The apply
+helper checks this identity before changing infrastructure.
+
+After the infrastructure plan completes, the helper binds every staged guest
+to its actual VM ID from state. It saves a follow-up plan with refresh disabled
+and `deferred_vm_tags = []`. Before applying it, validation requires the exact
+reviewed tags on the same node, VM ID, name and pool, with no other resource or
+VM-setting changes. Provider-computed network observations may become unknown;
+empty CPU flags can normalize from `null` to `[]`. Read-only data sources
+already present in the reviewed plan, such as Talos health checks, may run again.
+The configuration and ordinary input values must also match the reviewed plan,
+including its Proxmox endpoint; the ephemeral API token may change from the
+plan identity to the existing scoped apply identity. Existing VM tag updates
+and destroy plans use their original saved plan directly.
+
+`deferred_vm_tags` is an internal staging input, defaulting to an empty set.
+Leave it empty in normal configuration; the Talos module forwards it. Do not
+permanently suppress tags in a tfvars file.
+
 ## Concurrency and networking
 
 Each plan and deployment job joins the tailnet as its own ephemeral `tag:ci`
@@ -158,64 +166,3 @@ a cancellation. State unlock remains an explicit, approved recovery operation.
 The [Talos upgrade workflow](../terraform/modules/talos-cluster/README.md#upgrade-workflow)
 joins the same group as the Talos root, so OS and Kubernetes upgrades never
 overlap a Talos plan or apply.
-
-## VM configuration with Ansible
-
-Ansible discovers VMs through the Proxmox inventory and connects over SSH as
-`ansible` with sudo access. Each run intersects the environment pool group
-(`proxmox_pool_dev` or `proxmox_pool_prod`) with the selected target tag.
-Environment tags are optional; pool membership determines the environment.
-
-| VM tags | Playbooks for a matching target run |
-| --- | --- |
-| `common` | `common.yml`: timezone, Ansible user, and packages |
-| `common` + `sandbox` | `common.yml`, then `sandbox.yml` |
-| `sandbox`, without `common` | `sandbox.yml` only |
-| No matching tag | Skipped |
-
-The common baseline is optional and does not exclude service roles. `common`
-is the VM tag and runner target, and creates the `tag_common` inventory group.
-OS-family differences are handled inside roles. Sandbox guests also tagged
-`podman` run an Nginx site through the [Podman role](../ansible/roles/podman/README.md).
-See [Ansible deployment targets](../ansible/README.md)
-for credentials, inventory conventions, and offline checks.
-
-Preview a sandbox run from the repository root:
-
-```sh
-bash ansible/run-playbook.sh dev sandbox --list-hosts
-bash ansible/run-playbook.sh dev sandbox --check
-```
-
-### Example VM
-
-The [sandbox variables](../terraform/workloads/dev/sandbox/terraform.auto.tfvars)
-include target tags, and the sandbox root assigns the VM to the `dev` pool.
-The existing `dev` tag is optional and is not used by the runner:
-
-```hcl
-vms = {
-  podman = {
-    vm_name         = "podman"
-    node_name       = "pve"
-    tags            = ["dev", "common", "sandbox", "podman"]
-    cpu             = 2
-    memory          = 4096
-    image_file_name = "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
-  }
-}
-```
-
-VM networking requires DHCP and dynamic DNS or explicitly configured static
-addresses. Talos requires the DHCP reservations described in its module guide.
-
-The sandbox is a testing environment that currently runs Nginx on Podman.
-CI enrolls an unpinned guest's SSH host key through the authenticated Proxmox
-guest agent before Ansible runs, so no manual key addition is needed. The agent
-must already be running in the cloud image. Existing entries in
-`ssh/known_hosts/dev` remain authoritative. If a VM reuses a pinned address with
-a different key, verify and update that pin explicitly. If configuration fails after provisioning,
-rerun `configuration` mode for `dev/sandbox` to finish without recreating the VM.
-See [SSH enrollment](../ssh/README.md#host-verification) for the trust checks. The
-Nginx site will be available at `http://VM_ADDRESS/` on port 80 after
-configuration succeeds.

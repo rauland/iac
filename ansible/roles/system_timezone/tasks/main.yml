@@ -1,4 +1,0 @@
----
-- name: Ensure the correct timezone is set
-  community.general.timezone:
-    name: "{{ system_timezone_name }}"

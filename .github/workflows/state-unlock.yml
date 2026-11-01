@@ -13,14 +13,11 @@ on:
         options:
           - dev
           - prod
-          - platform
       target:
         description: "Target holding the state to unlock"
         required: true
         type: choice
         options:
-          - images
-          - sandbox
           - talos
           - flux
 jobs:
@@ -47,7 +44,7 @@ jobs:
         id: root
         env:
           EVENT_NAME: workflow_dispatch
-          DEPLOYMENT_MODE: infrastructure
+          DEPLOYMENT_MODE: auto
           DEPLOYMENT_SCOPE: single
           SELECTED_ENV: ${{ inputs.environment }}
           SELECTED_TARGET: ${{ inputs.target }}

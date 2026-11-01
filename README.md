@@ -2,12 +2,12 @@
 
 This project uses a Proxmox homelab to put platform engineering practices into
 use: describing infrastructure in code, reviewing changes before deployment,
-and limiting what automation can access. It covers virtual machines, Kubernetes,
-and the services running on them, including the work needed to maintain them
-after the first deployment.
+and limiting what automation can access. It covers a Kubernetes cluster on
+Proxmox and the services running on it, including the work needed to maintain
+them after the first deployment.
 
 For homelab builders, the repository offers examples to study and adapt, from
-automating a VM to managing a Kubernetes cluster. The code and guides also show
+building a Talos cluster to running and backing up apps on it. The code and guides also show
 the engineering decisions behind the platform: how changes are checked, where
 human approval is required, and how failed deployments are recovered. The
 [feature status](#feature-status) makes clear what is implemented and what is
@@ -19,7 +19,7 @@ still planned.
 | --- | --- |
 | Understand the project and its current scope | [Architecture](#architecture) and [feature status](#feature-status) |
 | Deploy or reconcile an existing target | [Deployment workflow and manual modes](docs/deployments.md#manual-modes) |
-| Add or change a VM workload | [Sandbox example](docs/deployments.md#example-vm), [VM module](terraform/modules/virtual-machine/README.md), and [Ansible targets](ansible/README.md) |
+| Add or change an app | [Kubernetes GitOps](kubernetes/README.md#adding-manifests) and [platform direction](docs/decisions/0001-kubernetes-first.md) |
 | Deploy or maintain Kubernetes | [Talos cluster guide](terraform/modules/talos-cluster/README.md) |
 | Bootstrap a fork or a new platform | [Setup checklist](#setup) |
 | Develop and run checks locally | [Local checks](#local-checks) |
@@ -32,60 +32,50 @@ still planned.
 flowchart LR
     repo["IaC repository"] --> actions["GitHub Actions"]
     actions --> terraform["Terraform"]
-    actions --> ansible["SSH enrollment<br/>and Ansible"]
     terraform <-->|Remote state| state[("AWS S3")]
 
     subgraph private["Private network · Tailscale"]
         proxmox["Proxmox VE API"]
-        vms["AlmaLinux service VMs"]
         talos["Talos Kubernetes"]
-        proxmox -->|VM lifecycle| vms
+        flux["Flux"]
         proxmox -->|VM lifecycle| talos
+        talos --- flux
     end
 
     terraform -->|Provision via HTTPS| proxmox
     terraform -->|Talos API| talos
-    ansible -.->|Enroll via HTTPS| proxmox
-    ansible -->|Verified SSH| vms
+    repo -.->|Pulled by| flux
 
     classDef automation fill:#172554,stroke:#60A5FA,color:#DBEAFE
     classDef provisioning fill:#3B1D66,stroke:#A78BFA,color:#F3E8FF
-    classDef configuration fill:#5F1212,stroke:#EF4444,color:#FEE2E2
     classDef storage fill:#1E293B,stroke:#94A3B8,color:#F8FAFC
     classDef infrastructure fill:#5C2E0B,stroke:#F97316,color:#FFEDD5
 
     class repo,actions automation
-    class terraform provisioning
-    class ansible configuration
+    class terraform,flux provisioning
     class state storage
-    class proxmox,vms,talos infrastructure
+    class proxmox,talos infrastructure
 ```
 
 GitHub-hosted runners reach the private network through Tailscale, as ephemeral
-nodes authenticated with GitHub OIDC. Terraform
-manages VMs, images and seed ISOs through the Proxmox HTTPS API. Service VMs use
-AlmaLinux 10; Kubernetes nodes use Talos Linux and are configured through the
-Talos API. Inventory discovery and host-key enrollment also use the Proxmox API.
-Enrollment verifies managed VM identity before Ansible connects with strict
-host-key checking. See [SSH host verification](ssh/README.md#host-verification)
-for the trust checks and guest-agent requirements.
+nodes authenticated with GitHub OIDC. Terraform creates the Talos node VMs
+through the Proxmox HTTPS API and configures them through the Talos API. Apps
+are Kubernetes manifests that Flux pulls from `main`. No automation logs in to
+a host over SSH; see the [platform direction](docs/decisions/0001-kubernetes-first.md).
 
 ## Repository layout
 
 | Path | Purpose |
 | --- | --- |
-| [terraform/workloads](terraform/workloads) | Environment workload roots, each with its own state |
-| [terraform/platform](terraform/platform) | Shared images and administrator-operated Proxmox/AWS access configuration, with separate states |
-| [terraform/modules](terraform/modules) | Reusable cloud-image, virtual-machine, and talos-cluster modules |
+| [terraform/workloads](terraform/workloads) | Environment roots for the Talos cluster and Flux, each with its own state |
+| [terraform/platform](terraform/platform) | Administrator-operated Proxmox and AWS configuration, with separate states |
+| [terraform/modules](terraform/modules) | The reusable talos-cluster module |
 | [kubernetes](kubernetes/README.md) | Cluster manifests that Flux reconciles from `main` |
-| [ansible](ansible/README.md) | Dynamic Proxmox inventory, playbooks, and roles |
-| [ssh](ssh/README.md) | Environment-specific public keys, verified host keys, and SSH rotation |
-| [docs](docs) | Platform setup, deployment policies, and recovery procedures |
-| [.github/workflows](.github/workflows) | Infrastructure/configuration, S3 bootstrap, and state unlock workflows |
-| [.github/actions](.github/actions) | Shared Tailscale, SSH, and Ansible actions |
+| [docs](docs) | Platform setup, deployment policies, backups, and decisions |
+| [.github/workflows](.github/workflows) | Infrastructure, Talos upgrade, and state unlock workflows |
+| [.github/actions](.github/actions) | The shared Tailscale action |
 
-Enabled deployment roots are `dev/sandbox`, `dev/talos`, and
-[`platform/images`](terraform/platform/images/README.md). `platform/access` is
+Enabled deployment roots are `dev/talos` and `dev/flux`. `platform/access` is
 administrator-operated and excluded from deployment discovery, as is
 [`platform/state-access`](terraform/platform/state-access/README.md) for CI AWS
 state credentials, [`platform/backup-storage`](terraform/platform/backup-storage/README.md)
@@ -97,7 +87,7 @@ Talos is included in automatic discovery and manual deployments. The
 [Talos module guide](terraform/modules/talos-cluster/README.md) for networking,
 deployment, and cluster lifecycle procedures.
 
-When forking, adapt the environment variables, VM addresses, and Tailscale setup
+When forking, adapt the environment variables, node addresses, and Tailscale setup
 to your own infrastructure before running deployments. To exclude a root from
 GitHub Actions, add a `.disabled` file in its directory. This optional marker
 excludes it from automatic discovery and manual target selection; local Terraform
@@ -106,29 +96,27 @@ plans the root like any Terraform change.
 
 ## Deployments
 
-The [deployment workflow](.github/workflows/terraform.yml) selects Terraform and
-Ansible work independently. Pull requests run CI and eligible live plans;
-pushes to `main` deploy selected work. Feature branches cannot deploy. Fork PRs
-and merge queues run credential-free checks without live plans.
+The [deployment workflow](.github/workflows/terraform.yml) plans and applies
+the Talos and Flux roots. Pull requests run CI and eligible live plans; pushes
+to `main` deploy selected work. Feature branches cannot deploy. Fork PRs and
+merge queues run credential-free checks without live plans. Kubernetes
+manifests never go through CI deployments: Flux applies them after merge.
 
 | Change | Work selected |
 | --- | --- |
 | Workload Terraform files | Plan the affected enabled root; apply if it has changes. |
 | Shared Terraform modules | Plan all enabled roots conservatively. |
-| Ansible configuration | Configure affected VM targets independently of Terraform. |
-| Environment SSH public keys | Plan that environment's roots and configure its VM targets. |
+| Kubernetes manifests | None in CI; Flux reconciles them from `main`. |
 | Documentation only | Run CI; no deployment. |
 
 Dev deployments from pushes to `main` are automatic. Manual dev writes and
-production/platform applies require approval; production live plans also
-require approval. Ordinary plans can delete or replace resources. Removing a
-root never destroys it automatically: destroy it explicitly before removing
-its configuration.
+production applies require approval; production live plans also require
+approval. Ordinary plans can delete or replace resources. Removing a root never
+destroys it automatically: destroy it explicitly before removing its
+configuration.
 
 For a manual run from `main`, choose an environment, scope and target, then use
-`auto` to reconcile infrastructure and configuration, `infrastructure` for
-Terraform, `configuration` for Ansible, or `destroy` for explicit teardown.
-Images, Talos and Flux never run Ansible.
+`auto` to plan and apply, or `destroy` for explicit teardown.
 
 See [deployments and operations](docs/deployments.md) for full selection rules,
 manual modes, branch protection, approval policies, saved plans, concurrency,
@@ -142,10 +130,9 @@ For a new installation, follow the [complete setup guide](docs/setup.md) in orde
    Tailscale access.
 2. Bootstrap the S3 state bucket and configure the backend variable.
 3. Configure scoped Proxmox and AWS identities and GitHub environment credentials.
-4. Set environment-specific SSH keys, host verification, and service credentials.
-5. Generate the plan encryption key pair and configure its GitHub settings.
-6. Configure GitHub environment approvals and main branch protection.
-7. Verify CI and live plans, publish shared images, then deploy a workload.
+4. Generate the plan encryption key pair and configure its GitHub settings.
+5. Configure GitHub environment approvals and main branch protection.
+6. Verify CI and live plans, then deploy the cluster.
 
 ## Local checks
 
@@ -155,20 +142,10 @@ Run Terraform formatting from the repository root:
 terraform fmt -check -recursive terraform
 ```
 
-Use the [Ansible lint instructions](ansible/README.md#linting) for its pinned
-local environment. The [deployment workflow](.github/workflows/terraform.yml)
-lists the offline Python, Node, and Terraform checks run by CI.
-
-For a live Ansible preview after configuring credentials, inventory and SSH trust:
-
-```sh
-bash ansible/run-playbook.sh dev sandbox --list-hosts
-bash ansible/run-playbook.sh dev sandbox --check
-```
-
-See [local Terraform state setup](docs/setup.md#2-configure-terraform-state)
-for backend initialization and [Ansible deployment targets](ansible/README.md)
-for VM tags, playbooks, credentials, and inventory conventions.
+The [deployment workflow](.github/workflows/terraform.yml) lists the offline
+Python, Node, Terraform and Kubernetes checks run by CI. See
+[local Terraform state setup](docs/setup.md#2-configure-terraform-state) for
+backend initialization.
 
 ## Feature status
 
@@ -181,8 +158,8 @@ protections or the health of deployed services.
 | CI network access | Implemented | Runners join Tailscale as ephemeral `tag:ci` nodes through GitHub OIDC and reach Proxmox through the subnet router. No network secret is stored, and jobs run in parallel. |
 | Secrets management | Implemented | CI reads its secrets from SSM Parameter Store through those roles and masks them before use; the workflows reference no GitHub secrets. Saved plans are encrypted and Talos credentials are ignored. Kubernetes Secrets are committed SOPS-encrypted and decrypted by Flux with an age key only the dev apply role can read. |
 | Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
-| Linting and validation | Partial | Ansible linting, Terraform validation, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
-| Kubernetes GitOps | Partial | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/dev` from `main`; CI builds the manifests offline. Secrets are SOPS-encrypted. MetalLB and Traefik expose Services on the LAN, and the Proxmox CSI plugin provides persistent volumes. Only the podinfo demo runs so far; TLS certificates and volume backups are not configured. |
+| Linting and validation | Partial | Terraform validation, Kubernetes manifest builds, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
+| Kubernetes GitOps | Partial | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/dev` from `main`; CI builds the manifests offline. Secrets are SOPS-encrypted. MetalLB and Traefik expose Services on the LAN, and the Proxmox CSI plugin provides persistent volumes. Each app has its own Flux Kustomization. Volumes are LUKS-encrypted on the nodes. Only the podinfo demo runs so far; TLS certificates are not configured. |
 | Workload backups | Partial | Flux installs VolSync, which backs up opted-in Kubernetes volumes to encrypted restic repositories in the bucket from [`platform/backup-storage`](terraform/platform/backup-storage/README.md). See [backups and recovery](docs/backups.md). |
 | IP address management | Planned | Addresses are supplied explicitly or through DHCP; no IPAM integration allocates addresses or manages reservations. |
-| SSH certificates | Not planned | VM access uses per-environment SSH keys, cloud-init and verified host pins. One CI identity per environment does not justify running an SSH CA. |
+| Host access | Not planned | No automation uses SSH; nodes are managed through the Proxmox and Talos APIs. See the [platform direction](docs/decisions/0001-kubernetes-first.md). |

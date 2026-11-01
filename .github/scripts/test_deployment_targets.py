@@ -1,4 +1,4 @@
-"""Offline event/diff tests for independent infrastructure and configuration routing."""
+"""Offline event/diff tests for infrastructure routing."""
 
 import json
 import os
@@ -19,9 +19,9 @@ class DeploymentTargetTests(unittest.TestCase):
         self.git("init", "-q")
         self.git("config", "user.email", "test@example.invalid")
         self.git("config", "user.name", "Test")
-        for root in ("dev/sandbox", "dev/talos", "prod/sandbox"):
+        for root in ("dev/talos", "dev/flux", "prod/talos"):
             self.write(f"terraform/workloads/{root}/main.tf", "# root\n")
-        for root in ("images", "access", "state-access", "backup-storage"):
+        for root in ("access", "state-access", "backup-storage", "cluster-oidc"):
             self.write(f"terraform/platform/{root}/main.tf", "# platform\n")
         self.base = self.commit()
 
@@ -43,7 +43,7 @@ class DeploymentTargetTests(unittest.TestCase):
         env = dict(os.environ, EVENT_NAME=event, BASE_SHA=self.base,
                    HEAD_SHA=self.git("rev-parse", "HEAD"), GITHUB_OUTPUT=str(output),
                    GITHUB_REF="refs/heads/main", DEPLOYMENT_MODE="auto",
-                   DEPLOYMENT_SCOPE="single", SELECTED_ENV="dev", SELECTED_TARGET="sandbox")
+                   DEPLOYMENT_SCOPE="single", SELECTED_ENV="dev", SELECTED_TARGET="talos")
         env.update(overrides)
         result = subprocess.run(["python3", str(SCRIPT)], cwd=self.repo,
                                 env=env, text=True, capture_output=True)
@@ -61,159 +61,83 @@ class DeploymentTargetTests(unittest.TestCase):
         self.commit()
         result, targets = self.discover()
         self.assertEqual(result.returncode, 0, result.stderr)
-        return {(t["environment"], t["target"]): (t["terraform"], t["ansible"])
-                for t in targets}
+        return {(t["environment"], t["target"]) for t in targets}
 
     def test_infrastructure_change_only_selects_its_root(self):
-        self.assertEqual(self.change("terraform/workloads/dev/sandbox/main.tf"),
-                         {("dev", "sandbox"): (True, False)})
+        self.assertEqual(self.change("terraform/workloads/dev/talos/main.tf"), {("dev", "talos")})
 
-    def test_tag_staging_and_plan_helpers_select_infrastructure_validation(self):
-        targets = self.change(".github/scripts/vm_tags.py", ".github/scripts/terraform-apply.py")
-        self.assertEqual(len(targets), 4)
-        self.assertTrue(all(signals == (True, False) for signals in targets.values()))
-
-    def test_service_role_change_needs_no_terraform(self):
-        self.assertEqual(self.change("ansible/roles/sandbox/tasks/main.yml"),
-                         {("dev", "sandbox"): (False, True), ("prod", "sandbox"): (False, True)})
-
-    def test_seed_builder_and_boot_policy_changes_select_vm_infrastructure(self):
-        targets = self.change('terraform/modules/virtual-machine/cloud-init/agent-policy.py',
-                              'terraform/modules/virtual-machine/scripts/build-seed.py')
-        self.assertEqual(targets, {('dev', 'sandbox'): (True, False), ('prod', 'sandbox'): (True, False)})
-
-    def test_shared_baseline_change_selects_only_vm_targets(self):
-        self.assertEqual(self.change("ansible/roles/automation_user/tasks/main.yml"),
-                         {("dev", "sandbox"): (False, True), ("prod", "sandbox"): (False, True)})
-
-    def test_podman_role_change_selects_only_sandbox_configuration(self):
-        self.assertEqual(self.change("ansible/roles/podman/tasks/main.yml",
-                                     "ansible/inventory/group_vars/tag_podman.yml"),
-                         {("dev", "sandbox"): (False, True), ("prod", "sandbox"): (False, True)})
-
-    def test_sandbox_vm_replacement_and_podman_role_select_both_tools(self):
-        self.assertEqual(self.change("terraform/workloads/dev/sandbox/terraform.auto.tfvars",
-                                     "ansible/roles/podman/tasks/main.yml",
-                                     "ansible/playbooks/sandbox.yml"),
-                         {("dev", "sandbox"): (True, True), ("prod", "sandbox"): (False, True)})
-
-    def test_service_inventory_variables_are_scoped(self):
-        self.assertEqual(self.change("ansible/inventory/group_vars/tag_sandbox.yml"),
-                         {("dev", "sandbox"): (False, True), ("prod", "sandbox"): (False, True)})
+    def test_tag_staging_and_plan_helpers_select_every_root(self):
+        self.assertEqual(len(self.change(".github/scripts/vm_tags.py",
+                                         ".github/scripts/terraform-apply.py")), 3)
 
     def test_shared_terraform_module_selects_all_enabled_roots(self):
-        targets = self.change("terraform/modules/virtual-machine/main.tf")
-        self.assertEqual(len(targets), 4)
-        self.assertTrue(all(value == (True, False) for value in targets.values()))
+        self.assertEqual(len(self.change("terraform/modules/talos-cluster/main.tf")), 3)
 
-    def test_key_changes_select_both_tools_in_the_correct_environment(self):
-        self.assertEqual(self.change("ssh/public_keys/dev/ansible-ci.pub"),
-                         {("dev", "sandbox"): (True, True), ("dev", "talos"): (True, False)})
-
-    def test_host_enrollment_needs_only_configuration(self):
-        self.assertEqual(self.change("ssh/known_hosts/prod"),
-                         {("prod", "sandbox"): (False, True)})
-
-    def test_enrollment_code_change_selects_configuration_in_both_environments(self):
-        self.assertEqual(self.change("ssh/enroll-hosts.py", "ssh/setup-ci.sh"),
-                         {("dev", "sandbox"): (False, True), ("prod", "sandbox"): (False, True)})
-
-    def test_docs_lint_tests_and_workflow_changes_do_not_deploy(self):
+    def test_docs_tests_workflows_and_manifests_do_not_deploy(self):
+        # Flux pulls Kubernetes manifests from Git itself; CI never applies them.
         self.assertEqual(self.change(
-            "README.md", "ansible/roles/sandbox/README.md", "ansible/tests/test_new.py",
-            "ansible/roles/sandbox/tests/test.yml", "ansible/.ansible-lint",
-            "ansible/.yamllint", "ansible/requirements-lint.txt",
-            ".github/actions/ansible-lint/action.yml", ".github/workflows/terraform.yml",
-            ".github/scripts/test_deployment_targets.py"), {})
-
-    def test_mixed_changes_select_both_tools(self):
-        self.assertEqual(self.change("terraform/workloads/dev/sandbox/main.tf",
-                                     "ansible/playbooks/sandbox.yml"),
-                         {("dev", "sandbox"): (True, True), ("prod", "sandbox"): (False, True)})
+            "README.md", "terraform/modules/talos-cluster/tests/cluster.tftest.hcl",
+            ".github/workflows/terraform.yml", ".github/scripts/test_deployment_targets.py",
+            "kubernetes/clusters/dev/kustomization.yaml"), set())
 
     def test_push_includes_every_commit(self):
         self.write("terraform/workloads/dev/talos/main.tf", "# first\n")
         self.commit()
-        self.assertEqual(len(self.change("ansible/playbooks/sandbox.yml")), 3)
+        self.assertEqual(self.change("terraform/workloads/dev/flux/main.tf"),
+                         {("dev", "talos"), ("dev", "flux")})
 
     def test_pull_request_uses_merge_base(self):
         self.write("terraform/workloads/dev/talos/main.tf", "# feature\n")
         head = self.commit()
         self.git("checkout", "-q", self.base)
-        self.write("terraform/workloads/dev/sandbox/main.tf", "# base\n")
+        self.write("terraform/workloads/dev/flux/main.tf", "# base\n")
         base = self.commit()
         result, targets = self.discover("pull_request", BASE_SHA=base, HEAD_SHA=head)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([t["target"] for t in targets], ["talos"])
 
     def test_first_push_includes_enabled_roots(self):
-        self.assertEqual(len(self.discover(BASE_SHA="0" * 40)[1]), 4)
+        self.assertEqual(len(self.discover(BASE_SHA="0" * 40)[1]), 3)
 
-    def test_disabled_roots_are_excluded_from_automatic_configuration(self):
-        self.write("terraform/workloads/dev/sandbox/.disabled", "disabled\n")
-        targets = self.change("ansible/playbooks/common.yml")
-        self.assertNotIn(("dev", "sandbox"), targets)
-
-    def test_flux_root_plans_without_ansible_and_manifests_never_deploy(self):
-        self.write("terraform/workloads/dev/flux/main.tf", "# root\n")
-        self.base = self.commit()
-        self.assertNotIn(("dev", "flux"), self.change("ansible/playbooks/common.yml"))
-        self.base = self.git("rev-parse", "HEAD")
-        # Flux pulls these from Git itself; CI never applies them.
-        self.assertEqual(self.change("kubernetes/clusters/dev/kustomization.yaml"), {})
-        self.base = self.git("rev-parse", "HEAD")
-        self.assertEqual(self.change("terraform/workloads/dev/flux/main.tf"),
-                         {("dev", "flux"): (True, False)})
+    def test_disabled_roots_are_excluded(self):
+        self.write("terraform/workloads/prod/talos/.disabled", "disabled\n")
+        self.assertEqual(self.change("terraform/modules/talos-cluster/main.tf"),
+                         {("dev", "talos"), ("dev", "flux")})
 
     def test_reenabled_root_is_planned(self):
-        self.write("terraform/workloads/dev/sandbox/.disabled", "disabled\n")
+        self.write("terraform/workloads/prod/talos/.disabled", "disabled\n")
         self.base = self.commit()
-        (self.repo / "terraform/workloads/dev/sandbox/.disabled").unlink()
+        (self.repo / "terraform/workloads/prod/talos/.disabled").unlink()
         self.commit()
         result, targets = self.discover()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([(t["target"], t["terraform"]) for t in targets], [("sandbox", True)])
+        self.assertEqual([(t["environment"], t["target"]) for t in targets], [("prod", "talos")])
 
-    def test_privileged_platform_roots_do_not_deploy(self):
-        self.assertEqual(self.change("terraform/platform/access/main.tf",
+    def test_unknown_and_platform_roots_never_deploy(self):
+        self.assertEqual(self.change("terraform/workloads/dev/other/main.tf",
+                                     "terraform/platform/access/main.tf",
                                      "terraform/platform/state-access/main.tf",
                                      "terraform/platform/backup-storage/main.tf",
-                                     "terraform/platform/cluster-oidc/main.tf"), {})
+                                     "terraform/platform/cluster-oidc/main.tf"), set())
 
-    def test_manual_configuration_does_not_need_a_terraform_root(self):
-        result, targets = self.discover("workflow_dispatch", DEPLOYMENT_MODE="configuration",
-                                         SELECTED_ENV="prod", SELECTED_TARGET="common")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([(t["target"], t["terraform"], t["ansible"]) for t in targets],
-                         [("common", False, True)])
-
-    def test_manual_modes_have_independent_signals(self):
-        for mode, expected in (("auto", (True, True, False)),
-                               ("infrastructure", (True, False, False)),
-                               ("configuration", (False, True, False)),
-                               ("destroy", (True, False, True))):
+    def test_manual_modes(self):
+        for mode, destroy in (("auto", False), ("destroy", True)):
             with self.subTest(mode=mode):
                 result, targets = self.discover("workflow_dispatch", DEPLOYMENT_MODE=mode)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(tuple(targets[0][key] for key in ("terraform", "ansible", "destroy")),
-                                 expected)
+                self.assertEqual([(t["target"], t["terraform"], t["destroy"]) for t in targets],
+                                 [("talos", True, destroy)])
 
-    def test_manual_all_configuration_skips_talos_and_disabled_roots(self):
-        result, targets = self.discover("workflow_dispatch", DEPLOYMENT_MODE="configuration",
-                                         DEPLOYMENT_SCOPE="all")
+    def test_manual_all_scope_selects_the_environment(self):
+        result, targets = self.discover("workflow_dispatch", DEPLOYMENT_SCOPE="all")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([t["target"] for t in targets], ["sandbox"])
-        self.write("terraform/workloads/dev/sandbox/.disabled", "disabled\n")
-        result, _ = self.discover("workflow_dispatch", DEPLOYMENT_MODE="configuration",
-                                  DEPLOYMENT_SCOPE="all")
-        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual([t["target"] for t in targets], ["flux", "talos"])
 
     def test_invalid_manual_requests_cannot_deploy(self):
         invalid = [dict(GITHUB_REF="refs/heads/feature"), dict(DEPLOYMENT_MODE="invalid"),
-                   dict(DEPLOYMENT_SCOPE="invalid"), dict(SELECTED_ENV="unknown"),
-                   dict(SELECTED_ENV="platform", SELECTED_TARGET="access"),
-                   dict(SELECTED_ENV="prod", SELECTED_TARGET="images"),
-                   dict(DEPLOYMENT_MODE="configuration", SELECTED_TARGET="talos")]
+                   dict(DEPLOYMENT_MODE="configuration"), dict(DEPLOYMENT_SCOPE="invalid"),
+                   dict(SELECTED_ENV="unknown"), dict(SELECTED_ENV="platform", SELECTED_TARGET="access"),
+                   dict(SELECTED_TARGET="sandbox"), dict(SELECTED_ENV="prod", SELECTED_TARGET="flux")]
         for overrides in invalid:
             with self.subTest(overrides=overrides):
                 result, _ = self.discover("workflow_dispatch", **overrides)

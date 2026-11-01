@@ -24,11 +24,10 @@ class PrepareDeploymentTests(unittest.TestCase):
                             GITHUB_EVENT_NAME="push", GITHUB_REF="refs/heads/main",
                             GITHUB_SERVER_URL="https://github.com", GITHUB_REPOSITORY="owner/iac")
 
-    def target(self, environment="dev", name="sandbox", terraform=True, ansible=False, destroy=False):
+    def target(self, environment="dev", name="talos", terraform=True, destroy=False):
         return dict(environment=environment, target=name,
-                    directory=(f"terraform/platform/{name}" if environment == "platform"
-                               else f"terraform/workloads/{environment}/{name}"),
-                    terraform=terraform, ansible=ansible, destroy=destroy)
+                    directory=f"terraform/workloads/{environment}/{name}",
+                    terraform=terraform, destroy=destroy)
 
     def result(self, entry, changes=True, **overrides):
         result = dict(environment=entry["environment"], target=entry["target"],
@@ -46,52 +45,34 @@ class PrepareDeploymentTests(unittest.TestCase):
         self.result(target, changes=False)
         self.assertEqual(self.prepare(target), [])
 
-    def test_noop_terraform_does_not_suppress_requested_ansible(self):
-        target = self.target(ansible=True)
-        self.result(target, changes=False)
-        deploy = self.prepare(target)[0]
-        self.assertFalse(deploy["terraform"])
-        self.assertTrue(deploy["ansible"])
-
-    def test_configuration_only_needs_no_plan_file(self):
-        deploy = self.prepare(self.target(terraform=False, ansible=True))[0]
-        self.assertEqual(deploy["approval_environment"], "proxmox-dev-auto-apply")
-
-    def test_infrastructure_changes_configure_vm_after_apply(self):
+    def test_changes_create_an_approval_job(self):
         target = self.target()
         self.result(target)
         deploy = self.prepare(target)[0]
         self.assertTrue(deploy["terraform"])
-        self.assertTrue(deploy["ansible"])
-
-    def test_cluster_roots_and_images_never_run_ansible(self):
-        for target in (self.target(name="talos"), self.target(name="flux"),
-                       self.target(environment="platform", name="images")):
-            self.result(target)
-            self.assertFalse(self.prepare(target)[0]["ansible"])
+        self.assertEqual(deploy["approval_environment"], "proxmox-dev-auto-apply")
 
     def test_every_production_deployment_uses_approved_environment(self):
-        for terraform, ansible in ((True, False), (False, True), (True, True)):
-            with self.subTest(terraform=terraform, ansible=ansible):
-                target = self.target(environment="prod", terraform=terraform, ansible=ansible)
-                if terraform:
-                    self.result(target)
-                self.assertEqual(self.prepare(target)[0]["approval_environment"], "proxmox-prod-apply")
+        target = self.target(environment="prod")
+        self.result(target)
+        self.assertEqual(self.prepare(target)[0]["approval_environment"], "proxmox-prod-apply")
 
-    def test_manual_dev_configuration_keeps_existing_approval(self):
+    def test_manual_dev_deployment_uses_reviewed_approval(self):
         self.context["GITHUB_EVENT_NAME"] = "workflow_dispatch"
-        target = self.target(terraform=False, ansible=True)
+        target = self.target()
+        self.result(target)
         self.assertEqual(self.prepare(target)[0]["approval_environment"], "proxmox-dev-apply")
 
-    def test_destroy_requires_manual_main_request_and_never_runs_ansible(self):
-        target = self.target(destroy=True, ansible=True)
+    def test_destroy_requires_manual_main_request(self):
+        target = self.target(destroy=True)
         self.result(target)
         with self.assertRaises(ValueError):
             self.prepare(target)
         self.context.update(GITHUB_EVENT_NAME="workflow_dispatch", DEPLOYMENT_MODE="destroy")
         deploy = self.prepare(target)[0]
-        self.assertFalse(deploy["ansible"])
         self.assertEqual(deploy["approval_environment"], "proxmox-dev-apply")
+        with self.assertRaises(ValueError):
+            self.prepare(self.target(terraform=False, destroy=True))
 
     def test_missing_plan_result_fails_closed(self):
         with self.assertRaises(FileNotFoundError):
@@ -100,7 +81,7 @@ class PrepareDeploymentTests(unittest.TestCase):
     def test_wrong_commit_run_attempt_target_or_mode_is_rejected(self):
         target = self.target()
         for overrides in (dict(sha="other"), dict(run_id="41"), dict(run_attempt="1"),
-                          dict(environment="prod"), dict(target="talos"), dict(destroy=True),
+                          dict(environment="prod"), dict(target="flux"), dict(destroy=True),
                           dict(changes="false")):
             with self.subTest(overrides=overrides):
                 self.result(target, **overrides)
@@ -108,20 +89,24 @@ class PrepareDeploymentTests(unittest.TestCase):
                     self.prepare(target)
 
     def test_no_cross_target_matrix_output_overwrite(self):
-        dev, prod = self.target(), self.target(environment="prod", ansible=True)
+        dev, prod = self.target(), self.target(environment="prod")
         self.result(dev, changes=False)
         self.result(prod, changes=True)
         deployments = self.prepare(dev, prod)
         self.assertEqual([(d["environment"], d["terraform"]) for d in deployments], [("prod", True)])
 
     def test_invalid_or_duplicate_targets_are_rejected(self):
-        for target in (self.target(environment="platform", name="access"),
-                       self.target(environment="unknown"),
-                       self.target(name="talos", terraform=False, ansible=True),
+        for name in ("talos", "access", "sandbox", "images"):
+            self.result(self.target(name=name))
+        for target in (dict(self.target(name="access"), environment="platform",
+                            directory="terraform/platform/access"),
+                       self.target(environment="unknown"), self.target(name="sandbox"),
+                       dict(self.target(environment="platform", name="images"),
+                            directory="terraform/platform/images"),
                        dict(self.target(), directory="terraform/platform/access")):
-            with self.subTest(target=target), self.assertRaises(ValueError):
+            with self.subTest(target=target), self.assertRaises((ValueError, FileNotFoundError)):
                 self.prepare(target)
-        target = self.target(terraform=False, ansible=True)
+        target = self.target()
         with self.assertRaises(ValueError):
             self.prepare(target, target)
 
@@ -136,16 +121,16 @@ class PrepareDeploymentTests(unittest.TestCase):
         self.context["PR_HEAD_SHA"] = "pr-head"
         body = self.preview(dev, prod)
         self.assertIn("Commit: `pr-head`", body)
-        self.assertIn("dev/sandbox — changes", body)
+        self.assertIn("dev/talos — changes", body)
         self.assertIn("memory = 1024 -&gt; 2048", body)
-        self.assertIn("prod/sandbox — no changes", body)
+        self.assertIn("prod/talos — no changes", body)
         self.assertIn("No changes. Your infrastructure", body)
         self.assertIn("https://github.com/owner/iac/actions/runs/42/attempts/2", body)
 
-    def test_configuration_only_preview_explains_no_plans(self):
-        body = self.preview(self.target(terraform=False, ansible=True))
+    def test_preview_without_plans_says_so(self):
+        body = self.preview(self.target(terraform=False))
         self.assertIn("No Terraform plans were needed", body)
-        self.assertIn("| dev/sandbox | skip | run |", body)
+        self.assertIn("| dev/talos | skip |", body)
 
     def test_preview_escapes_markup_in_resource_values(self):
         target = self.target()
@@ -157,7 +142,7 @@ class PrepareDeploymentTests(unittest.TestCase):
 
     def test_oversized_plans_keep_every_target_and_link_to_full_logs(self):
         targets = [self.target(), self.target(environment="prod"),
-                   self.target(environment="platform", name="images")]
+                   self.target(name="flux")]
         for target in targets:
             self.result(target, plan_text="resource change 🌏 <value>\n" * 10000)
         body = self.preview(*targets)

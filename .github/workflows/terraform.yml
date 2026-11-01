@@ -1,4 +1,4 @@
-name: Infrastructure and configuration
+name: Infrastructure
 
 on:
   pull_request:
@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Work to perform (auto reconciles infrastructure and configuration)
+        description: Work to perform (auto applies the selected roots' changes)
         type: choice
-        options: [auto, infrastructure, configuration, destroy]
+        options: [auto, destroy]
         default: auto
         required: true
       scope:
@@ -23,13 +23,13 @@ on:
       environment:
         description: Environment to deploy
         type: choice
-        options: [dev, prod, platform]
+        options: [dev, prod]
         required: true
       target:
         description: Target (ignored when scope is all)
         type: choice
-        options: [common, sandbox, talos, flux, images]
-        default: sandbox
+        options: [talos, flux]
+        default: talos
         required: true
 
 permissions:
@@ -54,7 +54,7 @@ jobs:
         run: |
           python3 -m unittest discover -s .github/scripts -p 'test_*.py'
           node --test .github/scripts/test_comment_plans.js
-      - name: Select infrastructure and configuration targets
+      - name: Select infrastructure targets
         id: targets
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -66,31 +66,11 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
         run: python3 .github/scripts/deployment-targets.py
 
-  ansible_lint:
-    name: Ansible lint (offline)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/ansible-lint
-
   access_checks:
     name: Proxmox RBAC tests (offline)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install Ansible inventory test dependencies
-        run: |
-          pip install ansible requests netaddr -r terraform/modules/virtual-machine/scripts/requirements.txt
-          ansible-galaxy collection install -r ansible/requirements.yml --force
-      - name: Test cloud-init seed generation and agent policy
-        run: python3 -m unittest discover -s terraform/modules/virtual-machine/tests -p 'test_*.py'
-      - name: Test SSH credentials and host enrollment
-        run: python3 -m unittest discover -s ssh -p 'test_*.py'
-      - name: Test scoped inventory and playbook selection
-        run: python3 -m unittest discover -s ansible/tests -p 'test_*.py'
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.15.8"
@@ -103,12 +83,6 @@ jobs:
       - name: Test environment boundaries
         run: terraform test -no-color
         working-directory: terraform/platform/access
-      - name: Initialize VM module providers
-        run: terraform init -backend=false -input=false
-        working-directory: terraform/modules/virtual-machine
-      - name: Test pool-scoped VM tag staging
-        run: terraform test -no-color
-        working-directory: terraform/modules/virtual-machine
 
   talos_checks:
     name: Talos module tests (offline)
@@ -206,7 +180,7 @@ jobs:
   ci:
     name: CI
     if: always()
-    needs: [discover, ansible_lint, access_checks, talos_checks, backup_storage_checks, cluster_oidc_checks, kubernetes_checks, terraform_validate]
+    needs: [discover, access_checks, talos_checks, backup_storage_checks, cluster_oidc_checks, kubernetes_checks, terraform_validate]
     runs-on: ubuntu-latest
     steps:
       - name: Require every validation job to succeed
@@ -262,11 +236,6 @@ jobs:
         env:
           SCOPE: ${{ matrix.environment }}
         run: python3 .github/scripts/load-parameters.py /iac/shared/proxmox "/iac/$SCOPE/plan"
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install cloud-init ISO builder
-        run: pip install -r terraform/modules/virtual-machine/scripts/requirements.txt
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.15.8"
@@ -397,17 +366,7 @@ jobs:
       - name: Load CI parameters
         env:
           SCOPE: ${{ matrix.environment }}
-        run: |
-          paths=(/iac/shared/proxmox /iac/shared/apply "/iac/$SCOPE/apply")
-          if [ "$SCOPE" != platform ]; then paths+=("/iac/$SCOPE/ansible"); fi
-          python3 .github/scripts/load-parameters.py "${paths[@]}"
-      - uses: actions/setup-python@v5
-        if: matrix.terraform
-        with:
-          python-version: "3.12"
-      - name: Install cloud-init ISO builder
-        if: matrix.terraform
-        run: pip install -r terraform/modules/virtual-machine/scripts/requirements.txt
+        run: python3 .github/scripts/load-parameters.py /iac/shared/proxmox /iac/shared/apply "/iac/$SCOPE/apply"
       - name: Download encrypted saved plan
         if: matrix.terraform
         uses: actions/download-artifact@v4
@@ -420,7 +379,7 @@ jobs:
           TARGET_DIRECTORY: ${{ matrix.directory }}
         run: bash .github/scripts/terraform-plan-artifact.sh decrypt "$TARGET_DIRECTORY" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
       - uses: hashicorp/setup-terraform@v3
-        if: matrix.terraform || matrix.ansible
+        if: matrix.terraform
         with:
           terraform_version: "1.15.8"
           terraform_wrapper: false
@@ -455,15 +414,3 @@ jobs:
           python3 .github/scripts/terraform-apply.py \
             --directory "$TARGET_DIRECTORY" --environment "$TARGET_ENVIRONMENT" \
             --target "$TARGET_NAME" --destroy "$DESTROY"
-      - name: Configure selected guests
-        if: matrix.ansible
-        uses: ./.github/actions/ansible
-        env:
-          PROXMOX_USER: ${{ env.PROXMOX_USER_ANSIBLE }}
-          PROXMOX_TOKEN_ID: ${{ env.PROXMOX_TOKEN_ID_ANSIBLE }}
-          PROXMOX_TOKEN_SECRET: ${{ env.PROXMOX_TOKEN_SECRET_ANSIBLE }}
-        with:
-          working-directory: ansible
-          SSH_PRIVATE_KEY_ANSIBLE: ${{ env.SSH_PRIVATE_KEY_ANSIBLE }}
-          target: ${{ matrix.target }}
-          environment: ${{ matrix.environment }}
