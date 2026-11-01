@@ -76,10 +76,19 @@ data "talos_machine_configuration" "node" {
       kind       = "HostnameConfig"
       hostname   = each.value.node_name
     }),
+    # Pods inherit the node's search domains. Replace any the LAN's DHCP
+    # offers: a resolver that fails lookups under that domain instead of
+    # answering NXDOMAIN breaks every name lookup in musl-based (Alpine)
+    # images. The provider drops an empty list, which would inherit DHCP's, so
+    # list the cluster domain that pods already search.
     yamlencode({
       apiVersion  = "v1alpha1"
       kind        = "ResolverConfig"
       nameservers = [for address in var.dns_servers : { address = address }]
+      searchDomains = {
+        domains        = ["cluster.local"]
+        disableDefault = true
+      }
     }),
     # Merges with the generated document's role labels.
     yamlencode({

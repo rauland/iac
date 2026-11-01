@@ -97,13 +97,15 @@ run "generate_valid_talos_configuration_offline" {
     condition = (
       one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "UnattendedInstallConfig"]).provisioning.diskSelector.match == "disk.dev_path == \"/dev/sda\"" &&
       one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "ResolverConfig"]).nameservers[0].address == "192.0.2.1" &&
+      length(one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "ResolverConfig"]).searchDomains.domains) == 1 &&
+      one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "ResolverConfig"]).searchDomains.domains[0] == "cluster.local" &&
       one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "KubeClusterConfig"]).endpoint == var.cluster_endpoint &&
       one([for doc in split("\n---\n", data.talos_machine_configuration.node["worker-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).version, "") == "v1alpha1"]).machine.type == "worker" &&
       one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "HostnameConfig"]).hostname == "cp-01" &&
       !can(one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "HostnameConfig"]).auto) &&
       !can(one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).version, "") == "v1alpha1"]).machine.install)
     )
-    error_message = "The real Talos generator must accept the patches and preserve networking, endpoint, and node roles."
+    error_message = "The real Talos generator must accept the patches and preserve networking, endpoint, node roles, and cleared search domains."
   }
   assert {
     condition = alltrue([for key, node in data.talos_machine_configuration.node : (
