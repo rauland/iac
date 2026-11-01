@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: proxmox-csi-encryption
+    namespace: csi-proxmox
+stringData:
+    encryption-passphrase: ENC[AES256_GCM,data:JUAFdKbdOeJvnTuZClDyeyVMbC4NH5f3QbKIf1VEyCuQsFHVPGgG+MJ3vyeJPHC5sLQ7YszbFNxOk+p0qW650g==,iv:kMeTYGYuUdjPDB6jsjSr0An0mkZEbeAJWzpinBCfPh8=,tag:rCjDAKF4kXSaX8CJpLlgcg==,type:str]
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    age:
+        - recipient: age1n26yufce4gck08za6nsktpf48jnx6uc7aj5darjmtvkyeg0vg3ks3uqy8q
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBGTWlzT2xDTUtYRVQyVFdq
+            SjZDSDZqdnpKcFVSTmwrSXZGb1FpQWxrTDJRClVGcy9QL2F3WlRjV2IwbXB0WkV1
+            djJxT2Q1d3YzNjR5dGExbkRpaXpSNk0KLS0tIGtEQmxRWlNpRmswazNoWmwzdmI4
+            Si93VnVXMjlmTi83ZGZWMlNzVWFlM0UK6qwq/8tnMV4AZObIrZv4+elC2KfwvZKE
+            IEihFb3unRgXEF7MCJUYZsHlYkc/XYEXc8CwEdiWQXuGM3OG70DNZw==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-11-01T04:09:06Z"
+    mac: ENC[AES256_GCM,data:tOFKJYMW1N22ywoS5SeTDx7lqZ0IOx3J2vHO+28+qV9BSbdxaF6H+dBU/hCV3U5slBBgZ1VsWeaUZ3yb3Rz7K792EOaEFRqRSc2j++W5mDVULqeGaYiW4rYWgTu+jyt1I8G+EMED7PvBoH23rnZmdrVPx/zGcvwTR4gzRyxZ8/w=,iv:hzhnfnw+457D0QUKrWTzJQGi6UWyxzPvWaVpV3tia+8=,tag:vxlchnoz4/iY3dLhk2dLCQ==,type:str]
+    pgp: []
+    encrypted_regex: ^(data|stringData)$
+    version: 3.9.4
