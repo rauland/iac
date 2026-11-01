@@ -9,8 +9,13 @@ variable "bucket_name" {
   default     = "rauland-homelab-backups"
 }
 
+variable "state_bucket" {
+  description = "S3 bucket holding Terraform state, from which platform/cluster-oidc's identity providers are read."
+  type        = string
+}
+
 variable "clusters" {
-  description = "Clusters that back up to the bucket. Each gets an IAM user limited to the <cluster>/ prefix."
+  description = "Clusters that back up to the bucket. Each gets an IAM role limited to the <cluster>/ prefix; each must be published by platform/cluster-oidc."
   type        = list(string)
   default     = ["dev"]
 

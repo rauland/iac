@@ -177,7 +177,8 @@ class DeploymentTargetTests(unittest.TestCase):
     def test_privileged_platform_roots_do_not_deploy(self):
         self.assertEqual(self.change("terraform/platform/access/main.tf",
                                      "terraform/platform/state-access/main.tf",
-                                     "terraform/platform/offsite-backup/main.tf"), {})
+                                     "terraform/platform/offsite-backup/main.tf",
+                                     "terraform/platform/cluster-oidc/main.tf"), {})
 
     def test_manual_configuration_does_not_need_a_terraform_root(self):
         result, targets = self.discover("workflow_dispatch", DEPLOYMENT_MODE="configuration",

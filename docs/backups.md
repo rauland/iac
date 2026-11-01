@@ -19,7 +19,21 @@ restic repositories in the bucket from
 [`platform/offsite-backup`](../terraform/platform/offsite-backup/README.md),
 one repository per volume. restic encrypts the data before upload and only
 sends what changed since the last run. Nothing runs on the Proxmox host, and
-the cluster holds no hypervisor credentials.
+the cluster holds no hypervisor credentials and no AWS keys.
+
+Mover pods reach S3 through the cluster's OIDC identity: a
+MutatingAdmissionPolicy in [`infrastructure/volsync`](../kubernetes/infrastructure/volsync/aws-identity.yaml)
+gives each one a short-lived token for `sts.amazonaws.com` and the cluster's
+backup role, and restic exchanges the token for temporary credentials. The
+cluster's Flux Kustomization sets the role (`backup_role_arn`) and region. One
+admin setup per cluster makes AWS trust it:
+
+1. Set `service_account_issuer` in the cluster's Talos root and apply it; see
+   [public service account issuer](../terraform/modules/talos-cluster/README.md#public-service-account-issuer).
+2. Apply [`platform/cluster-oidc`](../terraform/platform/cluster-oidc/README.md),
+   which publishes the issuer and registers it with AWS.
+3. Apply [`platform/offsite-backup`](../terraform/platform/offsite-backup/README.md)
+   and create the cluster's repository password.
 
 The Proxmox CSI plugin's volume snapshots need a `root@pam` login, so backups
 use `copyMethod: Direct`: VolSync starts a mover pod on the app's node, mounts
@@ -44,10 +58,9 @@ app expects it there.
 
 ### Back up a volume
 
-Create the cluster's credentials first; see
-[`platform/offsite-backup`](../terraform/platform/offsite-backup/README.md#create-a-clusters-credentials).
-Each volume then needs a SOPS-encrypted Secret that names its repository. As an
-administrator, write it from SSM without the values touching disk unencrypted:
+Each volume needs a SOPS-encrypted Secret that names its repository and holds
+the cluster's restic password. As an administrator, write it from SSM without
+the password touching disk unencrypted:
 
 ```sh
 cluster=dev namespace=<namespace> claim=<claim> bucket=<bucket> region=<region>
@@ -65,8 +78,6 @@ metadata:
 stringData:
   RESTIC_REPOSITORY: s3:https://s3.$region.amazonaws.com/$bucket/$cluster/$namespace/$claim
   RESTIC_PASSWORD: $(get RESTIC_PASSWORD)
-  AWS_ACCESS_KEY_ID: $(get ACCESS_KEY_ID)
-  AWS_SECRET_ACCESS_KEY: $(get SECRET_ACCESS_KEY)
 YAML
 ```
 

@@ -97,7 +97,20 @@ data "talos_machine_configuration" "node" {
           }
         }, volume == "EPHEMERAL" ? { lockToState = true } : {})]
       }
-  })], var.config_patches, each.value.config_patches)
+    })], each.value.node_type == "controlplane" && var.service_account_issuer != null ? [
+    # Sign service account tokens as the public issuer, keep accepting tokens
+    # from the old one, and keep their audience so existing clients still pass.
+    yamlencode({
+      cluster = {
+        apiServer = {
+          extraArgs = {
+            "service-account-issuer" = [var.service_account_issuer, var.cluster_endpoint]
+            "api-audiences"          = var.cluster_endpoint
+          }
+        }
+      }
+    })
+  ] : [], var.config_patches, each.value.config_patches)
 }
 
 resource "talos_machine_configuration_apply" "node" {

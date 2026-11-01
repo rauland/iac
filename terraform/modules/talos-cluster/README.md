@@ -157,6 +157,21 @@ workflow. Client files are ignored by Git; store them securely outside the repo.
 Replacing the machine-secrets resource would change the cluster's identity, so
 its version input is ignored after creation.
 
+### Public service account issuer
+
+Kubernetes signs service account tokens as an OIDC issuer. By default that is
+the API endpoint, which services outside the network cannot reach to fetch the
+signing keys. Set `service_account_issuer` to a public HTTPS URL that serves the
+cluster's discovery documents, such as the one
+[`platform/cluster-oidc`](../../platform/cluster-oidc/README.md) publishes, and
+AWS can trust tokens issued to pods without any stored access key.
+
+Control planes then sign with the public issuer and still accept tokens from
+the API endpoint, so pods that hold older tokens keep working while the kubelet
+refreshes them. The token audience stays the API endpoint. Changing these flags
+restarts the API server without rebooting the node; with a single control
+plane, the API is unavailable for a few seconds.
+
 ## Upgrades and node removal
 
 Changing `talos_version` updates boot media and generated installation settings;

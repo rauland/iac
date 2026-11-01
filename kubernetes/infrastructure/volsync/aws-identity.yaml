@@ -1,0 +1,63 @@
+# Gives VolSync's mover pods an AWS identity: a service account token for the
+# audience sts.amazonaws.com and the variables restic uses to exchange it for
+# the cluster's backup role. VolSync passes only an allowlist of Secret keys to
+# restic, which does not include these, so they are added at admission. The
+# cluster sets backup_role_arn and backup_aws_region through Flux.
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: volsync-aws-identity
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE]
+        resources: [pods]
+  matchConditions:
+    - name: volsync-mover
+      expression: >
+        object.spec.serviceAccountName.startsWith("volsync-src-") ||
+        object.spec.serviceAccountName.startsWith("volsync-dst-")
+    # Movers have one container and always set env, volumes and volumeMounts,
+    # so the patch can append to them.
+    - name: one-container
+      expression: object.spec.containers.size() == 1
+  failurePolicy: Fail
+  reinvocationPolicy: Never
+  mutations:
+    # JSONPatch, because a projected volume's sources list cannot be merged.
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >
+          [
+            JSONPatch{op: "add", path: "/spec/volumes/-", value: Object.spec.volumes{
+              name: "aws-identity-token",
+              projected: Object.spec.volumes.projected{
+                sources: [Object.spec.volumes.projected.sources{
+                  serviceAccountToken: Object.spec.volumes.projected.sources.serviceAccountToken{
+                    audience: "sts.amazonaws.com", expirationSeconds: 3600, path: "token"
+                  }
+                }]
+              }
+            }},
+            JSONPatch{op: "add", path: "/spec/containers/0/volumeMounts/-", value: Object.spec.containers.volumeMounts{
+              name: "aws-identity-token", mountPath: "/var/run/secrets/sts.amazonaws.com/serviceaccount", readOnly: true
+            }},
+            JSONPatch{op: "add", path: "/spec/containers/0/env/-", value: Object.spec.containers.env{
+              name: "AWS_ROLE_ARN", value: "${backup_role_arn}"
+            }},
+            JSONPatch{op: "add", path: "/spec/containers/0/env/-", value: Object.spec.containers.env{
+              name: "AWS_WEB_IDENTITY_TOKEN_FILE", value: "/var/run/secrets/sts.amazonaws.com/serviceaccount/token"
+            }},
+            JSONPatch{op: "add", path: "/spec/containers/0/env/-", value: Object.spec.containers.env{
+              name: "AWS_REGION", value: "${backup_aws_region}"
+            }}
+          ]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: volsync-aws-identity
+spec:
+  policyName: volsync-aws-identity

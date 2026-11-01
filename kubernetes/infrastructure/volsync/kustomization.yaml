@@ -1,7 +1,9 @@
 # VolSync copies opted-in PersistentVolumes to restic repositories, such as an
 # S3 bucket. Apps declare a ReplicationSource per volume; see docs/backups.md.
+# The cluster sets backup_role_arn and backup_aws_region for aws-identity.yaml.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - namespace.yaml
   - release.yaml
+  - aws-identity.yaml

@@ -88,8 +88,10 @@ Enabled deployment roots are `dev/sandbox`, `dev/talos`, and
 [`platform/images`](terraform/platform/images/README.md). `platform/access` is
 administrator-operated and excluded from deployment discovery, as is
 [`platform/state-access`](terraform/platform/state-access/README.md) for CI AWS
-state credentials and [`platform/offsite-backup`](terraform/platform/offsite-backup/README.md)
-for the off-site backup bucket.
+state credentials, [`platform/offsite-backup`](terraform/platform/offsite-backup/README.md)
+for the off-site backup bucket and
+[`platform/cluster-oidc`](terraform/platform/cluster-oidc/README.md), which lets
+AWS trust the clusters' service account tokens.
 Talos is included in automatic discovery and manual deployments. The
 `dev/flux` root installs Flux on that cluster; see [Kubernetes GitOps](kubernetes/README.md). See the
 [Talos module guide](terraform/modules/talos-cluster/README.md) for networking,

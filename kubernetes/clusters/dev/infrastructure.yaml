@@ -134,3 +134,8 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
+  postBuild:
+    substitute:
+      # Output cluster_roles of terraform/platform/offsite-backup.
+      backup_role_arn: arn:aws:iam::533245699488:role/homelab/backup-dev
+      backup_aws_region: ap-southeast-2

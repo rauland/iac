@@ -7,7 +7,7 @@ output "bucket" {
   }
 }
 
-output "cluster_users" {
-  description = "IAM user per cluster, for creating its access key."
-  value       = { for cluster, user in aws_iam_user.cluster : cluster => user.name }
+output "cluster_roles" {
+  description = "IAM role per cluster, for the cluster's VolSync AWS identity policy."
+  value       = { for cluster, role in aws_iam_role.cluster : cluster => role.arn }
 }

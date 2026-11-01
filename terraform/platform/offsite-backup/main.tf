@@ -80,17 +80,40 @@ resource "aws_s3_bucket_policy" "offsite" {
   depends_on = [aws_s3_bucket_public_access_block.offsite]
 }
 
-# restic authenticates to S3 with a static access key, so each cluster gets one
-# IAM user, limited to its own prefix in this bucket. The keys are created
-# outside Terraform so their secrets never enter state; see the README.
-resource "aws_iam_user" "cluster" {
-  for_each = toset(var.clusters)
-  name     = "backup-${each.key}"
-  path     = "/homelab/"
+# Each cluster's VolSync movers exchange their service account token for this
+# role's temporary credentials, through the cluster's identity provider from
+# platform/cluster-oidc. No access key exists. The role reaches only the
+# cluster's own prefix.
+data "terraform_remote_state" "cluster_oidc" {
+  backend = "s3"
+  config = {
+    bucket = var.state_bucket
+    key    = "terraform/platform/cluster-oidc.tfstate"
+    region = var.aws_region
+  }
 }
 
 locals {
   bucket_arn = "arn:aws:s3:::${var.bucket_name}"
+  oidc       = data.terraform_remote_state.cluster_oidc.outputs.clusters
+  cluster_trust = {
+    for cluster in var.clusters : cluster => {
+      Version = "2012-10-17"
+      Statement = [{
+        Sid       = "VolSyncMovers"
+        Effect    = "Allow"
+        Principal = { Federated = local.oidc[cluster].provider_arn }
+        Action    = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = { "${local.oidc[cluster].provider}:aud" = "sts.amazonaws.com" }
+          StringLike = { "${local.oidc[cluster].provider}:sub" = [
+            "system:serviceaccount:*:volsync-src-*",
+            "system:serviceaccount:*:volsync-dst-*",
+          ] }
+        }
+      }]
+    }
+  }
   cluster_policies = {
     for cluster in var.clusters : cluster => {
       Version = "2012-10-17"
@@ -119,10 +142,18 @@ locals {
   }
 }
 
-resource "aws_iam_user_policy" "cluster" {
-  for_each = aws_iam_user.cluster
+resource "aws_iam_role" "cluster" {
+  for_each             = toset(var.clusters)
+  name                 = "backup-${each.key}"
+  path                 = "/homelab/"
+  assume_role_policy   = jsonencode(local.cluster_trust[each.key])
+  max_session_duration = 3600
+}
+
+resource "aws_iam_role_policy" "cluster" {
+  for_each = aws_iam_role.cluster
   name     = "backup-${each.key}-prefix"
-  user     = each.value.name
+  role     = each.value.name
   policy   = jsonencode(local.cluster_policies[each.key])
 }
 
