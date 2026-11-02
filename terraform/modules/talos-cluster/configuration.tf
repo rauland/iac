@@ -38,7 +38,7 @@ data "talos_machine_configuration" "node" {
       machine = merge({ for key, value in {
         install = {
           disk  = "/dev/sda"
-          image = data.talos_image_factory_urls.this.urls.installer_secureboot
+          image = local.installer_images[each.key]
         }
         nodeLabels = local.topology_labels[each.key]
         } : key => value if !local.split_machine_config }, {
@@ -59,7 +59,7 @@ data "talos_machine_configuration" "node" {
     yamlencode({
       apiVersion = "v1alpha1"
       kind       = "UnattendedInstallConfig"
-      installer  = { image = data.talos_image_factory_urls.this.urls.installer_secureboot }
+      installer  = { image = local.installer_images[each.key] }
       provisioning = {
         diskSelector = { match = "disk.dev_path == \"/dev/sda\"" }
         wipe         = false

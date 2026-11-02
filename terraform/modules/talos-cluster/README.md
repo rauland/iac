@@ -190,12 +190,17 @@ start the VM from Proxmox, then uncordon it. A VM with a passed-through device
 also cannot balloon its memory or live-migrate.
 
 `system_extensions` builds one Image Factory image for the whole cluster, and
-the upgrade workflow installs it on every node. The workflow compares each
+the upgrade workflow installs it on every node. A node's own
+`system_extensions` give that node a separate image with the cluster's
+extensions plus its own; the upgrade inventory's `installer_images` lists each
+node's installer, which the workflow installs. The boot ISO stays the
+cluster's, because installation pulls the node's installer image. The workflow compares each
 node's image schematic as well as its version, so running it again at the same
 version installs an added or removed extension. Only list extensions every
-node can run: some add boot services that wait for their hardware, such as
-NVIDIA's container toolkit, which leaves a node without a GPU in the Booting
-stage. The factory
+node can run in the cluster-wide list: some add boot services that wait for
+their hardware, such as NVIDIA's container toolkit, which leaves a node without
+a GPU in the Booting stage. Give those to the nodes that have the hardware, and
+only once the device is attached. The factory
 pins each extension to the build signed for that Talos release's kernel, which
 Secure Boot requires; its version tags can later point at newer builds, so
 compare a module by the factory's digest, not the tag.

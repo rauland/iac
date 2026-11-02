@@ -17,6 +17,25 @@ override_resource {
   values = { id = "test-schematic" }
 }
 override_data {
+  target = data.talos_image_factory_extensions_versions.node
+  values = { extensions_info = [] }
+}
+override_resource {
+  target = talos_image_factory_schematic.node
+  values = { id = "test-node-schematic" }
+}
+override_data {
+  target = data.talos_image_factory_urls.node
+  values = {
+    urls = {
+      iso                  = "https://factory.example/gpu.iso"
+      installer            = "factory.example/installer/gpu:v1.14.3"
+      iso_secureboot       = "https://factory.example/gpu-secureboot.iso"
+      installer_secureboot = "factory.example/installer-secureboot/gpu:v1.14.3"
+    }
+  }
+}
+override_data {
   target = data.talos_image_factory_urls.this
   values = {
     urls = {
@@ -164,5 +183,35 @@ run "public_service_account_issuer_on_control_planes_only" {
   assert {
     condition     = !strcontains(data.talos_machine_configuration.node["worker-01"].machine_configuration, "issuer.example")
     error_message = "Workers do not run the API server and get no issuer settings."
+  }
+}
+
+run "node_extensions_select_the_node_installer" {
+  command = apply
+  variables {
+    talos_nodes = {
+      cp-01 = {
+        node_name    = "cp-01"
+        node_type    = "controlplane"
+        pve_node     = "pve-a"
+        api_address  = "192.0.2.10"
+        ipv4_address = "192.0.2.10/24"
+        ipv4_gateway = "192.0.2.1"
+      }
+      worker-01 = {
+        node_name         = "worker-01"
+        node_type         = "worker"
+        pve_node          = "pve-b"
+        api_address       = "192.0.2.11"
+        system_extensions = ["nonfree-kmod-nvidia-lts"]
+      }
+    }
+  }
+  assert {
+    condition = (
+      one([for doc in split("\n---\n", data.talos_machine_configuration.node["cp-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "UnattendedInstallConfig"]).installer.image == "factory.example/installer-secureboot/test:v1.14.3" &&
+      one([for doc in split("\n---\n", data.talos_machine_configuration.node["worker-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "UnattendedInstallConfig"]).installer.image == "factory.example/installer-secureboot/gpu:v1.14.3"
+    )
+    error_message = "A node with its own extensions must install its own image, and the others the cluster's."
   }
 }

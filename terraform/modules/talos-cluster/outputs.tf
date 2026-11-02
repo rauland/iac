@@ -31,8 +31,11 @@ output "upgrade_inventory" {
   value = {
     talos_version   = var.talos_version
     installer_image = data.talos_image_factory_urls.this.urls.installer_secureboot
-    control_planes  = [for key in sort(keys(var.talos_nodes)) : var.talos_nodes[key].api_address if var.talos_nodes[key].node_type == "controlplane"]
-    workers         = [for key in sort(keys(var.talos_nodes)) : var.talos_nodes[key].api_address if var.talos_nodes[key].node_type == "worker"]
+    # Per node, by address; differs from installer_image for nodes with their
+    # own system_extensions.
+    installer_images = { for key, node in var.talos_nodes : node.api_address => local.installer_images[key] }
+    control_planes   = [for key in sort(keys(var.talos_nodes)) : var.talos_nodes[key].api_address if var.talos_nodes[key].node_type == "controlplane"]
+    workers          = [for key in sort(keys(var.talos_nodes)) : var.talos_nodes[key].api_address if var.talos_nodes[key].node_type == "worker"]
   }
 }
 
