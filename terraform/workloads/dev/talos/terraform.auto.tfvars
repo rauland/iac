@@ -2,7 +2,7 @@
 cluster_name       = "dev"
 cluster_endpoint   = "https://10.0.0.50:6443"
 bootstrap_node     = "dev-cp-01"
-talos_version      = "v1.14.3"
+talos_version      = "v1.14.5"
 kubernetes_version = "v1.37.1"
 dns_servers        = ["10.0.0.1"]
 
