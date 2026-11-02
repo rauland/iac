@@ -44,10 +44,10 @@ jobs:
       plan-matrix: ${{ steps.targets.outputs.plan-matrix }}
       has-plans: ${{ steps.targets.outputs.has-plans }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
       - name: Test deployment routing and saved plans
@@ -70,8 +70,8 @@ jobs:
     name: Proxmox RBAC tests (offline)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "1.15.8"
       - name: Initialize access providers
@@ -88,8 +88,8 @@ jobs:
     name: Talos module tests (offline)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "1.15.8"
       - name: Initialize module providers
@@ -110,8 +110,8 @@ jobs:
     name: Backup storage tests (offline)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "1.15.8"
       - name: Initialize providers
@@ -128,8 +128,8 @@ jobs:
     name: Cluster OIDC tests (offline)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "1.15.8"
       - name: Initialize providers
@@ -146,7 +146,7 @@ jobs:
     name: Kubernetes manifest build (offline)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Reject unencrypted Secrets
         run: python3 .github/scripts/check-kubernetes-secrets.py kubernetes
       - name: Build every kustomization Flux reconciles
@@ -162,8 +162,8 @@ jobs:
     needs: discover
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "1.15.8"
       - name: Check Terraform formatting
@@ -231,9 +231,9 @@ jobs:
       # Lets the flux root read the talos root's state.
       TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Assume scoped AWS state role
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
@@ -242,7 +242,7 @@ jobs:
         env:
           SCOPE: ${{ matrix.environment }}
         run: python3 .github/scripts/load-parameters.py /iac/shared/proxmox "/iac/$SCOPE/plan"
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "1.15.8"
           terraform_wrapper: false
@@ -268,7 +268,7 @@ jobs:
             --target "$TARGET_NAME" --destroy "$DESTROY" \
             --result "$RUNNER_TEMP/plan-result/$TARGET_ENVIRONMENT--$TARGET_NAME.json"
       - name: Upload non-secret plan result
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tf-result-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
           path: ${{ runner.temp }}/plan-result/*.json
@@ -286,7 +286,7 @@ jobs:
         if: >-
           steps.plan.outputs.changes == 'true' && github.ref == 'refs/heads/main' &&
           (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
           path: ${{ runner.temp }}/tfplan.tar.gpg
@@ -310,10 +310,10 @@ jobs:
       matrix: ${{ steps.deployments.outputs.matrix }}
       has-deployments: ${{ steps.deployments.outputs.has-deployments }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Download plan results for this run attempt
         if: needs.discover.outputs.has-plans == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: tf-result-${{ github.run_id }}-${{ github.run_attempt }}-*
           path: ${{ runner.temp }}/plan-results
@@ -331,7 +331,7 @@ jobs:
         if: >-
           github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           PLAN_COMMENT_PATH: ${{ runner.temp }}/plan-comment.md
         with:
@@ -362,9 +362,9 @@ jobs:
       id-token: write
     env: *terraform-env
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Assume scoped AWS state role
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
@@ -375,7 +375,7 @@ jobs:
         run: python3 .github/scripts/load-parameters.py /iac/shared/proxmox /iac/shared/apply "/iac/$SCOPE/apply"
       - name: Download encrypted saved plan
         if: matrix.terraform
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
           path: ${{ runner.temp }}/encrypted-plan
@@ -384,7 +384,7 @@ jobs:
         env:
           TARGET_DIRECTORY: ${{ matrix.directory }}
         run: bash .github/scripts/terraform-plan-artifact.sh decrypt "$TARGET_DIRECTORY" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         if: matrix.terraform
         with:
           terraform_version: "1.15.8"

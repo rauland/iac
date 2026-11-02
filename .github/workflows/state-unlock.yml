@@ -32,10 +32,10 @@ jobs:
       AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
       TF_CLI_ARGS_init: ${{ vars.TF_CLI_ARGS_init }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Assume scoped AWS state role
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
@@ -50,7 +50,7 @@ jobs:
           SELECTED_TARGET: ${{ inputs.target }}
         run: python3 .github/scripts/deployment-targets.py
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "1.15.8"
 
