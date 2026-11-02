@@ -190,10 +190,12 @@ start the VM from Proxmox, then uncordon it. A VM with a passed-through device
 also cannot balloon its memory or live-migrate.
 
 `system_extensions` builds one Image Factory image for the whole cluster, and
-the upgrade workflow installs it on every node, so a node receives an added
-extension at its next Talos upgrade. An extension with kernel modules does
-nothing until a configuration loads them, so load a driver only on the nodes
-that have the hardware, through their per-node `config_patches`. The factory
+the upgrade workflow installs it on every node. The workflow compares each
+node's image schematic as well as its version, so running it again at the same
+version installs an added or removed extension. Only list extensions every
+node can run: some add boot services that wait for their hardware, such as
+NVIDIA's container toolkit, which leaves a node without a GPU in the Booting
+stage. The factory
 pins each extension to the build signed for that Talos release's kernel, which
 Secure Boot requires; its version tags can later point at newer builds, so
 compare a module by the factory's digest, not the tag.
@@ -222,8 +224,9 @@ environment, it:
    as a run artifact for seven days. Decrypt it with the saved-plan private key.
 4. For `talos`, reads every node's running version and refuses the run before
    changing anything if any node would be downgraded or skip a minor release.
-   Nodes already on the target are skipped, so rerunning after a failure resumes
-   where it stopped. The rest are upgraded with `upgrade-node.sh`, control planes
+   Nodes already running the target from the current image schematic are
+   skipped, so rerunning after a failure resumes where it stopped, and a node
+   whose extensions differ is reinstalled at the same version. The rest are upgraded with `upgrade-node.sh`, control planes
    first, using the same Secure Boot schematic with the new tag.
 5. For `kubernetes`, runs `talosctl upgrade-k8s --to VERSION` between two
    cluster health checks.

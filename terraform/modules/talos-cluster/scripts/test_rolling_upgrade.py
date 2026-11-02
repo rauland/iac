@@ -15,8 +15,8 @@ INVENTORY = {
     "control_planes": ["192.0.2.10"],
     "workers": ["192.0.2.11", "192.0.2.12"],
 }
-# Fake talosctl: reports VERSIONS[node] and records every call. A successful
-# upgrade changes the node's reported version, as a real reboot would.
+# Fake talosctl: reports each node's version and schematic and records every
+# call. A successful upgrade changes both, as a real reboot would.
 STUB = """#!/usr/bin/env python3
 import json, os, sys
 args = sys.argv[1:]
@@ -27,22 +27,27 @@ node = args[args.index('--nodes') + 1] if '--nodes' in args else ''
 code = 1 if os.environ['FAIL'] and os.environ['FAIL'] in (' '.join(args)) else 0
 if 'version' in args:
     print('Client:\\n\\tTag:         v9.9.9\\nServer:\\n\\tNODE:        %s\\n\\tTag:         %s' % (node, state['versions'][node]))
+elif 'extensions' in args:
+    for name, version in (('qemu-guest-agent', '11.1.1'), ('schematic', state['schematics'].get(node, 'abc'))):
+        print(json.dumps({'spec': {'metadata': {'name': name, 'version': version}}}, indent=4))
 elif 'upgrade' in args and not code:
-    state['versions'][node] = args[args.index('--image') + 1].rsplit(':', 1)[1]
+    repository, state['versions'][node] = args[args.index('--image') + 1].rsplit(':', 1)
+    state['schematics'][node] = repository.rsplit('/', 1)[1]
 json.dump(state, open(state_path, 'w'))
 sys.exit(code)
 """
 
 
 class RollingUpgradeTests(unittest.TestCase):
-    def run_upgrade(self, versions, target, component="talos", fail=""):
+    def run_upgrade(self, versions, target, component="talos", fail="", schematics=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "talosctl").write_text(STUB)
             (root / "talosctl").chmod(0o755)
             (root / "inventory.json").write_text(json.dumps(INVENTORY))
             state = root / "state.json"
-            state.write_text(json.dumps({"calls": [], "versions": versions}))
+            state.write_text(json.dumps({"calls": [], "versions": versions,
+                                         "schematics": schematics or {}}))
             env = dict(os.environ, PATH=f"{root}:{os.environ['PATH']}",
                        TALOSCONFIG=str(root / "talosconfig"), TEST_STATE=str(state), FAIL=fail)
             result = subprocess.run(
@@ -70,6 +75,21 @@ class RollingUpgradeTests(unittest.TestCase):
         result, state = self.run_upgrade(versions, "v1.15.0")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.upgraded(state), ["192.0.2.11", "192.0.2.12"])
+
+    def test_changed_schematic_is_reinstalled_at_the_same_version(self):
+        # For example an extension removed from the image: same Talos version,
+        # different schematic. Nodes already on the inventory's are skipped.
+        versions = self.all_at("v1.14.3") | {"192.0.2.10": "v1.15.0"}
+        result, state = self.run_upgrade(versions, "v1.15.0", schematics={"192.0.2.10": "old"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.upgraded(state), ["192.0.2.10", "192.0.2.11", "192.0.2.12"])
+        self.assertEqual(set(state["schematics"].values()), {"abc"})
+
+    def test_unreadable_schematic_changes_nothing(self):
+        versions = self.all_at("v1.15.0")
+        result, state = self.run_upgrade(versions, "v1.15.0", fail="extensions")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.upgraded(state), [])
 
     def test_failure_stops_before_later_nodes(self):
         result, state = self.run_upgrade(self.all_at("v1.14.3"), "v1.15.0",
