@@ -2,9 +2,11 @@
 """Upgrade Talos or Kubernetes across a cluster, one node at a time.
 
 Reads the upgrade_inventory Terraform output. Talos upgrades check every
-node's running version first: nodes already on the target are skipped, so a
-rerun resumes after a failure, and the run refuses downgrades or skipped minor
-releases before touching any node. Each node then goes through upgrade-node.sh,
+node's running version and image schematic first: nodes already running the
+target version from the inventory's schematic are skipped, so a rerun resumes
+after a failure, and a changed schematic, such as an added or removed
+extension, is installed even at the same version. The run refuses downgrades
+or skipped minor releases before touching any node. Each node then goes through upgrade-node.sh,
 control planes first. Kubernetes upgrades run talosctl upgrade-k8s between two
 cluster health checks.
 """
@@ -52,6 +54,24 @@ def running_version(node):
     return tags[0]
 
 
+def running_schematic(node):
+    """The Image Factory schematic the node's installed image was built from."""
+    output = talosctl("--endpoints", node, "--nodes", node, "get", "extensions",
+                      "--output", "json", capture=True)
+    decoder, index, schematics = json.JSONDecoder(), 0, []
+    while index < len(output):
+        if output[index].isspace():
+            index += 1
+            continue
+        resource, index = decoder.raw_decode(output, index)
+        metadata = resource.get("spec", {}).get("metadata", {})
+        if metadata.get("name") == "schematic":
+            schematics.append(metadata.get("version"))
+    if len(schematics) != 1:
+        fail(f"Could not read the image schematic of {node}")
+    return schematics[0]
+
+
 def check_path(current, target):
     """Allow staying put, patch releases, or exactly one minor release forward."""
     cur, tgt = parse_version(current), parse_version(target)
@@ -76,7 +96,9 @@ def upgrade_talos(inventory, target):
     if "secureboot" not in image or ":" not in image:
         fail("The installer image is not a Secure Boot Image Factory installer")
     # The schematic is version-independent, so only the tag changes.
-    installer = f"{image.rsplit(':', 1)[0]}:{target}"
+    repository = image.rsplit(':', 1)[0]
+    installer = f"{repository}:{target}"
+    schematic = repository.rsplit("/", 1)[1]
 
     nodes = inventory["control_planes"] + inventory["workers"]
     pending = []
@@ -85,10 +107,13 @@ def upgrade_talos(inventory, target):
         problem = check_path(current, target)
         if problem:
             fail(f"Upgrading {node} to {target} {problem}. No node was changed.")
-        if current == target:
-            print(f"{node} already runs {target}; skipping.", flush=True)
-        else:
+        if current != target:
             pending.append(node)
+        elif running_schematic(node) != schematic:
+            print(f"{node} runs {target} from another schematic; reinstalling.", flush=True)
+            pending.append(node)
+        else:
+            print(f"{node} already runs {target}; skipping.", flush=True)
 
     for node in pending:
         print(f"::group::Upgrade {node} to {target}", flush=True)
