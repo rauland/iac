@@ -39,15 +39,43 @@ talos_nodes = {
     memory       = 16384
     disk_size    = 64
   }
+  # The GPU node: the Quadro P2200 through the gpu-p2200 mapping from
+  # platform/access, and the NVIDIA driver in this node's image only. The
+  # P2200 is Pascal, which only the proprietary LTS (580) branch still
+  # supports. The container toolkit waits for the GPU at boot, so the device
+  # must be attached (VM stopped and started) before the node is upgraded to
+  # this image. See the Talos module README.
   prod-worker-02 = {
-    node_name    = "prod-worker-02"
-    node_type    = "worker"
-    pve_node     = "pve"
-    api_address  = "10.0.0.55"
-    mac_address  = "02:00:00:00:53:03"
-    ipv4_address = "dhcp"
-    cpu          = 4
-    memory       = 16384
-    disk_size    = 64
+    node_name         = "prod-worker-02"
+    node_type         = "worker"
+    pve_node          = "pve"
+    api_address       = "10.0.0.55"
+    mac_address       = "02:00:00:00:53:03"
+    ipv4_address      = "dhcp"
+    cpu               = 4
+    memory            = 16384
+    disk_size         = 64
+    pci_devices       = [{ mapping = "gpu-p2200" }]
+    system_extensions = ["nonfree-kmod-nvidia-lts", "nvidia-container-toolkit-lts"]
+    config_patches = [
+      <<-EOT
+      machine:
+        kernel:
+          modules:
+            - name: nvidia
+            - name: nvidia_uvm
+            - name: nvidia_drm
+            - name: nvidia_modeset
+        sysctls:
+          net.core.bpf_jit_harden: "1"
+      ---
+      # Merges into the node's KubeNodeConfig. NVIDIA's device plugin and the
+      # nvidia RuntimeClass schedule on this label.
+      apiVersion: v1alpha1
+      kind: KubeNodeConfig
+      labels:
+        nvidia.com/gpu.present: "true"
+      EOT
+    ]
   }
 }
