@@ -10,6 +10,9 @@ locals {
         github_environments = concat(
           ["proxmox-${scope}-${operation}"],
           scope == "dev" && operation == "apply" ? ["proxmox-dev-auto-apply"] : [],
+          # Plans of merged code on main, which need no approval of their own:
+          # the deployment that applies them does.
+          scope == "prod" && operation == "plan" ? ["proxmox-prod-main-plan"] : [],
         )
         # SSM parameter prefixes under /iac whose values CI may read.
         parameter_paths = concat(

@@ -65,7 +65,8 @@ credentials and enforce the following deployment policies:
 | Environment | Access | Protection |
 | --- | --- | --- |
 | `proxmox-dev-plan` | Dev audit credentials plus refresh permissions | No required reviewers |
-| `proxmox-prod-plan` | Prod audit credentials plus refresh permissions | Required human approval, including PR previews |
+| `proxmox-prod-plan` | Prod audit credentials plus refresh permissions | Required human approval; pull request previews |
+| `proxmox-prod-main-plan` | The same prod plan role | No required reviewers; `main` only, for plans of merged code that a `proxmox-prod-apply` approval then applies |
 | `proxmox-dev-auto-apply` | Dev write credentials and plan decryption key | Automatic deployments from pushes to `main` only |
 | `proxmox-dev-apply` | Dev write credentials for manual reconciliation, destroy, and state unlock | Required reviewers; `main` only |
 | `proxmox-prod-apply` | Prod write credentials and plan decryption key | Required human approval; `main` only |
@@ -74,7 +75,9 @@ Required reviewers and branch restrictions must exist in GitHub environment
 settings; referencing an environment in YAML alone does not require approval.
 Production currently names the repository owner as required reviewer, allows
 that human to approve their own initiated run, and disables administrator
-bypasses. Plan approval and deployment approval remain separate.
+bypasses. A prod change therefore needs two approvals: its pull request's
+plan, which runs unmerged code with prod credentials, and its deployment. The
+plan of the merged commit on `main` runs without one.
 
 Live plans are allowed only for same-repository PRs and trusted `main` runs.
 Fork PRs and merge queues run the credential-free checks without live plans.

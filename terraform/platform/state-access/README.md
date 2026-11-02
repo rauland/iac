@@ -17,7 +17,7 @@ assume them without passing environment protection. Each role carries a
 | --- | --- |
 | `iac-tf-dev-plan` | `proxmox-dev-plan` |
 | `iac-tf-dev-apply` | `proxmox-dev-apply`, `proxmox-dev-auto-apply` |
-| `iac-tf-prod-plan` | `proxmox-prod-plan` |
+| `iac-tf-prod-plan` | `proxmox-prod-plan`, `proxmox-prod-main-plan` |
 | `iac-tf-prod-apply` | `proxmox-prod-apply` |
 
 The plan, deploy and state-unlock jobs request `id-token: write` and call
@@ -99,7 +99,7 @@ To create the roles in the IAM console instead of applying this root:
 | --- | --- | --- |
 | `iac-tf-dev-plan` | [tf-dev-plan.json](policies/tf-dev-plan.json) | `proxmox-dev-plan` |
 | `iac-tf-dev-apply` | [tf-dev-apply.json](policies/tf-dev-apply.json) | `proxmox-dev-apply`, `proxmox-dev-auto-apply` |
-| `iac-tf-prod-plan` | [tf-prod-plan.json](policies/tf-prod-plan.json) | `proxmox-prod-plan` |
+| `iac-tf-prod-plan` | [tf-prod-plan.json](policies/tf-prod-plan.json) | `proxmox-prod-plan`, `proxmox-prod-main-plan` |
 | `iac-tf-prod-apply` | [tf-prod-apply.json](policies/tf-prod-apply.json) | `proxmox-prod-apply` |
 
 The files target bucket `rauland-iac-homelab`. Before running CI,
