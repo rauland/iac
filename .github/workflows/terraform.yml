@@ -215,7 +215,13 @@ jobs:
     concurrency:
       group: iac-terraform-${{ matrix.environment }}-${{ matrix.target }}
       cancel-in-progress: false
-    environment: ${{ format('proxmox-{0}-plan', matrix.environment) }}
+    # Prod plans of pull requests need approval, because they run unmerged
+    # code, Renovate's included, with prod credentials. Plans of merged code
+    # on main use an environment without reviewers: the deployment that
+    # applies them still needs approval.
+    environment: >-
+      ${{ matrix.environment == 'prod' && github.event_name != 'pull_request'
+      && 'proxmox-prod-main-plan' || format('proxmox-{0}-plan', matrix.environment) }}
     permissions:
       contents: read
       id-token: write

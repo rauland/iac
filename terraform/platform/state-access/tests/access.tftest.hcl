@@ -67,9 +67,11 @@ run "oidc_trust_boundaries" {
   assert {
     condition = (
       local.identities["tf-dev-apply"].github_environments == ["proxmox-dev-apply", "proxmox-dev-auto-apply"] &&
-      local.identities["tf-prod-apply"].github_environments == ["proxmox-prod-apply"]
+      local.identities["tf-prod-apply"].github_environments == ["proxmox-prod-apply"] &&
+      local.identities["tf-dev-plan"].github_environments == ["proxmox-dev-plan"] &&
+      local.identities["tf-prod-plan"].github_environments == ["proxmox-prod-plan", "proxmox-prod-main-plan"]
     )
-    error_message = "Only dev apply may be assumed from the automatic deployment environment."
+    error_message = "Only dev apply may be assumed from the automatic deployment environment, and only prod plan from the main-branch plan environment."
   }
   assert {
     condition = alltrue([
