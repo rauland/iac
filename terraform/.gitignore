@@ -3,6 +3,10 @@ proxmox.auto.tfvars
 tfplan
 .terraform/
 .terraform.*
+# Provider lock files pin each provider's checksums, so commit them for every
+# root module. Reusable modules under modules/ get theirs from the root.
+!.terraform.lock.hcl
+modules/**/.terraform.lock.hcl
 _out/
 kubeconfig
 debug.txt

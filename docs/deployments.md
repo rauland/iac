@@ -103,6 +103,16 @@ Only changed plans from `main` are encrypted and uploaded together with their
 provider lock file and a manifest bound to the plan, target, commit and run.
 The apply job checks that manifest, then applies the saved plan unchanged.
 
+Every root module commits its `.terraform.lock.hcl`, which pins each
+provider's checksums. Jobs that run without a plan, such as the Talos upgrade,
+initialize with `-lockfile=readonly`, so they use exactly those providers.
+Renovate updates the lock files with provider versions. After changing
+providers by hand, refresh a root's lock file for Linux CI and macOS:
+
+```sh
+terraform -chdir=<root> providers lock -platform=linux_amd64 -platform=darwin_arm64
+```
+
 The Terraform API token remains ephemeral and is supplied by the job's selected
 environment. Result artifacts contain routing flags,
 commit/run identifiers, and the human-readable output of `terraform show
