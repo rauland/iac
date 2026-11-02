@@ -101,6 +101,24 @@ cannot delete disks outside `k8s-dev`. It cannot change memory, power or CPU.
 The token secret goes into the cluster as a SOPS-encrypted Secret; see the
 [Kubernetes guide](../../../kubernetes/README.md#persistent-storage).
 
+### PCI devices
+
+Each entry in `pci_mappings` becomes a Proxmox PCI resource mapping. Passing a
+raw device ID to a VM needs `root@pam`; a mapping needs only `Mapping.Use` on
+`/mapping/pci/<name>`, so API tokens can attach it. Only the apply identity of
+the mapping's environment receives that, through the `PCIMappingUser` role, and
+only on its own mappings. It cannot change or remove the mapping, and nothing
+else can use it. Read a device's ID, subsystem and IOMMU group on the host:
+
+```sh
+pvesh get /nodes/<node>/hardware/pci --pci-class-blacklist "" --output-format json
+```
+
+Pass through every device in the IOMMU group that the host does not need, and
+make sure no other guest is configured with the device: Proxmox starts only the
+first VM that claims it. Attach a mapping to a Talos node with `pci_devices`;
+see the [Talos module](../../modules/talos-cluster/README.md#pci-passthrough).
+
 ## Credential export and GitHub cutover
 
 Token values are sensitive. Export them only into a private, ignored directory:

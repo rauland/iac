@@ -15,6 +15,7 @@ module "talos_cluster" {
   kubernetes_version     = var.kubernetes_version
   talos_nodes            = var.talos_nodes
   dns_servers            = var.dns_servers
+  system_extensions      = var.system_extensions
 }
 
 output "upgrade_inventory" {

@@ -1,0 +1,8 @@
+# The plugin registers with the kubelet through a host directory, which the
+# baseline Pod Security standard Talos enforces would reject.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nvidia-device-plugin
+  labels:
+    pod-security.kubernetes.io/enforce: privileged

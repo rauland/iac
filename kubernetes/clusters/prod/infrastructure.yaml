@@ -182,3 +182,21 @@ spec:
     substitute:
       cluster_domain: prod.netkuki.com
       acme_issuer: letsencrypt
+---
+# Only prod has a GPU. See kubernetes/infrastructure/nvidia-device-plugin.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: nvidia-device-plugin
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m
+  path: ./kubernetes/infrastructure/nvidia-device-plugin
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+

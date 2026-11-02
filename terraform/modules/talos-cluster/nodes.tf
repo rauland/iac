@@ -67,6 +67,22 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   serial_device {}
 
+  # Host devices through Proxmox resource mappings, which an API token can use
+  # with Mapping.Use; raw device IDs need root@pam. A VM with a passed-through
+  # device cannot balloon or live-migrate, and a new device only appears after
+  # the VM is stopped and started again, not after a reboot inside Talos. The
+  # option ROM is hidden by default: Talos needs no firmware display, and the
+  # VM's Secure Boot keys may not verify it.
+  dynamic "hostpci" {
+    for_each = each.value.pci_devices
+    content {
+      device  = "hostpci${hostpci.key}"
+      mapping = hostpci.value.mapping
+      pcie    = hostpci.value.pcie
+      rombar  = hostpci.value.rombar
+    }
+  }
+
   # The Proxmox CSI plugin hot-plugs PersistentVolume disks into worker VMs.
   # Without this, an apply would detach them from running pods. The boot disk
   # is therefore not resized by Terraform; see README.md.

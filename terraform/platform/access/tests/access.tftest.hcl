@@ -97,6 +97,24 @@ run "environment_boundaries" {
     )
     error_message = "Kubernetes volumes need a dedicated dataset, never the shared ZFS pool root."
   }
+  assert {
+    condition = (
+      toset(local.roles.PCIMappingUser) == toset(["Mapping.Use"]) &&
+      toset([for grant in local.service_grants : "${grant.name}:${grant.path}" if grant.role == "PCIMappingUser"]) == toset(["tf-prod-apply:/mapping/pci/gpu-p2200"]) &&
+      alltrue([for grant in local.service_grants : grant.role == "PCIMappingUser" if startswith(grant.path, "/mapping/")])
+    )
+    error_message = "Only an environment's apply identity may use that environment's PCI mappings, and only to attach them."
+  }
+}
+
+run "reject_unknown_pci_environment" {
+  command = plan
+  variables {
+    pci_mappings = {
+      gpu = { environment = "staging", path = "0000:01:00.0", id = "10de:0000", subsystem_id = "10de:0000", iommu_group = 1 }
+    }
+  }
+  expect_failures = [var.pci_mappings]
 }
 
 run "reject_unknown_storage_environment" {

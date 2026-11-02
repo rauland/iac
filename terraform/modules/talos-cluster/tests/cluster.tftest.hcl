@@ -155,6 +155,42 @@ run "vms_carry_no_tags" {
   }
 }
 
+run "pci_devices_attach_by_mapping" {
+  command = plan
+  variables {
+    talos_nodes = {
+      cp-01 = {
+        node_name    = "cp-01"
+        node_type    = "controlplane"
+        pve_node     = "pve-a"
+        api_address  = "192.0.2.10"
+        ipv4_address = "192.0.2.10/24"
+        ipv4_gateway = "192.0.2.1"
+      }
+      worker-01 = {
+        node_name   = "worker-01"
+        node_type   = "worker"
+        pve_node    = "pve-b"
+        api_address = "192.0.2.11"
+        pci_devices = [{ mapping = "gpu" }]
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(proxmox_virtual_environment_vm.node["cp-01"].hostpci) == 0 &&
+      length(proxmox_virtual_environment_vm.node["worker-01"].hostpci) == 1 &&
+      proxmox_virtual_environment_vm.node["worker-01"].hostpci[0].device == "hostpci0" &&
+      proxmox_virtual_environment_vm.node["worker-01"].hostpci[0].mapping == "gpu" &&
+      proxmox_virtual_environment_vm.node["worker-01"].hostpci[0].pcie == true &&
+      proxmox_virtual_environment_vm.node["worker-01"].hostpci[0].rombar == false &&
+      proxmox_virtual_environment_vm.node["worker-01"].hostpci[0].id == null
+    )
+    error_message = "PCI devices attach only to their node, by resource mapping rather than raw ID, as PCIe with the option ROM hidden."
+  }
+}
+
 run "reject_unknown_bootstrap" {
   command = plan
   variables {
