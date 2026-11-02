@@ -78,6 +78,11 @@ variable "talos_nodes" {
     vlan_id           = optional(number)
     vm_id             = optional(number)
     config_patches    = optional(list(string), [])
+    pci_devices = optional(list(object({
+      mapping = string
+      pcie    = optional(bool, true)
+      rombar  = optional(bool, false)
+    })), [])
   }))
 
   validation {
@@ -106,6 +111,10 @@ variable "talos_nodes" {
     condition     = alltrue([for node in var.talos_nodes : node.cpu >= 2 && node.memory >= 2048 && node.disk_size >= 10])
     error_message = "Each node requires at least 2 CPU cores, 2048 MiB RAM, and a 10 GiB disk."
   }
+  validation {
+    condition     = alltrue([for node in var.talos_nodes : length(node.pci_devices) <= 16])
+    error_message = "A VM can pass through at most 16 PCI devices."
+  }
 }
 
 variable "dns_servers" {
@@ -116,4 +125,10 @@ variable "dns_servers" {
     condition     = alltrue([for node in var.talos_nodes : node.ipv4_address == "dhcp"]) || length(var.dns_servers) > 0
     error_message = "Set dns_servers when using static node networking."
   }
+}
+
+variable "system_extensions" {
+  description = "Official Image Factory extensions in this cluster's Talos image. Nodes receive changes at their next Talos upgrade."
+  type        = list(string)
+  default     = ["qemu-guest-agent"]
 }

@@ -1,0 +1,29 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: nvidia-device-plugin
+  namespace: nvidia-device-plugin
+spec:
+  url: https://nvidia.github.io/k8s-device-plugin
+  interval: 24h
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: nvidia-device-plugin
+  namespace: nvidia-device-plugin
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: nvidia-device-plugin
+      version: 0.20.1
+      sourceRef:
+        kind: HelmRepository
+        name: nvidia-device-plugin
+  values:
+    # Talos has no NVIDIA runtime by default; the plugin needs it to see the
+    # GPU.
+    runtimeClassName: nvidia
+    nodeSelector:
+      nvidia.com/gpu.present: "true"

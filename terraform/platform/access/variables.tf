@@ -62,3 +62,30 @@ variable "kubernetes_storage_pools" {
     error_message = "Kubernetes storage pools must be keyed by dev or prod."
   }
 }
+
+variable "pci_mappings" {
+  description = "Host PCI devices that one environment's VMs may pass through, keyed by Proxmox resource mapping name. Only that environment's apply identity may use each mapping. Read id, subsystem and IOMMU group from pvesh get /nodes/NODE/hardware/pci."
+  type = map(object({
+    environment  = string
+    path         = string
+    id           = string
+    subsystem_id = string
+    iommu_group  = number
+    comment      = optional(string, "")
+  }))
+  default = {
+    gpu-p2200 = {
+      environment  = "prod"
+      path         = "0000:65:00.0"
+      id           = "10de:1c31"
+      subsystem_id = "1028:131b"
+      iommu_group  = 2
+      comment      = "NVIDIA Quadro P2200 for media transcoding"
+    }
+  }
+  validation {
+    condition     = alltrue([for mapping in var.pci_mappings : contains(["dev", "prod"], mapping.environment)])
+    error_message = "PCI mappings must belong to dev or prod."
+  }
+}
+

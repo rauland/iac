@@ -175,6 +175,29 @@ refreshes them. The token audience stays the API endpoint. Changing these flags
 restarts the API server without rebooting the node; with a single control
 plane, the API is unavailable for a few seconds.
 
+## PCI passthrough and extensions
+
+A node's `pci_devices` attaches host devices through Proxmox resource mappings,
+which the access root creates and lets the environment's apply identity use;
+see [PCI devices](../../platform/access/README.md#pci-devices). Devices attach
+as PCIe with their option ROM hidden: Talos needs no firmware display, and the
+VM's Secure Boot keys may not verify it. Set `rombar = true` for a device that
+needs its ROM.
+
+Proxmox adds or removes a device only when the VM is stopped and started again;
+a reboot inside Talos keeps the same QEMU process. Drain the node, stop and
+start the VM from Proxmox, then uncordon it. A VM with a passed-through device
+also cannot balloon its memory or live-migrate.
+
+`system_extensions` builds one Image Factory image for the whole cluster, and
+the upgrade workflow installs it on every node, so a node receives an added
+extension at its next Talos upgrade. An extension with kernel modules does
+nothing until a configuration loads them, so load a driver only on the nodes
+that have the hardware, through their per-node `config_patches`. The factory
+pins each extension to the build signed for that Talos release's kernel, which
+Secure Boot requires; its version tags can later point at newer builds, so
+compare a module by the factory's digest, not the tag.
+
 ## Upgrades and node removal
 
 Changing `talos_version` updates boot media and generated installation settings;

@@ -14,6 +14,9 @@ locals {
     # Lets Terraform identities read CSI volumes when refreshing the VMs they
     # are attached to; deleting them still needs Datastore.Allocate.
     CSIVolumeRead = ["VM.Config.Disk"]
+    # Attaches a mapped host PCI device to a VM. Granted per mapping, so an
+    # apply identity can pass through only its environment's devices.
+    PCIMappingUser = ["Mapping.Use"]
   }
   groups = merge({ "platform-admins" = "Platform administrators" }, merge([
     for environment in local.environments : {
@@ -66,7 +69,12 @@ locals {
       ],
       service.operation == "apply" ? [
         { path = "/nodes/${var.node_name}", role = "DownloadAccess", name = name }
-      ] : []
+      ] : [],
+      [
+        for mapping, device in var.pci_mappings :
+        { path = "/mapping/pci/${mapping}", role = "PCIMappingUser", name = name }
+        if service.operation == "apply" && device.environment == service.environment
+      ]
     )
   ])
   service_acl = { for grant in local.service_grants : "${grant.name}:${grant.path}:${grant.role}" => grant }
@@ -132,6 +140,20 @@ resource "proxmox_storage_zfspool" "kubernetes" {
   }
 }
 
+# Mappings let API tokens pass devices through; raw PCI IDs need root@pam.
+resource "proxmox_hardware_mapping_pci" "device" {
+  for_each = var.pci_mappings
+  name     = each.key
+  comment  = each.value.comment
+  map = [{
+    id           = each.value.id
+    node         = var.node_name
+    path         = each.value.path
+    subsystem_id = each.value.subsystem_id
+    iommu_group  = each.value.iommu_group
+  }]
+}
+
 resource "proxmox_pool_membership" "infra" {
   for_each = { for vm_id in var.infra_vm_ids : tostring(vm_id) => vm_id }
   pool_id  = proxmox_virtual_environment_pool.environment["infra"].pool_id
@@ -183,6 +205,7 @@ resource "proxmox_acl" "service_user" {
     proxmox_virtual_environment_role.custom,
     proxmox_storage_directory.environment_images,
     proxmox_storage_zfspool.kubernetes,
+    proxmox_hardware_mapping_pci.device,
   ]
 }
 
@@ -197,6 +220,7 @@ resource "proxmox_acl" "service_token" {
     proxmox_virtual_environment_role.custom,
     proxmox_storage_directory.environment_images,
     proxmox_storage_zfspool.kubernetes,
+    proxmox_hardware_mapping_pci.device,
   ]
 }
 
@@ -211,5 +235,6 @@ resource "proxmox_acl" "human" {
     proxmox_virtual_environment_role.custom,
     proxmox_storage_directory.environment_images,
     proxmox_storage_zfspool.kubernetes,
+    proxmox_hardware_mapping_pci.device,
   ]
 }

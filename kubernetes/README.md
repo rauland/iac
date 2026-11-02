@@ -12,7 +12,7 @@ pulls `main` itself, about once a minute.
 | [clusters/dev/infrastructure.yaml](clusters/dev/infrastructure.yaml) | Flux Kustomizations that install the shared infrastructure in order |
 | [clusters/dev/apps.yaml](clusters/dev/apps.yaml) | One Flux Kustomization per app |
 | [clusters/dev/podinfo](clusters/dev/podinfo) | Demo app whose UI message is a SOPS-encrypted Secret |
-| [infrastructure](infrastructure) | MetalLB, Traefik, the Proxmox CSI plugin and VolSync, shared by every cluster |
+| [infrastructure](infrastructure) | MetalLB, Traefik, the Proxmox CSI plugin and VolSync, shared by every cluster, and NVIDIA's device plugin for clusters with a GPU |
 
 ## How Flux is installed
 

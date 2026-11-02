@@ -1,0 +1,9 @@
+# Lets pods request an NVIDIA GPU (nvidia.com/gpu) on nodes whose Talos
+# configuration loads the driver and sets the nvidia.com/gpu.present label.
+# Other nodes run nothing from here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - runtime-class.yaml
+  - release.yaml

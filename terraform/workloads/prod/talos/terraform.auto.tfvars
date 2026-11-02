@@ -7,6 +7,17 @@ talos_version      = "v1.14.3"
 kubernetes_version = "v1.37.1"
 dns_servers        = ["10.0.0.1"]
 
+# The NVIDIA proprietary driver for the passed-through Quadro P2200, which is
+# Pascal: the open kernel modules need Turing or newer, and the production
+# driver branch has dropped Pascal, so this stays on the LTS (580) branch.
+# Every node carries the extensions, but only a node whose patch loads the
+# modules uses them. Nodes receive image changes at their next Talos upgrade.
+system_extensions = [
+  "qemu-guest-agent",
+  "nonfree-kmod-nvidia-lts",
+  "nvidia-container-toolkit-lts",
+]
+
 # Served by terraform/platform/cluster-oidc, so AWS trusts the cluster's
 # service account tokens; see the Talos module README.
 service_account_issuer = "https://rauland-homelab-oidc.s3.ap-southeast-2.amazonaws.com/prod"
