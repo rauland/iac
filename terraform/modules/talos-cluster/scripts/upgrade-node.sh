@@ -30,6 +30,8 @@ if [[ -n "$workers" ]]; then
 fi
 
 talosctl "${health_args[@]}"
-talosctl --talosconfig "$TALOSCONFIG" --endpoints "$node" --nodes "$node" \
+# Connect through a control plane: talosctl drains the node before rebooting
+# it, and only control planes can supply the kubeconfig for that drain.
+talosctl --talosconfig "$TALOSCONFIG" --endpoints "$endpoint" --nodes "$node" \
   upgrade --image "$installer_image" --wait
 talosctl "${health_args[@]}"
