@@ -239,7 +239,9 @@ disk-first boot order preserves installed systems.
 
 Without the workflow, run the helper once for each node, one node at a time. It
 checks full cluster health, upgrades exactly one node with `--wait`, and checks
-health again. It stops if the precheck, upgrade, or postcheck fails. Coordinate
+health again. It connects through the first control plane, because `talosctl
+upgrade` drains the node first and only control planes can supply the
+kubeconfig for that. It stops if the precheck, upgrade, or postcheck fails. Coordinate
 operators so two invocations cannot overlap: unlike the workflow, a local run
 does not join the deployment concurrency group.
 

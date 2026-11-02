@@ -46,6 +46,14 @@ class UpgradeTests(unittest.TestCase):
         self.assertEqual(commands[0], commands[2])
         self.assertEqual(commands[1][commands[1].index("--nodes") + 1], "192.0.2.10")
 
+    def test_worker_upgrades_through_a_control_plane(self):
+        # Workers cannot supply the kubeconfig talosctl needs to drain them.
+        result, commands = self.run_upgrade(node="192.0.2.11")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        upgrade = commands[1]
+        self.assertEqual(upgrade[upgrade.index("--endpoints") + 1], "192.0.2.10")
+        self.assertEqual(upgrade[upgrade.index("--nodes") + 1], "192.0.2.11")
+
     def test_unhealthy_cluster_is_not_upgraded(self):
         result, commands = self.run_upgrade(fail_command="health")
         self.assertNotEqual(result.returncode, 0)
