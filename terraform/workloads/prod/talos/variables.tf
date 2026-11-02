@@ -78,6 +78,7 @@ variable "talos_nodes" {
     vlan_id           = optional(number)
     vm_id             = optional(number)
     config_patches    = optional(list(string), [])
+    system_extensions = optional(list(string), [])
     pci_devices = optional(list(object({
       mapping = string
       pcie    = optional(bool, true)

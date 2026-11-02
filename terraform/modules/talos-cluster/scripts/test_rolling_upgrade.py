@@ -39,12 +39,13 @@ sys.exit(code)
 
 
 class RollingUpgradeTests(unittest.TestCase):
-    def run_upgrade(self, versions, target, component="talos", fail="", schematics=None):
+    def run_upgrade(self, versions, target, component="talos", fail="", schematics=None,
+                    inventory=INVENTORY):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "talosctl").write_text(STUB)
             (root / "talosctl").chmod(0o755)
-            (root / "inventory.json").write_text(json.dumps(INVENTORY))
+            (root / "inventory.json").write_text(json.dumps(inventory))
             state = root / "state.json"
             state.write_text(json.dumps({"calls": [], "versions": versions,
                                          "schematics": schematics or {}}))
@@ -84,6 +85,20 @@ class RollingUpgradeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.upgraded(state), ["192.0.2.10", "192.0.2.11", "192.0.2.12"])
         self.assertEqual(set(state["schematics"].values()), {"abc"})
+
+    def test_nodes_with_their_own_image_get_it(self):
+        # A GPU worker's image carries extra extensions; the others keep the
+        # cluster's, and are skipped when they already run it.
+        gpu = "factory.example/metal-installer-secureboot/gpu:v1.14.3"
+        inventory = INVENTORY | {"installer_images": {
+            "192.0.2.10": INVENTORY["installer_image"], "192.0.2.11": INVENTORY["installer_image"],
+            "192.0.2.12": gpu}}
+        result, state = self.run_upgrade(self.all_at("v1.15.0"), "v1.15.0", inventory=inventory)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.upgraded(state), ["192.0.2.12"])
+        upgrade = next(call for call in state["calls"] if "upgrade" in call)
+        self.assertEqual(upgrade[upgrade.index("--image") + 1],
+                         "factory.example/metal-installer-secureboot/gpu:v1.15.0")
 
     def test_unreadable_schematic_changes_nothing(self):
         versions = self.all_at("v1.15.0")

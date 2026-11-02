@@ -191,6 +191,50 @@ run "pci_devices_attach_by_mapping" {
   }
 }
 
+run "node_extensions_get_their_own_installer" {
+  command = apply
+  variables {
+    talos_nodes = {
+      cp-01 = {
+        node_name    = "cp-01"
+        node_type    = "controlplane"
+        pve_node     = "pve-a"
+        api_address  = "192.0.2.10"
+        ipv4_address = "192.0.2.10/24"
+        ipv4_gateway = "192.0.2.1"
+      }
+      worker-01 = {
+        node_name         = "worker-01"
+        node_type         = "worker"
+        pve_node          = "pve-b"
+        api_address       = "192.0.2.11"
+        system_extensions = ["nonfree-kmod-nvidia-lts"]
+      }
+    }
+  }
+  override_data {
+    target = data.talos_image_factory_urls.node["worker-01"]
+    values = {
+      urls = {
+        iso                  = "https://factory.example/gpu.iso"
+        installer            = "factory.example/installer/gpu:v1.14.3"
+        iso_secureboot       = "https://factory.example/gpu-secureboot.iso"
+        installer_secureboot = "factory.example/installer-secureboot/gpu:v1.14.3"
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      keys(talos_image_factory_schematic.node) == ["worker-01"] &&
+      jsonencode(local.node_extensions["worker-01"]) == jsonencode(["nonfree-kmod-nvidia-lts", "qemu-guest-agent"]) &&
+      output.upgrade_inventory.installer_images["192.0.2.10"] == output.installer_image &&
+      output.upgrade_inventory.installer_images["192.0.2.11"] == "factory.example/installer-secureboot/gpu:v1.14.3"
+    )
+    error_message = "Only a node with its own extensions gets its own image, built from the cluster's extensions plus its own; the others keep the cluster's."
+  }
+}
+
 run "reject_unknown_bootstrap" {
   command = plan
   variables {

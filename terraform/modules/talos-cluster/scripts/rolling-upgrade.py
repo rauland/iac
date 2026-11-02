@@ -91,16 +91,23 @@ def health_args(inventory):
     return args
 
 
-def upgrade_talos(inventory, target):
-    image = inventory["installer_image"]
+def node_installer(inventory, node, target):
+    """The node's installer at the target version, and its schematic.
+
+    Nodes with their own system extensions have their own image; inventories
+    from before per-node images list only the cluster's.
+    """
+    image = inventory.get("installer_images", {}).get(node) or inventory["installer_image"]
     if "secureboot" not in image or ":" not in image:
-        fail("The installer image is not a Secure Boot Image Factory installer")
+        fail(f"The installer image for {node} is not a Secure Boot Image Factory installer")
     # The schematic is version-independent, so only the tag changes.
     repository = image.rsplit(':', 1)[0]
-    installer = f"{repository}:{target}"
-    schematic = repository.rsplit("/", 1)[1]
+    return f"{repository}:{target}", repository.rsplit("/", 1)[1]
 
+
+def upgrade_talos(inventory, target):
     nodes = inventory["control_planes"] + inventory["workers"]
+    installers = {node: node_installer(inventory, node, target) for node in nodes}
     pending = []
     for node in nodes:
         current = running_version(node)
@@ -109,7 +116,7 @@ def upgrade_talos(inventory, target):
             fail(f"Upgrading {node} to {target} {problem}. No node was changed.")
         if current != target:
             pending.append(node)
-        elif running_schematic(node) != schematic:
+        elif running_schematic(node) != installers[node][1]:
             print(f"{node} runs {target} from another schematic; reinstalling.", flush=True)
             pending.append(node)
         else:
@@ -118,7 +125,7 @@ def upgrade_talos(inventory, target):
     for node in pending:
         print(f"::group::Upgrade {node} to {target}", flush=True)
         result = subprocess.run(
-            ["bash", str(UPGRADE_NODE), node, installer,
+            ["bash", str(UPGRADE_NODE), node, installers[node][0],
              ",".join(inventory["control_planes"]), ",".join(inventory["workers"])])
         print("::endgroup::", flush=True)
         if result.returncode:
