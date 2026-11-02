@@ -215,3 +215,47 @@ run "node_extensions_select_the_node_installer" {
     error_message = "A node with its own extensions must install its own image, and the others the cluster's."
   }
 }
+
+run "node_patch_adds_kernel_modules_and_labels" {
+  command = apply
+  variables {
+    talos_nodes = {
+      cp-01 = {
+        node_name    = "cp-01"
+        node_type    = "controlplane"
+        pve_node     = "pve-a"
+        api_address  = "192.0.2.10"
+        ipv4_address = "192.0.2.10/24"
+        ipv4_gateway = "192.0.2.1"
+      }
+      worker-01 = {
+        node_name   = "worker-01"
+        node_type   = "worker"
+        pve_node    = "pve-b"
+        api_address = "192.0.2.11"
+        config_patches = [<<-EOT
+          machine:
+            kernel:
+              modules:
+                - name: nvidia
+          ---
+          apiVersion: v1alpha1
+          kind: KubeNodeConfig
+          labels:
+            nvidia.com/gpu.present: "true"
+        EOT
+        ]
+      }
+    }
+  }
+  assert {
+    condition = (
+      length([for doc in split("\n---\n", data.talos_machine_configuration.node["worker-01"].machine_configuration) : doc if try(yamldecode(doc).kind, "") == "KubeNodeConfig"]) == 1 &&
+      one([for doc in split("\n---\n", data.talos_machine_configuration.node["worker-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "KubeNodeConfig"]).labels["nvidia.com/gpu.present"] == "true" &&
+      one([for doc in split("\n---\n", data.talos_machine_configuration.node["worker-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).kind, "") == "KubeNodeConfig"]).labels["topology.kubernetes.io/zone"] == "pve-b" &&
+      one([for doc in split("\n---\n", data.talos_machine_configuration.node["worker-01"].machine_configuration) : yamldecode(doc) if try(yamldecode(doc).version, "") == "v1alpha1"]).machine.kernel.modules[0].name == "nvidia" &&
+      !strcontains(data.talos_machine_configuration.node["cp-01"].machine_configuration, "nvidia")
+    )
+    error_message = "A node's patch must merge its labels into the one KubeNodeConfig, keeping the topology labels, add its kernel modules, and leave other nodes alone."
+  }
+}

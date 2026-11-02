@@ -200,7 +200,20 @@ version installs an added or removed extension. Only list extensions every
 node can run in the cluster-wide list: some add boot services that wait for
 their hardware, such as NVIDIA's container toolkit, which leaves a node without
 a GPU in the Booting stage. Give those to the nodes that have the hardware, and
-only once the device is attached. The factory
+only once the device is attached.
+
+To add a device that needs a node extension, in this order:
+
+1. Make sure no other guest is configured with the device, and stop that
+   guest so it releases it.
+2. Set the node's `pci_devices`, `system_extensions` and any `config_patches`
+   that load its driver, and apply. The VM change stays pending, and loading
+   the driver fails harmlessly until the extension is installed.
+3. Drain the node, stop and start its VM from Proxmox so the device appears,
+   then uncordon it.
+4. Run the upgrade workflow at the cluster's current version. It finds the
+   node's schematic changed and reinstalls only that node, which then boots
+   with both the device and its driver. The factory
 pins each extension to the build signed for that Talos release's kernel, which
 Secure Boot requires; its version tags can later point at newer builds, so
 compare a module by the factory's digest, not the tag.
