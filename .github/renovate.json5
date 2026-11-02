@@ -1,0 +1,86 @@
+// Renovate proposes dependency updates as pull requests; nothing merges on its
+// own. Pull requests run CI and plans like any other change.
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    // Tags can be moved; a digest cannot. Actions and images are pinned to one.
+    'helpers:pinGitHubActionDigests',
+    'docker:pinDigests',
+  ],
+  timezone: 'Australia/Melbourne',
+  // Saturday morning, so updates arrive in one batch a week.
+  schedule: ['* 0-5 * * 6'],
+  // Skip releases younger than three days: most bad or malicious releases are
+  // withdrawn by then, before a plan would run their code.
+  minimumReleaseAge: '3 days',
+  // SOPS checks every value, so an edited encrypted file no longer decrypts.
+  ignorePaths: ['**/*.sops.yaml'],
+  flux: {
+    managerFilePatterns: ['/^kubernetes/.+\\.ya?ml$/'],
+  },
+  kubernetes: {
+    managerFilePatterns: ['/^kubernetes/.+\\.ya?ml$/'],
+  },
+  customManagers: [
+    {
+      customType: 'regex',
+      description: 'Talos release recorded in each Talos root',
+      managerFilePatterns: ['/^terraform/workloads/[^/]+/talos/terraform\\.auto\\.tfvars$/'],
+      matchStrings: ['talos_version\\s*=\\s*"(?<currentValue>v[^"]+)"'],
+      depNameTemplate: 'siderolabs/talos',
+      datasourceTemplate: 'github-releases',
+    },
+    {
+      customType: 'regex',
+      description: 'Kubernetes release recorded in each Talos root',
+      managerFilePatterns: ['/^terraform/workloads/[^/]+/talos/terraform\\.auto\\.tfvars$/'],
+      matchStrings: ['kubernetes_version\\s*=\\s*"(?<currentValue>v[^"]+)"'],
+      depNameTemplate: 'kubernetes/kubernetes',
+      datasourceTemplate: 'github-releases',
+    },
+    {
+      customType: 'regex',
+      description: 'Flux Operator chart release in each Flux root',
+      managerFilePatterns: ['/^terraform/workloads/[^/]+/flux/terraform\\.auto\\.tfvars$/'],
+      matchStrings: ['flux_operator_version\\s*=\\s*"(?<currentValue>[^"]+)"'],
+      depNameTemplate: 'controlplaneio-fluxcd/flux-operator',
+      datasourceTemplate: 'github-releases',
+      extractVersionTemplate: '^v(?<version>.+)$',
+    },
+    {
+      customType: 'regex',
+      description: 'Flux release in each Flux root',
+      managerFilePatterns: ['/^terraform/workloads/[^/]+/flux/terraform\\.auto\\.tfvars$/'],
+      matchStrings: ['flux_version\\s*=\\s*"(?<currentValue>[^"]+)"'],
+      depNameTemplate: 'fluxcd/flux2',
+      datasourceTemplate: 'github-releases',
+      extractVersionTemplate: '^v(?<version>.+)$',
+    },
+  ],
+  packageRules: [
+    {
+      // Separate pull requests per environment, so dev is updated and checked
+      // before prod.
+      description: 'Split Terraform root updates by environment',
+      matchFileNames: ['terraform/workloads/dev/**'],
+      additionalBranchPrefix: 'dev-',
+      commitMessageSuffix: 'on dev',
+    },
+    {
+      description: 'Split Terraform root updates by environment',
+      matchFileNames: ['terraform/workloads/prod/**'],
+      additionalBranchPrefix: 'prod-',
+      commitMessageSuffix: 'on prod',
+    },
+    {
+      // Merging only records the version for new machines; it does not
+      // upgrade running nodes. See the module README's upgrade workflow.
+      description: 'Talos and Kubernetes upgrades run through the upgrade workflow first',
+      matchDepNames: ['siderolabs/talos', 'kubernetes/kubernetes'],
+      prBodyNotes: [
+        '**Run the Talos upgrade workflow for this environment and version first**, then merge this pull request to record it. For Kubernetes, check the target is in the Talos release\'s supported range.',
+      ],
+    },
+  ],
+}
