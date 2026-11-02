@@ -61,14 +61,17 @@
   packageRules: [
     {
       // Separate pull requests per environment, so dev is updated and checked
-      // before prod.
-      description: 'Split Terraform root updates by environment',
+      // before prod. Only the versions recorded in tfvars: a provider is pinned
+      // in the shared module too, so its roots must move together.
+      description: 'Split Talos, Kubernetes and Flux versions by environment',
+      matchManagers: ['custom.regex'],
       matchFileNames: ['terraform/workloads/dev/**'],
       additionalBranchPrefix: 'dev-',
       commitMessageSuffix: 'on dev',
     },
     {
-      description: 'Split Terraform root updates by environment',
+      description: 'Split Talos, Kubernetes and Flux versions by environment',
+      matchManagers: ['custom.regex'],
       matchFileNames: ['terraform/workloads/prod/**'],
       additionalBranchPrefix: 'prod-',
       commitMessageSuffix: 'on prod',
