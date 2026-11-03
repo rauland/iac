@@ -1,0 +1,9 @@
+# Prometheus, Alertmanager and Grafana from kube-prometheus-stack, with node
+# and Kubernetes metrics and the stack's standard alerts. A cluster's overlay
+# supplies Grafana's admin Secret (grafana-admin) and Alertmanager's ntfy
+# webhook URL (alertmanager-ntfy, key url), and sets cluster_domain.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - release.yaml
