@@ -167,7 +167,8 @@ the API endpoint, which services outside the network cannot reach to fetch the
 signing keys. Set `service_account_issuer` to a public HTTPS URL that serves the
 cluster's discovery documents, such as the one
 [`platform/cluster-oidc`](../../platform/cluster-oidc/README.md) publishes, and
-AWS can trust tokens issued to pods without any stored access key.
+AWS can trust tokens issued to pods without any stored access key; see
+[how it works](../../platform/cluster-oidc/README.md#how-it-works).
 
 Control planes then sign with the public issuer and still accept tokens from
 the API endpoint, so pods that hold older tokens keep working while the kubelet

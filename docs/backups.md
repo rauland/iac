@@ -24,7 +24,8 @@ the cluster holds no hypervisor credentials and no AWS keys.
 Mover pods reach S3 through the cluster's OIDC identity: a
 MutatingAdmissionPolicy in [`infrastructure/volsync`](../kubernetes/infrastructure/volsync/aws-identity.yaml)
 gives each one a short-lived token for `sts.amazonaws.com` and the cluster's
-backup role, and restic exchanges the token for temporary credentials. The
+backup role, and restic exchanges the token for temporary credentials; see
+[how it works](../terraform/platform/cluster-oidc/README.md#how-it-works). The
 cluster's Flux Kustomization sets the role (`backup_role_arn`) and region. One
 admin setup per cluster makes AWS trust it:
 
