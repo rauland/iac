@@ -29,39 +29,58 @@ still planned.
 ## Architecture
 
 ```mermaid
-flowchart LR
-    repo["IaC repository"] --> actions["GitHub Actions"]
-    actions --> terraform["Terraform"]
-    terraform <-->|Remote state| state[("AWS S3")]
-
-    subgraph private["Private network · Tailscale"]
-        proxmox["Proxmox VE API"]
-        talos["Talos Kubernetes"]
-        flux["Flux"]
-        proxmox -->|VM lifecycle| talos
-        talos --- flux
+flowchart TB
+    subgraph github["GitHub"]
+        direction LR
+        repo["IaC repository"] --> actions["Actions · Terraform"]
+        apps["Private app repository"]
     end
 
-    terraform -->|Provision via HTTPS| proxmox
-    terraform -->|Talos API| talos
-    repo -.->|Pulled by| flux
+    subgraph homelab["Private network"]
+        direction LR
+        proxmox["Proxmox VE API"] -->|VM lifecycle| talos["Talos Kubernetes"]
+        talos --- flux["Flux"]
+    end
 
-    classDef automation fill:#172554,stroke:#60A5FA,color:#DBEAFE
-    classDef provisioning fill:#3B1D66,stroke:#A78BFA,color:#F3E8FF
-    classDef storage fill:#1E293B,stroke:#94A3B8,color:#F8FAFC
-    classDef infrastructure fill:#5C2E0B,stroke:#F97316,color:#FFEDD5
+    subgraph aws["AWS · roles assumed with OIDC"]
+        direction LR
+        state[("Terraform state")]
+        ssm[("CI secrets")]
+        backups[("Volume backups")]
+    end
 
-    class repo,actions automation
-    class terraform,flux provisioning
-    class state storage
-    class proxmox,talos infrastructure
+    actions -->|"Tailscale (OIDC)"| proxmox
+    actions -->|"Tailscale (OIDC)"| talos
+    actions -->|Reads and writes| state
+    actions -->|Reads| ssm
+    talos -->|Backs up and restores| backups
+    flux -.->|Pulls| repo
+    flux -.->|Pulls| apps
+
+    classDef source fill:#4F46E5,stroke:#4338CA,color:#FFFFFF
+    classDef runtime fill:#0F766E,stroke:#115E59,color:#FFFFFF
+    classDef data fill:#475569,stroke:#334155,color:#FFFFFF
+    classDef group fill:none,stroke:#94A3B8,stroke-dasharray:4 4
+
+    class repo,apps,actions source
+    class proxmox,talos,flux runtime
+    class state,ssm,backups data
+    class github,homelab,aws group
+
+    linkStyle default stroke:#64748B,stroke-width:2px
 ```
 
+Arrows point from the side that starts the connection.
+
 GitHub-hosted runners reach the private network through Tailscale, as ephemeral
-nodes authenticated with GitHub OIDC. Terraform creates the Talos node VMs
+nodes authenticated with GitHub OIDC, and assume AWS roles with the same OIDC
+token, so CI stores no long-lived credentials. Each cluster publishes its own
+service account issuer, which lets volume backups assume an AWS role the same
+way. Terraform creates the Talos node VMs
 through the Proxmox HTTPS API and configures them through the Talos API. Apps
-are Kubernetes manifests that Flux pulls from `main`. No automation logs in to
-a host over SSH; see the [platform direction](docs/decisions/0001-kubernetes-first.md).
+are Kubernetes manifests that Flux pulls from `main`, here or in a private
+repository. No automation logs in to a host over SSH; see the
+[platform direction](docs/decisions/0001-kubernetes-first.md).
 
 ## Repository layout
 
@@ -160,7 +179,11 @@ protections or the health of deployed services.
 | Secrets management | Implemented | CI reads its secrets from SSM Parameter Store through those roles and masks them before use; the workflows reference no GitHub secrets. Saved plans are encrypted and Talos credentials are ignored. Kubernetes Secrets are committed SOPS-encrypted and decrypted by Flux with an age key only the dev apply role can read. |
 | Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
 | Linting and validation | Partial | Terraform validation, Kubernetes manifest builds, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
-| Kubernetes GitOps | Partial | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/<environment>` from `main` on the dev and prod clusters; CI builds the manifests offline. Secrets are SOPS-encrypted. MetalLB and Traefik expose Services on the LAN, and the Proxmox CSI plugin provides persistent volumes. Each app has its own Flux Kustomization. Volumes are LUKS-encrypted on the nodes. cert-manager issues a Let's Encrypt wildcard certificate per cluster through Cloudflare DNS, served by Traefik by default. Only the podinfo demo runs so far. |
+| Kubernetes GitOps | Implemented | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/<environment>` from `main` on the dev and prod clusters; CI builds the manifests offline. Apps can live in a [private repository](kubernetes/README.md#apps-in-a-private-repository) that Flux pulls with a read-only deploy key, so this repository holds only the platform. MetalLB and Traefik expose Services on the LAN, the Proxmox CSI plugin provides persistent volumes encrypted with LUKS on the nodes, and cert-manager issues a Let's Encrypt wildcard certificate per cluster through Cloudflare DNS. Each app has its own Flux Kustomization. |
+| GPU workloads | Implemented | A node can carry its own Talos image with NVIDIA extensions and a [passed-through PCI device](terraform/modules/talos-cluster/README.md#pci-passthrough-and-extensions); Flux installs the NVIDIA device plugin and an `nvidia` RuntimeClass. |
 | Workload backups | Partial | Flux installs VolSync, which backs up opted-in Kubernetes volumes to encrypted restic repositories in the bucket from [`platform/backup-storage`](terraform/platform/backup-storage/README.md). See [backups and recovery](docs/backups.md). |
+| Monitoring | Partial | Flux installs Prometheus, Alertmanager and Grafana on prod, with alerts sent to ntfy; see [monitoring](kubernetes/README.md#monitoring). Not yet covered: missed backups, the Proxmox host and its storage pool, and the dev cluster. |
+| Dependency updates | Implemented | Renovate proposes weekly pull requests for container images, Helm charts, Terraform providers, GitHub Actions, and the Talos, Kubernetes and Flux releases, split by environment. Releases must be three days old, images and actions are pinned to digests, and major updates wait on the Dependency Dashboard for approval. Nothing merges on its own. |
+| Talos and Kubernetes upgrades | Implemented | A manual [upgrade workflow](terraform/modules/talos-cluster/README.md#upgrade-workflow) upgrades Talos node by node, draining workers through a control plane, or upgrades Kubernetes. It shares the Talos root's concurrency group, so it never overlaps a plan or apply. |
 | IP address management | Planned | Addresses are supplied explicitly or through DHCP; no IPAM integration allocates addresses or manages reservations. |
 | Host access | Not planned | No automation uses SSH; nodes are managed through the Proxmox and Talos APIs. See the [platform direction](docs/decisions/0001-kubernetes-first.md). |
