@@ -6,3 +6,13 @@ resources:
   - ../../../infrastructure/monitoring
   - grafana-admin.sops.yaml
   - alertmanager-ntfy.sops.yaml
+patches:
+  # Grafana also answers on its short name under the parent domain, like the
+  # household-facing apps; the cluster's certificate covers *.netkuki.com.
+  - target:
+      kind: HelmRelease
+      name: kube-prometheus-stack
+    patch: |
+      - op: add
+        path: /spec/values/grafana/ingress/hosts/-
+        value: grafana.netkuki.com
