@@ -172,9 +172,9 @@ policy it was created with, so set it too:
 
 ### Volume encryption
 
-Every StorageClass encrypts its volumes with LUKS on the node: the plugin
-formats each new volume as LUKS, opens it before mounting, and the pod sees
-only the decrypted filesystem. Proxmox and the ZFS pool hold only ciphertext,
+The `proxmox` and `proxmox-scratch` StorageClasses encrypt their volumes with
+LUKS on the node: the plugin formats each new volume as LUKS, opens it before
+mounting, and the pod sees only the decrypted filesystem. Proxmox and the ZFS pool hold only ciphertext,
 so the host, its backups and disks that leave the house never see the data.
 
 The passphrase is the `encryption-passphrase` key of the SOPS-encrypted Secret
@@ -210,12 +210,18 @@ recreate its claim on the encrypted class and restore it; see
 The `proxmox-scratch` StorageClass deletes its disks with their claims. Use it
 only for volumes that hold nothing worth keeping, such as VolSync's caches.
 
+Encrypted volumes do not pass discards through LUKS, so space freed by
+deleting files stays allocated in the ZFS pool, up to the volume's size.
+
 The `proxmox-bulk` StorageClass keeps its disks like `proxmox`, on the
 cluster's bulk storage (`k8s-dev-bulk`), whose disks use 128K ZFS blocks
 instead of 16K. On RAIDZ that saves the third of extra pool space that parity
-and padding cost small blocks, but small random writes get slower. Use it for
-large files written once, such as a media library, and keep databases and app
-configuration on `proxmox`. The block size is fixed when a disk is created, so
+and padding cost small blocks, but small random writes get slower. Its volumes
+are not encrypted, so the host can read them, and they are mounted with
+`discard`, so deleted files return their space to the pool. Use it for large
+files that are not sensitive and can be fetched again, such as a media library;
+keep databases, app configuration and private data such as photos on
+`proxmox`. The block size is fixed when a disk is created, so
 moving a volume means copying its data to a new claim. See
 [Kubernetes volumes](../terraform/platform/access/README.md#kubernetes-volumes).
 
