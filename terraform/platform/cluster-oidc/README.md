@@ -23,7 +23,7 @@ account.
 
 ## How it works
 
-A pod reaches AWS without a stored key in six steps, shown here for a VolSync
+A pod reaches AWS without a stored key in five steps, shown here for a VolSync
 mover pod backing up a volume:
 
 ```mermaid
@@ -35,8 +35,7 @@ sequenceDiagram
     participant docs as Discovery bucket
     participant data as Backup bucket
 
-    api->>pod: Admission adds token volume<br/>and role variables
-    api->>pod: Kubelet mounts signed token<br/>(sts.amazonaws.com, 1 hour)
+    api->>pod: Signed token and role settings<br/>(sts.amazonaws.com, 1 hour)
     pod->>sts: AssumeRoleWithWebIdentity
     sts->>docs: Fetch issuer's public keys
     Note over sts: Check signature, audience<br/>and service account name
@@ -44,21 +43,22 @@ sequenceDiagram
     pod->>data: restic reads and writes <cluster>/
 ```
 
-1. When VolSync creates a mover pod, a
+1. The pod starts with a token and the settings to use it. When VolSync
+   creates a mover pod, a
    [MutatingAdmissionPolicy](../../../kubernetes/infrastructure/volsync/aws-identity.yaml)
    adds a projected token volume and the variables `AWS_ROLE_ARN`,
-   `AWS_WEB_IDENTITY_TOKEN_FILE` and `AWS_REGION`.
-2. The kubelet mounts a service account token that the API server signs as the
-   public issuer, for the audience `sts.amazonaws.com`, valid for an hour and
-   refreshed before it expires.
-3. restic's S3 client sees the variables and calls STS
+   `AWS_WEB_IDENTITY_TOKEN_FILE` and `AWS_REGION`. The kubelet then mounts a
+   service account token that the API server signs as the public issuer, for
+   the audience `sts.amazonaws.com`, valid for an hour and refreshed before it
+   expires.
+2. restic's S3 client sees the variables and calls STS
    `AssumeRoleWithWebIdentity` with the token.
-4. STS fetches the issuer's discovery document and public keys from this
+3. STS fetches the issuer's discovery document and public keys from this
    root's bucket. It checks the token's signature and issuer, then the role's
    trust policy: the audience, and a subject of
    `system:serviceaccount:<namespace>:volsync-src-*` or `volsync-dst-*`.
-5. STS returns temporary credentials for the role, valid for an hour.
-6. restic uses them to read and write the cluster's prefix in the
+4. STS returns temporary credentials for the role, valid for an hour.
+5. restic uses them to read and write the cluster's prefix in the
    [backup bucket](../backup-storage/README.md), and nothing else.
 
 ### Where the signing key lives
