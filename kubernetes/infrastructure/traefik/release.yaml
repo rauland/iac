@@ -33,6 +33,13 @@ spec:
               to: websecure
               scheme: https
               permanent: true
+      # A request body must arrive within the read timeout, 60 seconds by
+      # default; large uploads, such as phone videos on a slow connection,
+      # need longer.
+      websecure:
+        transport:
+          respondingTimeouts:
+            readTimeout: 600s
     # The cluster's wildcard certificate from cert-manager; until it is issued,
     # Traefik serves its own self-signed certificate.
     tlsStore:
