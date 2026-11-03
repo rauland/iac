@@ -78,10 +78,17 @@ this does not introduce a quota or a separate disk.
 
 ### Kubernetes volumes
 
-Each environment in `kubernetes_storage_pools` gets a ZFS storage named
-`k8s-<environment>` and a `k8s-csi-<environment>@pve` identity for the
-[Proxmox CSI plugin](../../../kubernetes/README.md#persistent-storage), on the
-dataset `nas/k8s-<environment>`. The Proxmox API registers storage but cannot
+Each environment in `kubernetes_storage_pools` gets two ZFS storages and a
+`k8s-csi-<environment>@pve` identity for the
+[Proxmox CSI plugin](../../../kubernetes/README.md#persistent-storage):
+`k8s-<environment>` on the dataset `nas/k8s-<environment>` for general volumes,
+and `k8s-<environment>-bulk` on `nas/k8s-<environment>-bulk` for large files
+written once, such as a media library. Proxmox gives each new disk the block
+size of its storage: the default 16K suits databases, but on RAIDZ every block
+also carries parity and padding, so on a five-disk RAIDZ2 a 16K-block disk
+takes about a third more pool space than its data. Bulk storage uses
+`kubernetes_bulk_blocksize` (128K), which brings that close to zero at the cost
+of slower small random writes. The Proxmox API registers storage but cannot
 create ZFS datasets, so create them once, as root from the host console, before
 the first apply. The script skips datasets that already exist:
 
@@ -91,12 +98,13 @@ bash terraform/platform/access/scripts/prepare-host.sh nas dev prod
 
 The identity has `KubernetesDisk` (`VM.Audit`, `VM.Config.Disk`) on its
 environment's pool and `KubernetesStorage` (`Datastore.Audit`,
-`Datastore.Allocate`, `Datastore.AllocateSpace`) only on its own storage.
+`Datastore.Allocate`, `Datastore.AllocateSpace`) only on its own two storages.
 `Datastore.Allocate` deletes any volume on a storage, which is why Kubernetes
 volumes do not use a shared storage: there it could delete other guests'
 disks. `VM.Config.Disk` covers every
 guest in the pool, so the token can detach a disk from any dev VM, though it
-cannot delete disks outside `k8s-dev`. It cannot change memory, power or CPU.
+cannot delete disks outside `k8s-dev` and `k8s-dev-bulk`. It cannot change
+memory, power or CPU.
 
 The token secret goes into the cluster as a SOPS-encrypted Secret; see the
 [Kubernetes guide](../../../kubernetes/README.md#persistent-storage).

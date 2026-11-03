@@ -73,7 +73,7 @@ run "environment_boundaries" {
         for grant in local.service_grants : contains([
           "${grant.role}:/nodes/${var.node_name}" == "NodeAudit:${grant.path}",
           grant.role == "KubernetesDisk" && grant.path == "/pool/${local.services[grant.name].environment}",
-          grant.role == "KubernetesStorage" && grant.path == "/storage/k8s-${local.services[grant.name].environment}",
+          grant.role == "KubernetesStorage" && contains(["/storage/k8s-${local.services[grant.name].environment}", "/storage/k8s-${local.services[grant.name].environment}-bulk"], grant.path),
         ], true) if local.services[grant.name].operation == "csi"
       ]) &&
       alltrue([for grant in local.service_grants : local.services[grant.name].operation == "csi" if contains(["KubernetesDisk", "KubernetesStorage"], grant.role)])
@@ -83,6 +83,8 @@ run "environment_boundaries" {
   assert {
     condition = (
       toset([for grant in local.service_grants : grant.name if grant.path == "/storage/k8s-dev" && grant.role == "StorageRead"]) == toset(["tf-dev-plan", "tf-dev-apply"]) &&
+      toset([for grant in local.service_grants : grant.name if grant.path == "/storage/k8s-dev-bulk" && grant.role == "StorageRead"]) == toset(["tf-dev-plan", "tf-dev-apply"]) &&
+      toset([for grant in local.service_grants : grant.name if grant.path == "/storage/k8s-prod-bulk" && grant.role == "KubernetesStorage"]) == toset(["k8s-csi-prod"]) &&
       alltrue([for grant in local.service_grants : contains(["StorageRead", "KubernetesStorage"], grant.role) if startswith(grant.path, "/storage/k8s-")]) &&
       toset([for grant in local.service_grants : "${grant.name}:${grant.role}" if grant.path == "/vms/9999"]) == toset(["tf-dev-plan:CSIVolumeRead", "tf-dev-apply:CSIVolumeRead", "tf-prod-plan:CSIVolumeRead", "tf-prod-apply:CSIVolumeRead"]) &&
       alltrue([for grant in local.service_grants : grant.path == "/vms/9999" if grant.role == "CSIVolumeRead"])
@@ -96,6 +98,15 @@ run "environment_boundaries" {
       toset(proxmox_storage_zfspool.kubernetes["dev"].content) == toset(["images"])
     )
     error_message = "Kubernetes volumes need a dedicated dataset, never the shared ZFS pool root."
+  }
+  assert {
+    condition = (
+      proxmox_storage_zfspool.kubernetes_bulk["prod"].id == "k8s-prod-bulk" &&
+      proxmox_storage_zfspool.kubernetes_bulk["prod"].zfs_pool == "nas/k8s-prod-bulk" &&
+      proxmox_storage_zfspool.kubernetes_bulk["prod"].blocksize == "128k" &&
+      proxmox_storage_zfspool.kubernetes_bulk["prod"].thin_provision
+    )
+    error_message = "Bulk volumes need their own sibling dataset with large blocks."
   }
   assert {
     condition = (
@@ -115,6 +126,14 @@ run "reject_unknown_pci_environment" {
     }
   }
   expect_failures = [var.pci_mappings]
+}
+
+run "reject_invalid_bulk_blocksize" {
+  command = plan
+  variables {
+    kubernetes_bulk_blocksize = "1M"
+  }
+  expect_failures = [var.kubernetes_bulk_blocksize]
 }
 
 run "reject_unknown_storage_environment" {

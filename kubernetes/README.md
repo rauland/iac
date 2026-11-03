@@ -172,7 +172,7 @@ policy it was created with, so set it too:
 
 ### Volume encryption
 
-Both StorageClasses encrypt their volumes with LUKS on the node: the plugin
+Every StorageClass encrypts its volumes with LUKS on the node: the plugin
 formats each new volume as LUKS, opens it before mounting, and the pod sees
 only the decrypted filesystem. Proxmox and the ZFS pool hold only ciphertext,
 so the host, its backups and disks that leave the house never see the data.
@@ -209,6 +209,21 @@ recreate its claim on the encrypted class and restore it; see
 
 The `proxmox-scratch` StorageClass deletes its disks with their claims. Use it
 only for volumes that hold nothing worth keeping, such as VolSync's caches.
+
+The `proxmox-bulk` StorageClass keeps its disks like `proxmox`, on the
+cluster's bulk storage (`k8s-dev-bulk`), whose disks use 128K ZFS blocks
+instead of 16K. On RAIDZ that saves the third of extra pool space that parity
+and padding cost small blocks, but small random writes get slower. Use it for
+large files written once, such as a media library, and keep databases and app
+configuration on `proxmox`. The block size is fixed when a disk is created, so
+moving a volume means copying its data to a new claim. See
+[Kubernetes volumes](../terraform/platform/access/README.md#kubernetes-volumes).
+
+Several pods can share a `ReadWriteOnce` claim only in the claim's namespace
+and on the node the disk is attached to. The scheduler does not place them
+together on its own: give every pod that mounts the claim the same
+`nodeSelector` or a pod affinity, or the second one waits on a multi-attach
+error.
 
 Volumes are backed up only when their app declares it: see
 [Kubernetes volumes](../docs/backups.md#kubernetes-volumes) for opting a

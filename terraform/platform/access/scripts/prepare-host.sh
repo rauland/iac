@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # One-time Proxmox host preparation that the Proxmox API cannot do: create the
-# ZFS dataset each environment's Kubernetes storage (k8s-<environment>) uses.
+# ZFS datasets each environment's Kubernetes storages use (k8s-<environment>
+# on <pool>/k8s-<environment>, k8s-<environment>-bulk on
+# <pool>/k8s-<environment>-bulk).
 # Run as root from the host console before applying platform/access. Safe to
 # run again: existing datasets are checked, not changed.
 #
@@ -22,15 +24,16 @@ for environment in "${environments[@]}"; do
     echo "Invalid environment name: $environment" >&2
     exit 1
   fi
-  dataset="$pool/k8s-$environment"
-  if type=$(zfs get -H -o value type "$dataset" 2>/dev/null); then
-    if [[ $type != filesystem ]]; then
-      echo "$dataset exists but is a $type, not a filesystem dataset." >&2
-      exit 1
+  for dataset in "$pool/k8s-$environment" "$pool/k8s-$environment-bulk"; do
+    if type=$(zfs get -H -o value type "$dataset" 2>/dev/null); then
+      if [[ $type != filesystem ]]; then
+        echo "$dataset exists but is a $type, not a filesystem dataset." >&2
+        exit 1
+      fi
+      echo "exists: $dataset"
+    else
+      zfs create "$dataset"
+      echo "created: $dataset"
     fi
-    echo "exists: $dataset"
-  else
-    zfs create "$dataset"
-    echo "created: $dataset"
-  fi
+  done
 done

@@ -1,5 +1,11 @@
 locals {
   environments = toset(["dev", "prod"])
+  # Each environment's Kubernetes storages: k8s-<environment> for general
+  # volumes and k8s-<environment>-bulk for large files; see the README.
+  kubernetes_storages = {
+    for environment in keys(var.kubernetes_storage_pools) :
+    environment => ["k8s-${environment}", "k8s-${environment}-bulk"]
+  }
   roles = {
     NodeAudit      = ["Sys.Audit"]
     StorageRead    = ["Datastore.Audit"]
@@ -38,11 +44,13 @@ locals {
   })
   # Explicit ACLs apply to both owners and privilege-separated tokens.
   service_grants = flatten([
-    for name, service in local.services : service.operation == "csi" ? [
+    for name, service in local.services : service.operation == "csi" ? concat([
       { path = "/nodes/${var.node_name}", role = "NodeAudit", name = name },
       { path = "/pool/${service.environment}", role = "KubernetesDisk", name = name },
-      { path = "/storage/k8s-${service.environment}", role = "KubernetesStorage", name = name }
-      ] : concat(
+      ], [
+      for storage in local.kubernetes_storages[service.environment] :
+      { path = "/storage/${storage}", role = "KubernetesStorage", name = name }
+      ]) : concat(
       [{ path = "/nodes/${var.node_name}", role = "NodeAudit", name = name }],
       [
         for role in(service.operation == "apply" ? ["PVEVMAdmin", "PVEPoolAdmin"] : ["PVEAuditor"]) :
@@ -60,10 +68,12 @@ locals {
       # VMs, and refreshing a VM reads every attached disk. The volumes are
       # named for placeholder VM 9999, and Proxmox requires VM.Config.Disk on
       # a volume's owner to read it.
-      contains(["plan", "apply"], service.operation) && contains(keys(var.kubernetes_storage_pools), service.environment) ? [
-        { path = "/storage/k8s-${service.environment}", role = "StorageRead", name = name },
+      contains(["plan", "apply"], service.operation) && contains(keys(var.kubernetes_storage_pools), service.environment) ? concat([
+        for storage in local.kubernetes_storages[service.environment] :
+        { path = "/storage/${storage}", role = "StorageRead", name = name }
+        ], [
         { path = "/vms/${var.csi_volume_owner_vmid}", role = "CSIVolumeRead", name = name }
-      ] : [],
+      ]) : [],
       [
         { path = "/storage/${service.environment}-images", role = service.operation == "apply" ? "SeedPublisher" : "StorageRead", name = name }
       ],
@@ -140,6 +150,22 @@ resource "proxmox_storage_zfspool" "kubernetes" {
   }
 }
 
+# Large files written once, such as a media library, on a sibling dataset with
+# large blocks. With small blocks RAIDZ pads every block with parity, so an
+# 8 TiB volume of video took 10.8 TiB of pool space.
+resource "proxmox_storage_zfspool" "kubernetes_bulk" {
+  for_each       = var.kubernetes_storage_pools
+  id             = "k8s-${each.key}-bulk"
+  zfs_pool       = "${each.value}-bulk"
+  nodes          = [var.node_name]
+  content        = ["images"]
+  thin_provision = true
+  blocksize      = var.kubernetes_bulk_blocksize
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 # Mappings let API tokens pass devices through; raw PCI IDs need root@pam.
 resource "proxmox_hardware_mapping_pci" "device" {
   for_each = var.pci_mappings
@@ -205,6 +231,7 @@ resource "proxmox_acl" "service_user" {
     proxmox_virtual_environment_role.custom,
     proxmox_storage_directory.environment_images,
     proxmox_storage_zfspool.kubernetes,
+    proxmox_storage_zfspool.kubernetes_bulk,
     proxmox_hardware_mapping_pci.device,
   ]
 }
@@ -220,6 +247,7 @@ resource "proxmox_acl" "service_token" {
     proxmox_virtual_environment_role.custom,
     proxmox_storage_directory.environment_images,
     proxmox_storage_zfspool.kubernetes,
+    proxmox_storage_zfspool.kubernetes_bulk,
     proxmox_hardware_mapping_pci.device,
   ]
 }
@@ -235,6 +263,7 @@ resource "proxmox_acl" "human" {
     proxmox_virtual_environment_role.custom,
     proxmox_storage_directory.environment_images,
     proxmox_storage_zfspool.kubernetes,
+    proxmox_storage_zfspool.kubernetes_bulk,
     proxmox_hardware_mapping_pci.device,
   ]
 }
