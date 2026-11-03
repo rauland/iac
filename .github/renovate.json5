@@ -85,5 +85,12 @@
         '**Run the Talos upgrade workflow for this environment and version first**, then merge this pull request to record it. For Kubernetes, check the target is in the Talos release\'s supported range.',
       ],
     },
+    {
+      // A major version can need steps first (migrations, removed settings, new
+      // requirements). Tick it on the dashboard to get its pull request.
+      description: 'Hold major updates on the Dependency Dashboard until approved',
+      matchUpdateTypes: ['major'],
+      dependencyDashboardApproval: true,
+    },
   ],
 }
