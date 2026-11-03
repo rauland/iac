@@ -56,15 +56,17 @@ flowchart TB
     repo -.->|Pulled by| flux
     apps -.->|Pulled by| flux
 
-    classDef automation fill:#172554,stroke:#60A5FA,color:#DBEAFE
-    classDef provisioning fill:#3B1D66,stroke:#A78BFA,color:#F3E8FF
-    classDef storage fill:#1E293B,stroke:#94A3B8,color:#F8FAFC
-    classDef infrastructure fill:#5C2E0B,stroke:#F97316,color:#FFEDD5
+    classDef source fill:#EEF2FF,stroke:#6366F1,color:#312E81
+    classDef runtime fill:#F0FDFA,stroke:#14B8A6,color:#134E4A
+    classDef identity fill:#FFFBEB,stroke:#F59E0B,color:#78350F
+    classDef data fill:#F8FAFC,stroke:#64748B,color:#1E293B
+    classDef group fill:none,stroke:#94A3B8,stroke-dasharray:4 4
 
-    class repo,apps,actions automation
-    class iam,flux provisioning
-    class state,ssm,backups storage
-    class proxmox,talos infrastructure
+    class repo,apps,actions source
+    class proxmox,talos,flux runtime
+    class iam identity
+    class state,ssm,backups data
+    class github,homelab,aws group
 ```
 
 GitHub-hosted runners reach the private network through Tailscale, as ephemeral
