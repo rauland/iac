@@ -17,25 +17,25 @@ deployment discovery never selects them. [modules](modules) holds the shared
 
 ```mermaid
 flowchart TB
-    subgraph platform["platform · applied by an administrator"]
+    subgraph before["1 · Access"]
         direction LR
         stateaccess["state-access"]
         access["access"]
-        oidc["cluster-oidc"]
-        backup["backup-storage"]
     end
 
-    subgraph workloads["workloads/&lt;environment&gt; · applied by CI"]
+    subgraph cluster["2 · Each cluster"]
         direction LR
-        talos["talos"]
-        flux["flux"]
+        talos["talos"] -->|Cluster credentials| flux["flux"]
     end
 
-    talos -->|CI roles| stateaccess
-    talos -->|Proxmox token| access
-    flux -->|Cluster credentials| talos
-    oidc -->|Cluster issuer| talos
-    backup -->|Cluster trust| oidc
+    subgraph after["3 · Backups"]
+        direction LR
+        oidc["cluster-oidc"] -->|OIDC providers| backup["backup-storage"]
+    end
+
+    stateaccess -->|CI roles| talos
+    access -->|Proxmox token| talos
+    talos -->|Cluster issuer| oidc
 
     classDef ci fill:#4F46E5,stroke:#4338CA,color:#FFFFFF
     classDef admin fill:#B45309,stroke:#92400E,color:#FFFFFF
@@ -43,20 +43,21 @@ flowchart TB
 
     class talos,flux ci
     class stateaccess,access,oidc,backup admin
-    class platform,workloads group
+    class before,cluster,after group
 
     linkStyle default stroke:#64748B,stroke-width:2px
 ```
 
-Arrows point from a root to what it needs. Apply a new installation in that
-order:
+Read it top to bottom in apply order: each arrow carries what one root
+passes to the next. CI applies the indigo roots; an administrator applies the
+amber ones.
 
-1. `platform/state-access` and `platform/access`, then put their credentials in
-   SSM as the [setup guide](../docs/setup.md) describes.
-2. `talos`, then `flux`, for each environment. CI does both after merge; on a
+1. **Access:** `platform/state-access` and `platform/access`, then put their
+   credentials in SSM as the [setup guide](../docs/setup.md) describes.
+2. **Each cluster:** `talos`, then `flux`. CI does both after merge; on a
    rebuilt cluster, apply `talos` before `flux` plans, as the Flux plan reads
    the cluster that existed when it started.
-3. `platform/cluster-oidc` once each cluster exists, then
+3. **Backups:** `platform/cluster-oidc` once each cluster exists, then
    `platform/backup-storage`, before turning on volume backups.
 
 Removing a root never destroys it: destroy it explicitly before deleting its
