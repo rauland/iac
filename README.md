@@ -42,29 +42,28 @@ flowchart TB
         talos --- flux["Flux"]
     end
 
-    subgraph aws["AWS"]
+    subgraph aws["AWS · roles assumed with OIDC"]
         direction LR
-        iam["IAM roles"] --> state[("Terraform state")]
-        iam --> ssm[("CI secrets")]
-        iam --> backups[("Volume backups")]
+        state[("Terraform state")]
+        ssm[("CI secrets")]
+        backups[("Volume backups")]
     end
 
     actions -->|"Tailscale (OIDC)"| proxmox
     actions -->|"Tailscale (OIDC)"| talos
-    actions -->|"CI (OIDC)"| iam
-    talos -->|"Backups (OIDC)"| iam
+    actions -->|Reads and writes| state
+    actions -->|Reads| ssm
+    talos -->|Backs up and restores| backups
     repo -.->|Pulled by| flux
     apps -.->|Pulled by| flux
 
     classDef source fill:#4F46E5,stroke:#4338CA,color:#FFFFFF
     classDef runtime fill:#0F766E,stroke:#115E59,color:#FFFFFF
-    classDef identity fill:#B45309,stroke:#92400E,color:#FFFFFF
     classDef data fill:#475569,stroke:#334155,color:#FFFFFF
     classDef group fill:none,stroke:#94A3B8,stroke-dasharray:4 4
 
     class repo,apps,actions source
     class proxmox,talos,flux runtime
-    class iam identity
     class state,ssm,backups data
     class github,homelab,aws group
 
