@@ -29,41 +29,40 @@ still planned.
 ## Architecture
 
 ```mermaid
-flowchart LR
-    repo["IaC repository"] --> actions["GitHub Actions"]
-    actions -->|OIDC role| aws
-    actions -->|OIDC · ephemeral node| private
-    actions --> terraform["Terraform"]
+flowchart TB
+    subgraph github["GitHub"]
+        direction LR
+        repo["IaC repository"] --> actions["Actions · Terraform"]
+        apps["Private app repository"]
+    end
+
+    subgraph homelab["Private network"]
+        direction LR
+        proxmox["Proxmox VE API"] -->|VM lifecycle| talos["Talos Kubernetes"]
+        talos --- flux["Flux"]
+    end
 
     subgraph aws["AWS"]
-        state[("Terraform state · S3")]
-        ssm[("CI secrets · SSM")]
-        backups[("Volume backups · S3")]
+        direction LR
+        iam["IAM roles"] --> state[("Terraform state")]
+        iam --> ssm[("CI secrets")]
+        iam --> backups[("Volume backups")]
     end
 
-    terraform <-->|Remote state| state
-
-    subgraph private["Private network · Tailscale"]
-        proxmox["Proxmox VE API"]
-        talos["Talos Kubernetes"]
-        flux["Flux"]
-        proxmox -->|VM lifecycle| talos
-        talos --- flux
-    end
-
-    terraform -->|Provision via HTTPS| proxmox
-    terraform -->|Talos API| talos
+    actions -->|"Tailscale (OIDC)"| proxmox
+    actions -->|"Tailscale (OIDC)"| talos
+    actions -->|"CI (OIDC)"| iam
+    talos -->|"Backups (OIDC)"| iam
     repo -.->|Pulled by| flux
-    apps["Private app repository"] -.->|Pulled by| flux
-    talos -->|Service account OIDC| backups
+    apps -.->|Pulled by| flux
 
     classDef automation fill:#172554,stroke:#60A5FA,color:#DBEAFE
     classDef provisioning fill:#3B1D66,stroke:#A78BFA,color:#F3E8FF
     classDef storage fill:#1E293B,stroke:#94A3B8,color:#F8FAFC
     classDef infrastructure fill:#5C2E0B,stroke:#F97316,color:#FFEDD5
 
-    class repo,actions,apps automation
-    class terraform,flux provisioning
+    class repo,apps,actions automation
+    class iam,flux provisioning
     class state,ssm,backups storage
     class proxmox,talos infrastructure
 ```
