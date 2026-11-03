@@ -1,7 +1,7 @@
 # CI state access
 
 This administrator-operated root creates four scoped IAM roles that GitHub Actions
-assumes through OIDC, one per dev, prod and shared-image plan/apply identity.
+assumes through OIDC: plan and apply for each of dev and prod.
 Workflows receive temporary credentials for one hour; no AWS keys are stored in
 GitHub. It is excluded from automatic deployment discovery. Keep its state
 administrator-only so workload CI cannot change its own trust or permissions.

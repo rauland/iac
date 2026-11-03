@@ -12,7 +12,68 @@ pulls `main` itself, about once a minute.
 | [clusters/dev/infrastructure.yaml](clusters/dev/infrastructure.yaml) | Flux Kustomizations that install the shared infrastructure in order |
 | [clusters/dev/apps.yaml](clusters/dev/apps.yaml) | One Flux Kustomization per app |
 | [clusters/dev/podinfo](clusters/dev/podinfo) | Demo app whose UI message is a SOPS-encrypted Secret |
-| [infrastructure](infrastructure) | MetalLB, Traefik, the Proxmox CSI plugin and VolSync, shared by every cluster; NVIDIA's device plugin for clusters with a GPU; and monitoring |
+| [infrastructure](infrastructure) | MetalLB, Traefik, cert-manager, the Proxmox CSI plugin and VolSync, shared by every cluster; NVIDIA's device plugin for clusters with a GPU; and monitoring |
+
+## Inside a cluster
+
+```mermaid
+flowchart TB
+    clients["LAN clients"]
+
+    subgraph cluster["Talos cluster"]
+        direction TB
+        flux["Flux"]
+        traefik["Traefik · MetalLB address"]
+        apps["Apps and their volumes"]
+        certmanager["cert-manager"]
+        csi["Proxmox CSI plugin"]
+        volsync["VolSync"]
+        monitoring["Prometheus · Alertmanager · Grafana"]
+    end
+
+    subgraph external["Outside the cluster"]
+        direction LR
+        repos["Git repositories"]
+        proxmox["Proxmox VE API"]
+        cloudflare["Cloudflare DNS"]
+        letsencrypt["Let's Encrypt"]
+        s3[("Backup bucket · S3")]
+        ntfy["ntfy"]
+    end
+
+    flux -.->|Pulls| repos
+    flux -->|Applies| apps
+    clients -->|HTTPS| traefik
+    traefik -->|Routes| apps
+    apps -->|Claims volumes| csi
+    volsync -->|Copies volumes| apps
+    monitoring -->|Scrapes| apps
+    certmanager -->|ACME| letsencrypt
+    certmanager -->|DNS-01 records| cloudflare
+    csi -->|Creates disks| proxmox
+    volsync -->|"Backs up and restores (OIDC)"| s3
+    monitoring -->|Alerts| ntfy
+
+    classDef source fill:#4F46E5,stroke:#4338CA,color:#FFFFFF
+    classDef runtime fill:#0F766E,stroke:#115E59,color:#FFFFFF
+    classDef service fill:#B45309,stroke:#92400E,color:#FFFFFF
+    classDef data fill:#475569,stroke:#334155,color:#FFFFFF
+    classDef group fill:none,stroke:#94A3B8,stroke-dasharray:4 4
+
+    class repos,clients source
+    class flux,traefik,apps,certmanager,csi,volsync,monitoring runtime
+    class letsencrypt,cloudflare,proxmox,ntfy service
+    class s3 data
+    class cluster,external group
+
+    linkStyle default stroke:#64748B,stroke-width:2px
+```
+
+Arrows point from the side that starts the connection, as in the
+[architecture overview](../README.md#architecture). Flux applies everything in
+the cluster, not just the apps. MetalLB gives Traefik its LAN address, and
+Traefik serves cert-manager's certificate. The NVIDIA device plugin, which only
+GPU clusters run, is left out.
 
 ## How Flux is installed
 
@@ -101,8 +162,9 @@ ingress IP in DNS. Until DNS exists, test with a `Host` header:
 curl -H 'Host: podinfo.dev.netkuki.com' http://10.0.0.60/
 ```
 
-Only plain HTTP is configured; TLS certificates are not yet managed. Non-HTTP
-apps use their own LoadBalancer Service instead of the ingress.
+HTTPS comes from the cluster's wildcard certificate; see
+[TLS certificates](#tls-certificates). Non-HTTP apps use their own
+LoadBalancer Service instead of the ingress.
 
 The three steps are separate Flux Kustomizations, each waiting for the last:
 MetalLB installs its CRDs, the pool uses them, and Traefik then gets its
