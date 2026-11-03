@@ -67,6 +67,7 @@ a host over SSH; see the [platform direction](docs/decisions/0001-kubernetes-fir
 
 | Path | Purpose |
 | --- | --- |
+| [terraform](terraform/README.md) | How the Terraform roots depend on each other, and who applies each |
 | [terraform/workloads](terraform/workloads) | Environment roots for the Talos cluster and Flux, each with its own state |
 | [terraform/platform](terraform/platform) | Administrator-operated Proxmox and AWS configuration, with separate states |
 | [terraform/modules](terraform/modules) | The reusable talos-cluster module |
