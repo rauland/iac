@@ -56,9 +56,9 @@ flowchart TB
     repo -.->|Pulled by| flux
     apps -.->|Pulled by| flux
 
-    classDef source fill:#6366F1,stroke:#4F46E5,color:#FFFFFF
-    classDef runtime fill:#0D9488,stroke:#0F766E,color:#FFFFFF
-    classDef identity fill:#D97706,stroke:#B45309,color:#FFFFFF
+    classDef source fill:#4F46E5,stroke:#4338CA,color:#FFFFFF
+    classDef runtime fill:#0F766E,stroke:#115E59,color:#FFFFFF
+    classDef identity fill:#B45309,stroke:#92400E,color:#FFFFFF
     classDef data fill:#475569,stroke:#334155,color:#FFFFFF
     classDef group fill:none,stroke:#94A3B8,stroke-dasharray:4 4
 
@@ -68,7 +68,7 @@ flowchart TB
     class state,ssm,backups data
     class github,homelab,aws group
 
-    linkStyle default stroke:#94A3B8,stroke-width:2px
+    linkStyle default stroke:#64748B,stroke-width:2px
 ```
 
 GitHub-hosted runners reach the private network through Tailscale, as ephemeral
