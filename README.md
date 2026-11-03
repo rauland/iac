@@ -31,8 +31,17 @@ still planned.
 ```mermaid
 flowchart LR
     repo["IaC repository"] --> actions["GitHub Actions"]
+    actions -->|OIDC role| aws
+    actions -->|OIDC · ephemeral node| private
     actions --> terraform["Terraform"]
-    terraform <-->|Remote state| state[("AWS S3")]
+
+    subgraph aws["AWS"]
+        state[("Terraform state · S3")]
+        ssm[("CI secrets · SSM")]
+        backups[("Volume backups · S3")]
+    end
+
+    terraform <-->|Remote state| state
 
     subgraph private["Private network · Tailscale"]
         proxmox["Proxmox VE API"]
@@ -46,6 +55,7 @@ flowchart LR
     terraform -->|Talos API| talos
     repo -.->|Pulled by| flux
     apps["Private app repository"] -.->|Pulled by| flux
+    talos -->|Service account OIDC| backups
 
     classDef automation fill:#172554,stroke:#60A5FA,color:#DBEAFE
     classDef provisioning fill:#3B1D66,stroke:#A78BFA,color:#F3E8FF
@@ -54,12 +64,15 @@ flowchart LR
 
     class repo,actions,apps automation
     class terraform,flux provisioning
-    class state storage
+    class state,ssm,backups storage
     class proxmox,talos infrastructure
 ```
 
 GitHub-hosted runners reach the private network through Tailscale, as ephemeral
-nodes authenticated with GitHub OIDC. Terraform creates the Talos node VMs
+nodes authenticated with GitHub OIDC, and assume AWS roles with the same OIDC
+token, so CI stores no long-lived credentials. Each cluster publishes its own
+service account issuer, which lets volume backups assume an AWS role the same
+way. Terraform creates the Talos node VMs
 through the Proxmox HTTPS API and configures them through the Talos API. Apps
 are Kubernetes manifests that Flux pulls from `main`, here or in a private
 repository. No automation logs in to a host over SSH; see the
