@@ -68,10 +68,7 @@ flowchart TB
     class state,ssm,backups data
     class github,homelab,aws group
 
-    linkStyle 0,1,2,3,4,5 stroke:#94A3B8,stroke-width:1.5px
-    linkStyle 6,7 stroke:#06B6D4,stroke-width:2.5px
-    linkStyle 8,9 stroke:#EC4899,stroke-width:2.5px
-    linkStyle 10,11 stroke:#84CC16,stroke-width:2.5px
+    linkStyle default stroke:#94A3B8,stroke-width:2px
 ```
 
 GitHub-hosted runners reach the private network through Tailscale, as ephemeral
