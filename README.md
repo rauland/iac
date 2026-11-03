@@ -56,10 +56,10 @@ flowchart TB
     repo -.->|Pulled by| flux
     apps -.->|Pulled by| flux
 
-    classDef source fill:#EEF2FF,stroke:#6366F1,color:#312E81
-    classDef runtime fill:#F0FDFA,stroke:#14B8A6,color:#134E4A
-    classDef identity fill:#FFFBEB,stroke:#F59E0B,color:#78350F
-    classDef data fill:#F8FAFC,stroke:#64748B,color:#1E293B
+    classDef source fill:#6366F1,stroke:#4F46E5,color:#FFFFFF
+    classDef runtime fill:#0D9488,stroke:#0F766E,color:#FFFFFF
+    classDef identity fill:#D97706,stroke:#B45309,color:#FFFFFF
+    classDef data fill:#475569,stroke:#334155,color:#FFFFFF
     classDef group fill:none,stroke:#94A3B8,stroke-dasharray:4 4
 
     class repo,apps,actions source
