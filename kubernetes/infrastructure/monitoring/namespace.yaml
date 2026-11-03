@@ -1,0 +1,9 @@
+# The node exporter reads the host's /proc and /sys with host networking and
+# PID namespace, which the baseline Pod Security standard Talos enforces would
+# reject.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    pod-security.kubernetes.io/enforce: privileged

@@ -12,7 +12,7 @@ pulls `main` itself, about once a minute.
 | [clusters/dev/infrastructure.yaml](clusters/dev/infrastructure.yaml) | Flux Kustomizations that install the shared infrastructure in order |
 | [clusters/dev/apps.yaml](clusters/dev/apps.yaml) | One Flux Kustomization per app |
 | [clusters/dev/podinfo](clusters/dev/podinfo) | Demo app whose UI message is a SOPS-encrypted Secret |
-| [infrastructure](infrastructure) | MetalLB, Traefik, the Proxmox CSI plugin and VolSync, shared by every cluster, and NVIDIA's device plugin for clusters with a GPU |
+| [infrastructure](infrastructure) | MetalLB, Traefik, the Proxmox CSI plugin and VolSync, shared by every cluster; NVIDIA's device plugin for clusters with a GPU; and monitoring |
 
 ## How Flux is installed
 
@@ -309,6 +309,27 @@ name at prod's ingress IP when the app moves, for example
 capture the bare domain and every other name. Apps that build their own links
 or sign-in redirects should be configured with the short name. Public access is separate and optional, for example a Cloudflare
 Tunnel to Traefik; the certificate does not depend on either.
+
+## Monitoring
+
+Prod runs [kube-prometheus-stack](infrastructure/monitoring): Prometheus keeps
+15 days of node, Kubernetes and volume metrics on a 20 GiB volume, Grafana
+serves dashboards at `grafana.<cluster_domain>`, and Alertmanager sends the
+stack's standard alerts (node down, pods failing, memory pressure, volumes
+filling) to an [ntfy](https://ntfy.sh) topic through ntfy's built-in
+`alertmanager` template. The always-firing `Watchdog` alert is routed nowhere.
+
+The cluster overlay supplies two SOPS-encrypted Secrets in the `monitoring`
+namespace: `grafana-admin` (keys `admin-user`, `admin-password`) and
+`alertmanager-ntfy` (key `url`, `https://ntfy.sh/<topic>?template=alertmanager`).
+The topic name is the only protection on ntfy.sh, so make it long and random.
+Prometheus and Alertmanager are not exposed; reach them with
+`kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090`
+(or `...-alertmanager 9093`).
+
+Talos binds etcd's, the scheduler's, the controller manager's and kube-proxy's
+metrics to localhost, so those scrapes and their alerts are disabled until the
+Talos configuration exposes them.
 
 ## Secrets
 

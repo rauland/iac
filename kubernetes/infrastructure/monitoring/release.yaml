@@ -1,0 +1,124 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: prometheus-community
+  namespace: monitoring
+spec:
+  url: https://prometheus-community.github.io/helm-charts
+  interval: 24h
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  interval: 1h
+  timeout: 15m
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: 92.17.0
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+  values:
+    # Talos binds the control plane's and kube-proxy's metrics to localhost.
+    # Scraping them needs Talos configuration changes; until then, disabling
+    # them also removes their "down" alerts.
+    kubeControllerManager:
+      enabled: false
+    kubeScheduler:
+      enabled: false
+    kubeEtcd:
+      enabled: false
+    kubeProxy:
+      enabled: false
+
+    prometheus:
+      prometheusSpec:
+        retention: 15d
+        retentionSize: 18GB
+        # Scrape every ServiceMonitor, PodMonitor and rule in the cluster, not
+        # only the chart's own.
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        ruleSelectorNilUsesHelmValues: false
+        resources:
+          requests:
+            cpu: 200m
+            memory: 1Gi
+          limits:
+            memory: 3Gi
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: proxmox
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests:
+                  storage: 20Gi
+
+    alertmanager:
+      alertmanagerSpec:
+        # Mounted at /etc/alertmanager/secrets/alertmanager-ntfy/.
+        secrets:
+          - alertmanager-ntfy
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: proxmox
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests:
+                  storage: 1Gi
+      config:
+        route:
+          receiver: ntfy
+          group_by: [alertname, namespace]
+          group_wait: 30s
+          group_interval: 5m
+          repeat_interval: 12h
+          routes:
+            # Watchdog always fires, to prove alerting works, and
+            # InfoInhibitor only mutes info alerts; neither should notify.
+            - receiver: "null"
+              matchers:
+                - alertname =~ "Watchdog|InfoInhibitor"
+        inhibit_rules:
+          - source_matchers: ['severity = critical']
+            target_matchers: ['severity =~ warning|info']
+            equal: [namespace, alertname]
+          - source_matchers: ['severity = warning']
+            target_matchers: ['severity = info']
+            equal: [namespace, alertname]
+          - source_matchers: ['alertname = InfoInhibitor']
+            target_matchers: ['severity = info']
+            equal: [namespace]
+        receivers:
+          - name: "null"
+          # ntfy formats Alertmanager's webhook with its built-in template;
+          # the URL holds the private topic, so it comes from a Secret.
+          - name: ntfy
+            webhook_configs:
+              - url_file: /etc/alertmanager/secrets/alertmanager-ntfy/url
+                send_resolved: true
+
+    grafana:
+      admin:
+        existingSecret: grafana-admin
+        userKey: admin-user
+        passwordKey: admin-password
+      # Dashboards come from the chart and from ConfigMaps in Git, so Grafana
+      # keeps nothing that a rebuild would lose.
+      persistence:
+        enabled: false
+      ingress:
+        enabled: true
+        ingressClassName: traefik
+        hosts:
+          - grafana.${cluster_domain}
