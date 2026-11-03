@@ -54,8 +54,8 @@ flowchart TB
     actions -->|Reads and writes| state
     actions -->|Reads| ssm
     talos -->|Backs up and restores| backups
-    repo -.->|Pulled by| flux
-    apps -.->|Pulled by| flux
+    flux -.->|Pulls| repo
+    flux -.->|Pulls| apps
 
     classDef source fill:#4F46E5,stroke:#4338CA,color:#FFFFFF
     classDef runtime fill:#0F766E,stroke:#115E59,color:#FFFFFF
@@ -69,6 +69,8 @@ flowchart TB
 
     linkStyle default stroke:#64748B,stroke-width:2px
 ```
+
+Arrows point from the side that starts the connection.
 
 GitHub-hosted runners reach the private network through Tailscale, as ephemeral
 nodes authenticated with GitHub OIDC, and assume AWS roles with the same OIDC
