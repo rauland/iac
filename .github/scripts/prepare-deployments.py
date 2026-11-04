@@ -78,8 +78,12 @@ def prepare(targets, result_directory, context):
             if type(result.get("changes")) is not bool:
                 raise ValueError("Missing or invalid Terraform change result")
             changes = result["changes"]
-            archive = result.get("archive_sha256")
-            if changes and not (isinstance(archive, str) and re.fullmatch(r"[0-9a-f]{64}", archive)):
+            # Only runs that can deploy save plans; pull requests just preview them.
+            deployable = (context["GITHUB_REF"] == "refs/heads/main" and
+                          context["GITHUB_EVENT_NAME"] in {"push", "workflow_dispatch"})
+            archive = result.get("archive_sha256") if deployable else None
+            if changes and deployable and not (
+                    isinstance(archive, str) and re.fullmatch(r"[0-9a-f]{64}", archive)):
                 raise ValueError("Missing saved plan digest for a target with changes")
         elif target["destroy"]:
             raise ValueError("Destroy requires a Terraform plan")

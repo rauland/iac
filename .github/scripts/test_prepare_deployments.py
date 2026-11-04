@@ -100,6 +100,14 @@ class PrepareDeploymentTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.prepare(target)
 
+    def test_pull_request_preview_needs_no_saved_plan(self):
+        self.context.update(GITHUB_EVENT_NAME="pull_request", GITHUB_REF="refs/pull/7/merge")
+        target = self.target()
+        self.result(target, archive_sha256=None,
+                    plan_text="~ memory = 1024 -> 2048\nPlan: 0 to add, 1 to change, 0 to destroy.")
+        self.assertIsNone(self.prepare(target)[0]["archive_sha256"])
+        self.assertIn("memory = 1024 -&gt; 2048", self.preview(target))
+
     def test_no_cross_target_matrix_output_overwrite(self):
         dev, prod = self.target(), self.target(environment="prod")
         self.result(dev, changes=False)
