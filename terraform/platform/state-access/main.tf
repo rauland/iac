@@ -21,7 +21,7 @@ locals {
         )
         # SSM parameter prefixes under /iac whose values CI may read.
         parameter_paths = concat(
-          ["shared/proxmox", "shared/wireguard", "${scope}/${operation}"],
+          ["shared/proxmox", "${scope}/${operation}"],
           operation == "apply" ? ["${scope}/flux"] : [],
         )
       }

@@ -41,8 +41,7 @@ be masked reliably. Roles can only read, and only these prefixes:
 | `/iac/<scope>/flux/SOPS_AGE_KEY` | SecureString | Dev and prod apply roles; loaded only by Flux deployments |
 
 `<scope>` is `dev` or `prod`. No role can read another scope's
-values, and plan roles cannot read apply values. Roles may also read
-`/iac/shared/wireguard/`, which is unused since CI moved to Tailscale.
+values, and plan roles cannot read apply values.
 `String` parameters hold non-secret identifiers and are
 not masked.
 

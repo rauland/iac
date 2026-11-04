@@ -163,9 +163,9 @@ run "parameter_read_boundaries" {
   }
   assert {
     condition = (
-      local.identities["tf-prod-apply"].parameter_paths == ["shared/proxmox", "shared/wireguard", "prod/apply", "prod/flux"] &&
+      local.identities["tf-prod-apply"].parameter_paths == ["shared/proxmox", "prod/apply", "prod/flux"] &&
       contains(local.identities["tf-dev-apply"].parameter_paths, "dev/flux") &&
-      local.identities["tf-dev-plan"].parameter_paths == ["shared/proxmox", "shared/wireguard", "dev/plan"]
+      local.identities["tf-dev-plan"].parameter_paths == ["shared/proxmox", "dev/plan"]
     )
     error_message = "Unexpected parameter paths for the sample roles."
   }
