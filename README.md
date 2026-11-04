@@ -151,7 +151,7 @@ For a new installation, follow the [complete setup guide](docs/setup.md) in orde
    Tailscale access.
 2. Bootstrap the S3 state bucket and configure the backend variable.
 3. Configure scoped Proxmox and AWS identities and GitHub environment credentials.
-4. Generate the plan encryption key pair and configure its GitHub settings.
+4. Expire saved plans and etcd snapshots in the state bucket.
 5. Configure GitHub environment approvals and main branch protection.
 6. Verify CI and live plans, then deploy the cluster.
 
@@ -177,7 +177,7 @@ protections or the health of deployed services.
 | --- | --- | --- |
 | CI cloud access | Implemented | GitHub OIDC assumes one AWS role per environment and operation, with one-hour sessions and no IAM users or access keys. Plan roles cannot read apply parameters. Administrators use IAM Identity Center. |
 | CI network access | Implemented | Runners join Tailscale as ephemeral `tag:ci` nodes through GitHub OIDC and reach Proxmox through the subnet router. No network secret is stored, and jobs run in parallel. |
-| Secrets management | Implemented | CI reads its secrets from SSM Parameter Store through those roles and masks them before use; the workflows reference no GitHub secrets. Saved plans are encrypted and Talos credentials are ignored. Kubernetes Secrets are committed SOPS-encrypted and decrypted by Flux with an age key only the dev apply role can read. |
+| Secrets management | Implemented | CI reads its secrets from SSM Parameter Store through those roles and masks them before use; the workflows reference no GitHub secrets. Saved plans stay in S3, readable only by the matching apply role, and Talos credentials are ignored. Kubernetes Secrets are committed SOPS-encrypted and decrypted by Flux with an age key only the dev apply role can read. |
 | Terraform formatting | Implemented | CI runs `terraform fmt -check -recursive terraform`. |
 | Linting and validation | Partial | Terraform validation, Kubernetes manifest builds, and offline tests run in CI. Dedicated Terraform and workflow linting are not configured. |
 | Kubernetes GitOps | Implemented | Terraform installs the Flux Operator, which reconciles `kubernetes/clusters/<environment>` from `main` on the dev and prod clusters; CI builds the manifests offline. Apps can live in a [private repository](kubernetes/README.md#apps-in-a-private-repository) that Flux pulls with a read-only deploy key, so this repository holds only the platform. MetalLB and Traefik expose Services on the LAN, the Proxmox CSI plugin provides persistent volumes encrypted with LUKS on the nodes, and cert-manager issues a Let's Encrypt wildcard certificate per cluster through Cloudflare DNS. Each app has its own Flux Kustomization. |

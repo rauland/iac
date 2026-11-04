@@ -4,6 +4,7 @@
 import html
 import json
 import os
+import re
 from pathlib import Path
 
 
@@ -63,7 +64,7 @@ def prepare(targets, result_directory, context):
                                   or context["GITHUB_REF"] != "refs/heads/main"
                                   or context.get("DEPLOYMENT_MODE") != "destroy"):
             raise ValueError("Destroy requires an explicit manual request on main")
-        changes = False
+        changes, archive = False, None
         if target["terraform"]:
             directory = f"terraform/workloads/{environment}/{name}"
             if target["directory"] != directory:
@@ -77,6 +78,13 @@ def prepare(targets, result_directory, context):
             if type(result.get("changes")) is not bool:
                 raise ValueError("Missing or invalid Terraform change result")
             changes = result["changes"]
+            # Only runs that can deploy save plans; pull requests just preview them.
+            deployable = (context["GITHUB_REF"] == "refs/heads/main" and
+                          context["GITHUB_EVENT_NAME"] in {"push", "workflow_dispatch"})
+            archive = result.get("archive_sha256") if deployable else None
+            if changes and deployable and not (
+                    isinstance(archive, str) and re.fullmatch(r"[0-9a-f]{64}", archive)):
+                raise ValueError("Missing saved plan digest for a target with changes")
         elif target["destroy"]:
             raise ValueError("Destroy requires a Terraform plan")
         rows.append(f"| {environment}/{name} | "
@@ -86,7 +94,8 @@ def prepare(targets, result_directory, context):
                              and context["GITHUB_REF"] == "refs/heads/main")
             approval = ("proxmox-dev-auto-apply" if automatic_dev else
                         f"proxmox-{environment}-apply")
-            deployments.append(dict(target, terraform=changes,
+            # The apply fetches the saved plan from S3 and accepts only this digest.
+            deployments.append(dict(target, terraform=changes, archive_sha256=archive,
                                     approval_environment=approval))
     return deployments, rows
 

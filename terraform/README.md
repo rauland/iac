@@ -8,7 +8,7 @@ deployment discovery never selects them. [modules](modules) holds the shared
 
 | Root | Applied by | Creates | Needs |
 | --- | --- | --- | --- |
-| [platform/state-access](platform/state-access/README.md) | Administrator | CI's OIDC roles for Terraform state and SSM parameters | None |
+| [platform/state-access](platform/state-access/README.md) | Administrator | CI's OIDC roles for Terraform state, saved plans and SSM parameters | None |
 | [platform/access](platform/access/README.md) | Administrator | Proxmox pools, users, API tokens and storage | None |
 | `workloads/<environment>/talos` | CI | The cluster's VMs and Talos configuration; its client configuration as an output | A CI role, and a Proxmox token in SSM |
 | `workloads/<environment>/flux` | CI | Flux, syncing `kubernetes/clusters/<environment>` | The `talos` root's client configuration, read from its state |

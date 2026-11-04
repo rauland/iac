@@ -239,8 +239,11 @@ environment, it:
    Deploy the Talos root from `main` once before the first upgrade so the output exists.
 2. Installs the `talosctl` release matching the target (Talos) or the pinned
    `talos_version` (Kubernetes), verified against the release checksums.
-3. Takes an etcd snapshot, encrypts it to the saved-plan public key and keeps it
-   as a run artifact for seven days. Decrypt it with the saved-plan private key.
+3. Takes an etcd snapshot and stores it in the state bucket at
+   `etcd-snapshots/<environment>/<run>-<attempt>.snapshot` for seven days; the
+   run summary names it. It holds every cluster secret: only administrators
+   can read it, for example with
+   `aws s3 cp --profile admin s3://<state-bucket>/<key> etcd.snapshot`.
 4. For `talos`, reads every node's running version and refuses the run before
    changing anything if any node would be downgraded or skip a minor release.
    Nodes already running the target from the current image schematic are

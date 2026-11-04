@@ -30,9 +30,11 @@
       "Effect": "Deny",
       "NotResource": [
         "arn:aws:s3:::rauland-iac-homelab/terraform/prod/*.tfstate",
-        "arn:aws:s3:::rauland-iac-homelab/terraform/prod/*.tfstate.tflock"
+        "arn:aws:s3:::rauland-iac-homelab/terraform/prod/*.tfstate.tflock",
+        "arn:aws:s3:::rauland-iac-homelab/plans/prod/*",
+        "arn:aws:s3:::rauland-iac-homelab/etcd-snapshots/prod/*"
       ],
-      "Sid": "DenyObjectsOutsideOwnState"
+      "Sid": "DenyObjectsOutsideOwnScope"
     },
     {
       "Action": [
@@ -58,6 +60,26 @@
     },
     {
       "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::rauland-iac-homelab/plans/prod/*"
+      ],
+      "Sid": "ReadOwnSavedPlans"
+    },
+    {
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::rauland-iac-homelab/etcd-snapshots/prod/*"
+      ],
+      "Sid": "WriteOwnEtcdSnapshots"
+    },
+    {
+      "Action": [
         "ssm:GetParameter",
         "ssm:GetParameters",
         "ssm:GetParametersByPath"
@@ -66,12 +88,8 @@
       "Resource": [
         "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/proxmox",
         "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/proxmox/*",
-        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/wireguard",
-        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/wireguard/*",
         "arn:aws:ssm:ap-southeast-2:*:parameter/iac/prod/apply",
         "arn:aws:ssm:ap-southeast-2:*:parameter/iac/prod/apply/*",
-        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/apply",
-        "arn:aws:ssm:ap-southeast-2:*:parameter/iac/shared/apply/*",
         "arn:aws:ssm:ap-southeast-2:*:parameter/iac/prod/flux",
         "arn:aws:ssm:ap-southeast-2:*:parameter/iac/prod/flux/*"
       ],
