@@ -110,26 +110,21 @@ jobs:
         with:
           oauth-client-id: ${{ vars.TS_OAUTH_CLIENT_ID }}
           audience: ${{ vars.TS_AUDIENCE }}
-      - name: Take an encrypted etcd snapshot
+      # Holds every cluster secret. Only this environment's apply role can write
+      # it and only administrators can read it; it expires after seven days.
+      - name: Take an etcd snapshot and store it in S3
         env:
-          TF_PLAN_PUBLIC_KEY: ${{ vars.TF_PLAN_PUBLIC_KEY }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
           umask 077
           node=$(jq -r '.control_planes[0]' "$RUNNER_TEMP/inventory.json")
           talosctl --endpoints "$node" --nodes "$node" etcd snapshot "$RUNNER_TEMP/etcd.snapshot"
-          export GNUPGHOME=$(mktemp -d)
-          printf '%s\n' "$TF_PLAN_PUBLIC_KEY" > "$GNUPGHOME/public.asc"
-          gpg --batch --yes --trust-model always --recipient-file "$GNUPGHOME/public.asc" \
-            --output "$RUNNER_TEMP/etcd.snapshot.gpg" --encrypt "$RUNNER_TEMP/etcd.snapshot"
-          rm -rf "$RUNNER_TEMP/etcd.snapshot" "$GNUPGHOME"
-      # Decrypt with the saved-plan private key. Holds every cluster secret.
-      - name: Upload encrypted etcd snapshot
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: etcd-snapshot-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.environment }}
-          path: ${{ runner.temp }}/etcd.snapshot.gpg
-          if-no-files-found: error
-          retention-days: 7
+          key="etcd-snapshots/$ENVIRONMENT/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.snapshot"
+          aws s3api put-object --bucket "$TF_STATE_BUCKET" --key "$key" \
+            --body "$RUNNER_TEMP/etcd.snapshot" --if-none-match '*' > /dev/null
+          rm -f "$RUNNER_TEMP/etcd.snapshot"
+          echo "etcd snapshot: \`s3://$TF_STATE_BUCKET/$key\`" >> "$GITHUB_STEP_SUMMARY"
       - name: Upgrade one node at a time
         env:
           COMPONENT: ${{ inputs.component }}

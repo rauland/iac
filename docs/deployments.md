@@ -67,9 +67,9 @@ credentials and enforce the following deployment policies:
 | `proxmox-dev-plan` | Dev audit credentials plus refresh permissions | No required reviewers |
 | `proxmox-prod-plan` | Prod audit credentials plus refresh permissions | Required human approval; pull request previews |
 | `proxmox-prod-main-plan` | The same prod plan role | No required reviewers; `main` only, for plans of merged code that a `proxmox-prod-apply` approval then applies |
-| `proxmox-dev-auto-apply` | Dev write credentials and plan decryption key | Automatic deployments from pushes to `main` only |
+| `proxmox-dev-auto-apply` | Dev write credentials and read access to dev saved plans | Automatic deployments from pushes to `main` only |
 | `proxmox-dev-apply` | Dev write credentials for manual reconciliation, destroy, and state unlock | Required reviewers; `main` only |
-| `proxmox-prod-apply` | Prod write credentials and plan decryption key | Required human approval; `main` only |
+| `proxmox-prod-apply` | Prod write credentials and read access to prod saved plans | Required human approval; `main` only |
 
 Required reviewers and branch restrictions must exist in GitHub environment
 settings; referencing an environment in YAML alone does not require approval.
@@ -82,7 +82,7 @@ plan of the merged commit on `main` runs without one.
 Live plans are allowed only for same-repository PRs and trusted `main` runs.
 Fork PRs and merge queues run the credential-free checks without live plans.
 Production plan approval is not a required merge check. Write credentials and
-plan decryption keys stay exclusively in deployment environments.
+read access to saved plans stay exclusively in deployment environments.
 
 Terraform uses `-detailed-exitcode`: 0 means no changes, 2 means changes, and an
 error fails the run. Each matrix target uploads its own non-secret result,
@@ -99,9 +99,16 @@ truncated with a link to the full job logs. The same preview appears in the
 workflow run summary; changes that select no roots explicitly say no plans
 were needed. Fork PRs do not publish a comment.
 
-Only changed plans from `main` are encrypted and uploaded together with their
-provider lock file and a manifest bound to the plan, target, commit and run.
-The apply job checks that manifest, then applies the saved plan unchanged.
+Only changed plans from `main` are saved, together with their provider lock
+file and a manifest bound to the plan, target, commit and run. The plan job
+stores the archive in the state bucket at
+`plans/<environment>/<target>/<run>-<attempt>.tar`, never replacing an
+existing object, and adds its SHA-256 to the run's plan result. Only that
+environment's plan role can write there and only its apply role can read, so
+neither the other environment's roles nor anyone on GitHub can read a saved
+plan, which holds sensitive values in plain form. The apply job fetches the
+archive, refuses it unless it matches the digest from this run, checks the
+manifest, then applies the saved plan unchanged.
 
 Every root module commits its `.terraform.lock.hcl`, which pins each
 provider's checksums. Jobs that run without a plan, such as the Talos upgrade,
@@ -118,10 +125,10 @@ environment. Result artifacts contain routing flags,
 commit/run identifiers, and the human-readable output of `terraform show
 -no-color tfplan`, which hides values marked sensitive by Terraform. Raw JSON
 plans are not published. Plan text and logs remain visible in this public
-repository; saved plan archives are encrypted.
+repository; saved plan archives are not published.
 
-Artifacts are unique to each run attempt and target and expire after seven
-days. If a plan becomes stale, an artifact expires, or a deployment fails,
+Result artifacts and saved plans are unique to each run attempt and target and
+expire after seven days. If a plan becomes stale or expires, or a deployment fails,
 rerun **all jobs** so the plan, result metadata, and approval summary match.
 Automatic dev applies may delete or replace resources when an ordinary plan
 contains those actions; explicit destroy approval is not a deletion filter on

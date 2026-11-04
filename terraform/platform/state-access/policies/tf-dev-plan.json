@@ -30,20 +30,51 @@
       "Effect": "Deny",
       "NotResource": [
         "arn:aws:s3:::rauland-iac-homelab/terraform/dev/*.tfstate",
-        "arn:aws:s3:::rauland-iac-homelab/terraform/dev/*.tfstate.tflock"
+        "arn:aws:s3:::rauland-iac-homelab/terraform/dev/*.tfstate.tflock",
+        "arn:aws:s3:::rauland-iac-homelab/plans/dev/*"
       ],
-      "Sid": "DenyObjectsOutsideOwnState"
+      "Sid": "DenyObjectsOutsideOwnScope"
     },
     {
       "Action": [
-        "s3:PutObject*",
+        "s3:PutObject"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::rauland-iac-homelab/plans/dev/*"
+      ],
+      "Sid": "WriteOwnSavedPlans"
+    },
+    {
+      "Action": [
+        "s3:PutObject*"
+      ],
+      "Effect": "Deny",
+      "Resource": [
+        "arn:aws:s3:::rauland-iac-homelab/terraform/dev/*.tfstate",
+        "arn:aws:s3:::rauland-iac-homelab/terraform/dev/*.tfstate.tflock"
+      ],
+      "Sid": "DenyPlanStateWrites"
+    },
+    {
+      "Action": [
+        "s3:GetObject*"
+      ],
+      "Effect": "Deny",
+      "Resource": [
+        "arn:aws:s3:::rauland-iac-homelab/plans/dev/*"
+      ],
+      "Sid": "DenySavedPlanReads"
+    },
+    {
+      "Action": [
         "s3:DeleteObject*"
       ],
       "Effect": "Deny",
       "Resource": [
         "*"
       ],
-      "Sid": "DenyPlanWrites"
+      "Sid": "DenyPlanDeletes"
     },
     {
       "Action": [

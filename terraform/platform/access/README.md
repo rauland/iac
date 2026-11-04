@@ -143,10 +143,9 @@ Each entry contains `user_id`, `token_name`, `token_id`, `secret`, and the full
 
 Store each identity's full token as the matching
 `/iac/<scope>/<plan|apply>/TF_VAR_virtual_environment_api_token` SSM parameter.
-The full layout, including the API URL and saved plan key, is in
+The full layout, including the API URL, is in
 [CI parameters](../state-access/README.md#ci-parameters). Runners reach Proxmox
 through Tailscale and need no network secret.
-Keep the public plan encryption key in the repository variable.
 
 Allow deployment only from `main` for all apply environments. Dev Terraform
 apply uses `proxmox-dev-auto-apply` without required reviewers, with the same

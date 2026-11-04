@@ -6,6 +6,11 @@ locals {
         scope     = scope
         operation = operation
         state_key = "terraform/${scope}/*.tfstate"
+        # Saved plans: the plan role writes them, the apply role reads them.
+        plan_key = "plans/${scope}/*"
+        # etcd snapshots taken before upgrades: apply roles write, only
+        # administrators read.
+        snapshot_key = "etcd-snapshots/${scope}/*"
         # GitHub environments whose OIDC tokens may assume this identity's role.
         github_environments = concat(
           ["proxmox-${scope}-${operation}"],
@@ -17,7 +22,6 @@ locals {
         # SSM parameter prefixes under /iac whose values CI may read.
         parameter_paths = concat(
           ["shared/proxmox", "shared/wireguard", "${scope}/${operation}"],
-          operation == "apply" ? ["shared/apply"] : [],
           operation == "apply" ? ["${scope}/flux"] : [],
         )
       }
@@ -40,10 +44,13 @@ locals {
           Resource = ["arn:aws:s3:::${var.state_bucket_name}/${identity.state_key}"]
         },
         {
-          Sid         = "DenyObjectsOutsideOwnState"
-          Effect      = "Deny"
-          Action      = ["s3:GetObject*", "s3:PutObject*", "s3:DeleteObject*"]
-          NotResource = ["arn:aws:s3:::${var.state_bucket_name}/${identity.state_key}", "arn:aws:s3:::${var.state_bucket_name}/${identity.state_key}.tflock"]
+          Sid    = "DenyObjectsOutsideOwnScope"
+          Effect = "Deny"
+          Action = ["s3:GetObject*", "s3:PutObject*", "s3:DeleteObject*"]
+          NotResource = [for key in concat(
+            [identity.state_key, "${identity.state_key}.tflock", identity.plan_key],
+            identity.operation == "apply" ? [identity.snapshot_key] : [],
+          ) : "arn:aws:s3:::${var.state_bucket_name}/${key}"]
         }
         ], identity.operation == "apply" ? [
         {
@@ -57,12 +64,44 @@ locals {
           Effect   = "Allow"
           Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
           Resource = ["arn:aws:s3:::${var.state_bucket_name}/${identity.state_key}.tflock"]
+        },
+        {
+          Sid      = "ReadOwnSavedPlans"
+          Effect   = "Allow"
+          Action   = ["s3:GetObject"]
+          Resource = ["arn:aws:s3:::${var.state_bucket_name}/${identity.plan_key}"]
+        },
+        {
+          Sid      = "WriteOwnEtcdSnapshots"
+          Effect   = "Allow"
+          Action   = ["s3:PutObject"]
+          Resource = ["arn:aws:s3:::${var.state_bucket_name}/${identity.snapshot_key}"]
         }
         ] : [
         {
-          Sid      = "DenyPlanWrites"
+          Sid      = "WriteOwnSavedPlans"
+          Effect   = "Allow"
+          Action   = ["s3:PutObject"]
+          Resource = ["arn:aws:s3:::${var.state_bucket_name}/${identity.plan_key}"]
+        },
+        {
+          # With the scope deny above, plan roles may only add saved plans:
+          # never write state or locks, delete, or read a saved plan back.
+          Sid      = "DenyPlanStateWrites"
           Effect   = "Deny"
-          Action   = ["s3:PutObject*", "s3:DeleteObject*"]
+          Action   = ["s3:PutObject*"]
+          Resource = ["arn:aws:s3:::${var.state_bucket_name}/${identity.state_key}", "arn:aws:s3:::${var.state_bucket_name}/${identity.state_key}.tflock"]
+        },
+        {
+          Sid      = "DenySavedPlanReads"
+          Effect   = "Deny"
+          Action   = ["s3:GetObject*"]
+          Resource = ["arn:aws:s3:::${var.state_bucket_name}/${identity.plan_key}"]
+        },
+        {
+          Sid      = "DenyPlanDeletes"
+          Effect   = "Deny"
+          Action   = ["s3:DeleteObject*"]
           Resource = ["*"]
         }
         ], [
