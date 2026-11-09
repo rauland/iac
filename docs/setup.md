@@ -109,40 +109,43 @@ administrator before read-only plan credentials initialize a new root.
 Each plan/apply environment needs its matching `AWS_ROLE_ARN` and
 `AWS_DEFAULT_REGION` variables (see
 [GitHub OIDC roles](../terraform/platform/state-access/README.md#github-oidc-roles)).
-Proxmox endpoints and tokens and the saved-plan private key are SSM
-parameters, listed in
+Proxmox endpoints and tokens are SSM parameters, listed in
 [CI parameters](../terraform/platform/state-access/README.md#ci-parameters).
 
-## 4. Configure plan encryption
+## 4. Expire saved plans and snapshots
 
-Generate a dedicated encryption key locally with GnuPG:
+Deployments keep each saved plan in the state bucket under
+`plans/<environment>/`, and the Talos upgrade keeps an etcd snapshot under
+`etcd-snapshots/<environment>/`. Both hold secrets in plain form, so the
+[state-access roles](../terraform/platform/state-access/README.md#state-permission-boundaries)
+let only the matching environment's plan role write a plan, its apply role
+read it, and administrators read the snapshots. Nothing needs a key of its own.
+
+Expire both after seven days, as the bucket is versioned. Adding a lifecycle
+configuration replaces any rules the bucket already has, so check first:
 
 ```sh
-plan_key_dir=$(mktemp -d)
-gpg --homedir "$plan_key_dir" --batch --passphrase '' \
-  --quick-generate-key 'Terraform plan encryption' rsa3072 encr 1y
-gpg --homedir "$plan_key_dir" --armor --export 'Terraform plan encryption' \
-  > "$plan_key_dir/public.asc"
-gpg --homedir "$plan_key_dir" --batch --pinentry-mode loopback --passphrase '' \
-  --armor --export-secret-keys 'Terraform plan encryption' \
-  > "$plan_key_dir/private.asc"
+aws s3api get-bucket-lifecycle-configuration --profile admin --bucket rauland-iac-homelab
 ```
 
-| GitHub setting | Value |
-| --- | --- |
-| Repository variable `TF_PLAN_PUBLIC_KEY` | Complete contents of `public.asc` |
-| SSM parameter `/iac/shared/apply/TF_PLAN_PRIVATE_KEY` | Complete contents of `private.asc` |
+If that reports `NoSuchLifecycleConfiguration`, add the rules; otherwise add
+these two to the existing ones:
 
-The dedicated private key has no passphrase. Keep a secure backup, remove the
-temporary key directory after setup, and rotate the pair before its one-year
-expiry. Do not commit the generated files.
+```sh
+aws s3api put-bucket-lifecycle-configuration --profile admin --bucket rauland-iac-homelab \
+  --lifecycle-configuration '{"Rules": [
+    {"ID": "expire-saved-plans", "Status": "Enabled", "Filter": {"Prefix": "plans/"},
+     "Expiration": {"Days": 7}, "NoncurrentVersionExpiration": {"NoncurrentDays": 1}},
+    {"ID": "expire-etcd-snapshots", "Status": "Enabled", "Filter": {"Prefix": "etcd-snapshots/"},
+     "Expiration": {"Days": 7}, "NoncurrentVersionExpiration": {"NoncurrentDays": 1}}]}'
+```
 
 ## 5. Configure GitHub protections
 
 Create the environments and protections in the
 [deployment approval table](deployments.md#approval-and-saved-plans). Restrict
 apply environments to `main`, require the documented human approvals, and keep
-write credentials and private plan keys in apply environments. Copy the scoped
+write credentials in apply environments. Copy the scoped
 dev apply settings into `proxmox-dev-auto-apply`, which has no required reviewers.
 
 Configure [main branch protection](deployments.md#main-branch-protection)

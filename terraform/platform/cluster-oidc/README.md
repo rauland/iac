@@ -21,6 +21,73 @@ The provider alone grants nothing: a pod gets AWS access only through a role
 whose trust policy names the provider, the audience and the pod's service
 account.
 
+## How it works
+
+A pod reaches AWS without a stored key in five steps, shown here for a VolSync
+mover pod backing up a volume:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant api as API server
+    participant pod as Mover pod
+    participant sts as AWS STS
+    participant docs as Discovery bucket
+    participant data as Backup bucket
+
+    api->>pod: Signed token and role settings<br/>(sts.amazonaws.com, 1 hour)
+    pod->>sts: AssumeRoleWithWebIdentity
+    sts->>docs: Fetch issuer's public keys
+    Note over sts: Check signature, audience<br/>and service account name
+    sts-->>pod: Temporary credentials (1 hour)
+    pod->>data: restic reads and writes <cluster>/
+```
+
+1. The pod starts with a token and the settings to use it. When VolSync
+   creates a mover pod, a
+   [MutatingAdmissionPolicy](../../../kubernetes/infrastructure/volsync/aws-identity.yaml)
+   adds a projected token volume and the variables `AWS_ROLE_ARN`,
+   `AWS_WEB_IDENTITY_TOKEN_FILE` and `AWS_REGION`. The kubelet then mounts a
+   service account token that the API server signs as the public issuer, for
+   the audience `sts.amazonaws.com`, valid for an hour and refreshed before it
+   expires.
+2. restic's S3 client sees the variables and calls STS
+   `AssumeRoleWithWebIdentity` with the token.
+3. STS fetches the issuer's discovery document and public keys from this
+   root's bucket. It checks the token's signature and issuer, then the role's
+   trust policy: the audience, and a subject of
+   `system:serviceaccount:<namespace>:volsync-src-*` or `volsync-dst-*`.
+4. STS returns temporary credentials for the role, valid for an hour.
+5. restic uses them to read and write the cluster's prefix in the
+   [backup bucket](../backup-storage/README.md), and nothing else.
+
+### Where the signing key lives
+
+The private key that signs service account tokens is one of the Talos machine
+secrets that the cluster's Talos root generates. It is kept in two places:
+
+- that root's Terraform state, in the encrypted, versioned state bucket, which
+  only the environment's plan and apply roles and administrators can read;
+- the control planes' machine configuration, on the `STATE` partition that
+  Talos encrypts with a TPM-sealed key (see
+  [system-volume encryption](../../modules/talos-cluster/README.md#secure-boot-and-system-volume-encryption)).
+
+The public bucket holds only the matching public keys. Anyone who can read the
+Talos state or administer a control plane can sign tokens AWS accepts, but
+those people already control the cluster, so the issuer adds no new way in.
+Rotating the key means recreating the machine secrets, which rebuilds the
+cluster's credentials, and then applying this root again.
+
+### Who can assume a role
+
+AWS trusts the token's subject, not the pod. The backup roles match a service
+account name pattern in any namespace, so anyone who can create a service
+account named `volsync-src-<anything>` and a pod that uses it gets the
+cluster's backup role. Grant that permission only to people who may read and
+delete backups. To narrow it, list exact `<namespace>:<service account>` pairs
+in the role's trust policy instead, at the cost of a Terraform change for each
+backed-up volume.
+
 ## Prepare the cluster
 
 Set the cluster's Talos root to sign tokens as the bucket's issuer, and let CI

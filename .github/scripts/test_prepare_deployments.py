@@ -34,6 +34,8 @@ class PrepareDeploymentTests(unittest.TestCase):
                       changes=changes, destroy=entry["destroy"], sha=self.context["GITHUB_SHA"],
                       run_id=self.context["GITHUB_RUN_ID"], run_attempt=self.context["GITHUB_RUN_ATTEMPT"],
                       plan_text="Plan: 1 to add, 0 to change, 0 to destroy.\n")
+        if changes is True:
+            result["archive_sha256"] = "0" * 64
         result.update(overrides)
         (self.directory / f"{entry['environment']}--{entry['target']}.json").write_text(json.dumps(result))
 
@@ -87,6 +89,24 @@ class PrepareDeploymentTests(unittest.TestCase):
                 self.result(target, **overrides)
                 with self.assertRaises(ValueError):
                     self.prepare(target)
+
+    def test_deployment_carries_saved_plan_digest(self):
+        target = self.target()
+        self.result(target, archive_sha256="a" * 64)
+        self.assertEqual(self.prepare(target)[0]["archive_sha256"], "a" * 64)
+        for archive in (None, "", "A" * 64, "a" * 63):
+            with self.subTest(archive=archive):
+                self.result(target, archive_sha256=archive)
+                with self.assertRaises(ValueError):
+                    self.prepare(target)
+
+    def test_pull_request_preview_needs_no_saved_plan(self):
+        self.context.update(GITHUB_EVENT_NAME="pull_request", GITHUB_REF="refs/pull/7/merge")
+        target = self.target()
+        self.result(target, archive_sha256=None,
+                    plan_text="~ memory = 1024 -> 2048\nPlan: 0 to add, 1 to change, 0 to destroy.")
+        self.assertIsNone(self.prepare(target)[0]["archive_sha256"])
+        self.assertIn("memory = 1024 -&gt; 2048", self.preview(target))
 
     def test_no_cross_target_matrix_output_overwrite(self):
         dev, prod = self.target(), self.target(environment="prod")

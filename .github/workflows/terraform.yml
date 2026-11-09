@@ -267,29 +267,24 @@ jobs:
             --directory "$TARGET_DIRECTORY" --environment "$TARGET_ENVIRONMENT" \
             --target "$TARGET_NAME" --destroy "$DESTROY" \
             --result "$RUNNER_TEMP/plan-result/$TARGET_ENVIRONMENT--$TARGET_NAME.json"
+      # Before the result upload, because it adds the archive's digest to it.
+      - name: Store saved plan when changes exist
+        if: >-
+          steps.plan.outputs.changes == 'true' && github.ref == 'refs/heads/main' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          TARGET_DIRECTORY: ${{ matrix.directory }}
+          TARGET_ENVIRONMENT: ${{ matrix.environment }}
+          TARGET_NAME: ${{ matrix.target }}
+        run: |
+          bash .github/scripts/terraform-saved-plan.sh upload "$TARGET_DIRECTORY" \
+            "$TARGET_ENVIRONMENT" "$TARGET_NAME" "$RUNNER_TEMP/plan-result/$TARGET_ENVIRONMENT--$TARGET_NAME.json"
       - name: Upload non-secret plan result
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tf-result-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
           path: ${{ runner.temp }}/plan-result/*.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Encrypt saved plan when changes exist
-        if: >-
-          steps.plan.outputs.changes == 'true' && github.ref == 'refs/heads/main' &&
-          (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        env:
-          TF_PLAN_PUBLIC_KEY: ${{ vars.TF_PLAN_PUBLIC_KEY }}
-          TARGET_DIRECTORY: ${{ matrix.directory }}
-        run: bash .github/scripts/terraform-plan-artifact.sh encrypt "$TARGET_DIRECTORY" "$RUNNER_TEMP/tfplan.tar.gpg"
-      - name: Upload encrypted plan
-        if: >-
-          steps.plan.outputs.changes == 'true' && github.ref == 'refs/heads/main' &&
-          (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
-          path: ${{ runner.temp }}/tfplan.tar.gpg
           if-no-files-found: error
           retention-days: 7
 
@@ -372,18 +367,18 @@ jobs:
       - name: Load CI parameters
         env:
           SCOPE: ${{ matrix.environment }}
-        run: python3 .github/scripts/load-parameters.py /iac/shared/proxmox /iac/shared/apply "/iac/$SCOPE/apply"
-      - name: Download encrypted saved plan
-        if: matrix.terraform
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.environment }}-${{ matrix.target }}
-          path: ${{ runner.temp }}/encrypted-plan
-      - name: Decrypt saved plan
+        run: python3 .github/scripts/load-parameters.py /iac/shared/proxmox "/iac/$SCOPE/apply"
+      - name: Fetch the saved plan this run uploaded
         if: matrix.terraform
         env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
           TARGET_DIRECTORY: ${{ matrix.directory }}
-        run: bash .github/scripts/terraform-plan-artifact.sh decrypt "$TARGET_DIRECTORY" "$RUNNER_TEMP/encrypted-plan/tfplan.tar.gpg"
+          TARGET_ENVIRONMENT: ${{ matrix.environment }}
+          TARGET_NAME: ${{ matrix.target }}
+          ARCHIVE_SHA256: ${{ matrix.archive_sha256 }}
+        run: |
+          bash .github/scripts/terraform-saved-plan.sh download "$TARGET_DIRECTORY" \
+            "$TARGET_ENVIRONMENT" "$TARGET_NAME" "$ARCHIVE_SHA256"
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         if: matrix.terraform
         with:

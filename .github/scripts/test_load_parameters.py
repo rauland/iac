@@ -82,8 +82,8 @@ print(json.dumps({'Parameters': responses[path]}))
         self.assert_values_only_in_masks(result.stdout, TOKEN)
 
     def test_rejects_short_secret_without_printing_it(self):
-        result = self.run_loader({"/iac/shared/wireguard": [
-            self.parameter("/iac/shared/wireguard/PEER_IP", "10.0.1")]}, "/iac/shared/wireguard")
+        result = self.run_loader({"/iac/dev/plan": [
+            self.parameter("/iac/dev/plan/SHORT_SECRET", "10.0.1")]}, "/iac/dev/plan")
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn("10.0.1", result.stdout + result.stderr)
         self.assertEqual(self.environment.read_text(), "")

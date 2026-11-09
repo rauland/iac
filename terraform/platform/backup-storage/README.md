@@ -30,8 +30,9 @@ for temporary credentials of its cluster's role
 `volsync-src-*` and `volsync-dst-*`, which VolSync creates for each
 ReplicationSource and ReplicationDestination, with the audience
 `sts.amazonaws.com`. Anyone who can create service accounts with those names
-in the cluster can reach the cluster's prefix, so treat that permission like
-access to the backups.
+in any namespace of the cluster can reach the cluster's prefix, so treat that
+permission like access to the backups; see
+[who can assume a role](../cluster-oidc/README.md#who-can-assume-a-role).
 
 The cluster injects the role into mover pods with a MutatingAdmissionPolicy;
 see [Kubernetes volumes](../../../docs/backups.md#kubernetes-volumes).

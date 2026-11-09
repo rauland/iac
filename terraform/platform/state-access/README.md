@@ -1,7 +1,7 @@
 # CI state access
 
 This administrator-operated root creates four scoped IAM roles that GitHub Actions
-assumes through OIDC, one per dev, prod and shared-image plan/apply identity.
+assumes through OIDC: plan and apply for each of dev and prod.
 Workflows receive temporary credentials for one hour; no AWS keys are stored in
 GitHub. It is excluded from automatic deployment discovery. Keep its state
 administrator-only so workload CI cannot change its own trust or permissions.
@@ -25,7 +25,7 @@ The plan, deploy and state-unlock jobs request `id-token: write` and call
 
 ### CI parameters
 
-CI reads its Proxmox, saved-plan and Flux secrets from SSM
+CI reads its Proxmox and Flux secrets from SSM
 Parameter Store instead of GitHub environment secrets. Each parameter's last
 path segment is the environment variable it becomes. The plan and deploy jobs
 run [load-parameters.py](../../../.github/scripts/load-parameters.py) right after
@@ -36,14 +36,12 @@ be masked reliably. Roles can only read, and only these prefixes:
 | Parameter | Type | Readable by |
 | --- | --- | --- |
 | `/iac/shared/proxmox/PROXMOX_URL`, `.../TF_VAR_virtual_environment_endpoint` | SecureString | All roles |
-| `/iac/shared/apply/TF_PLAN_PRIVATE_KEY` | SecureString | Apply roles |
 | `/iac/<scope>/plan/TF_VAR_virtual_environment_api_token` | SecureString | That scope's plan role |
 | `/iac/<scope>/apply/TF_VAR_virtual_environment_api_token` | SecureString | That scope's apply role |
 | `/iac/<scope>/flux/SOPS_AGE_KEY` | SecureString | Dev and prod apply roles; loaded only by Flux deployments |
 
 `<scope>` is `dev` or `prod`. No role can read another scope's
-values, and plan roles cannot read apply values. Roles may also read
-`/iac/shared/wireguard/`, which is unused since CI moved to Tailscale.
+values, and plan roles cannot read apply values.
 `String` parameters hold non-secret identifiers and are
 not masked.
 
@@ -205,6 +203,18 @@ Dev/prod object access is restricted to `terraform/dev/*.tfstate` or
 outside the selected state scope, including both administrator access states
 and their historical versions. Bucket listing exposes key metadata only.
 Only the default Terraform workspace is supported by these policies.
+
+Saved plans and etcd snapshots share the bucket, in their own prefixes:
+
+| Prefix | Plan role | Apply role |
+| --- | --- | --- |
+| `plans/<scope>/` | Write only; cannot read back, replace state or delete | Read only |
+| `etcd-snapshots/<scope>/` | None | Write only; administrators read |
+
+Neither scope's roles can reach the other's prefixes. A plan role writing
+nonsense achieves nothing: the apply accepts only the archive whose digest its
+own run recorded. Both prefixes expire after seven days through the bucket's
+[lifecycle rules](../../../docs/setup.md#4-expire-saved-plans-and-snapshots).
 
 Initial states for new roots must be bootstrapped by an administrator before a read-only plan role can initialize
 them. Never export the administrator's broad AWS credentials to those

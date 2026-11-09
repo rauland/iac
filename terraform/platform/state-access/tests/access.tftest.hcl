@@ -14,11 +14,13 @@ run "state_scope_boundaries" {
     condition = alltrue([
       for name, policy in local.policies : alltrue([
         for statement in policy.Statement : alltrue([
-          for action in statement.Action : contains(["s3:ListBucket", "s3:GetBucketLocation", "s3:GetObject", "ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"], action)
+          for action in statement.Action : contains(["s3:ListBucket", "s3:GetBucketLocation", "s3:GetObject", "ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"], action) || (
+            action == "s3:PutObject" && statement.Resource == ["arn:aws:s3:::rauland-iac-homelab/plans/${local.identities[name].scope}/*"]
+          )
         ]) if statement.Effect == "Allow"
       ]) if local.identities[name].operation == "plan"
     ])
-    error_message = "Plan credentials cannot write state or acquire locks."
+    error_message = "Plan credentials cannot write state or acquire locks; they may only add saved plans of their own scope."
   }
   assert {
     condition = alltrue([
@@ -29,6 +31,53 @@ run "state_scope_boundaries" {
       ])
     ])
     error_message = "Apply credentials may delete lock files, never state files."
+  }
+}
+
+run "saved_plan_boundaries" {
+  command = plan
+
+  assert {
+    condition = alltrue(flatten([
+      for name, policy in local.policies : [
+        for statement in policy.Statement : [
+          for resource in try(statement.Resource, []) : contains([
+            for prefix in ["plans", "etcd-snapshots"] : "arn:aws:s3:::rauland-iac-homelab/${prefix}/${local.identities[name].scope}/*"
+          ], resource) if anytrue([for prefix in ["plans/", "etcd-snapshots/"] : startswith(resource, "arn:aws:s3:::rauland-iac-homelab/${prefix}")])
+        ] if statement.Effect == "Allow"
+      ]
+    ]))
+    error_message = "Roles may reach saved plans and etcd snapshots of their own scope only."
+  }
+  assert {
+    condition = alltrue(flatten([
+      for name, policy in local.policies : [
+        for statement in policy.Statement : (
+          local.identities[name].operation == "plan" ? statement.Action == ["s3:PutObject"] : statement.Action == ["s3:GetObject"]
+        ) if statement.Effect == "Allow" && anytrue([for resource in try(statement.Resource, []) : strcontains(resource, ":::rauland-iac-homelab/plans/")])
+      ]
+    ]))
+    error_message = "Only plan roles write saved plans and only apply roles read them."
+  }
+  assert {
+    condition = alltrue(flatten([
+      for name, policy in local.policies : [
+        for statement in policy.Statement :
+        local.identities[name].operation == "apply" && statement.Action == ["s3:PutObject"]
+        if statement.Effect == "Allow" && anytrue([for resource in try(statement.Resource, []) : strcontains(resource, ":::rauland-iac-homelab/etcd-snapshots/")])
+      ]
+    ]))
+    error_message = "CI may only write etcd snapshots, from apply roles; only administrators read them."
+  }
+  assert {
+    condition = alltrue([
+      for name, policy in local.policies : anytrue([
+        for statement in policy.Statement :
+        statement.Effect == "Deny" && statement.Action == ["s3:GetObject*"] &&
+        statement.Resource == ["arn:aws:s3:::rauland-iac-homelab/plans/${local.identities[name].scope}/*"]
+      ]) if local.identities[name].operation == "plan"
+    ])
+    error_message = "Plan roles must not read saved plans back."
   }
 }
 
@@ -114,9 +163,9 @@ run "parameter_read_boundaries" {
   }
   assert {
     condition = (
-      local.identities["tf-prod-apply"].parameter_paths == ["shared/proxmox", "shared/wireguard", "prod/apply", "shared/apply", "prod/flux"] &&
+      local.identities["tf-prod-apply"].parameter_paths == ["shared/proxmox", "prod/apply", "prod/flux"] &&
       contains(local.identities["tf-dev-apply"].parameter_paths, "dev/flux") &&
-      local.identities["tf-dev-plan"].parameter_paths == ["shared/proxmox", "shared/wireguard", "dev/plan"]
+      local.identities["tf-dev-plan"].parameter_paths == ["shared/proxmox", "dev/plan"]
     )
     error_message = "Unexpected parameter paths for the sample roles."
   }
