@@ -31,6 +31,9 @@ at the volume level.
   nodes and opted in to VolSync backups, encrypted by restic before upload to
   S3, which the cluster reaches through OIDC instead of access keys. See
   [backups and recovery](../backups.md).
+  Bulk volumes for data that is neither private nor irreplaceable, such as a
+  media library, are the exception: unencrypted, so deleted files return their
+  space to the pool, and not backed up.
 
 ## Consequences
 

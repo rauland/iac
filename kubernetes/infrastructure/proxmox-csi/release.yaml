@@ -47,6 +47,21 @@ spec:
           csi.storage.k8s.io/node-stage-secret-namespace: csi-proxmox
           csi.storage.k8s.io/node-expand-secret-name: proxmox-csi-encryption
           csi.storage.k8s.io/node-expand-secret-namespace: csi-proxmox
+      # For large files that are not sensitive and can be fetched again, such
+      # as a media library: the cluster's bulk storage, whose disks use large
+      # ZFS blocks. Not encrypted, so deleted files return their space to the
+      # pool; LUKS does not pass discards through. Not for databases or
+      # private data. See the Kubernetes README.
+      - name: proxmox-bulk
+        storage: ${csi_storage}-bulk
+        fstype: ext4
+        reclaimPolicy: Retain
+        volumeBindingMode: WaitForFirstConsumer
+        cache: none
+        ssd: true
+        mountOptions:
+          - noatime
+          - discard
       # For volumes that hold nothing worth keeping, such as VolSync's restic
       # caches, which would otherwise leave a retained disk behind each time
       # their ReplicationSource is removed.

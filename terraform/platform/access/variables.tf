@@ -54,12 +54,22 @@ variable "csi_volume_owner_vmid" {
 }
 
 variable "kubernetes_storage_pools" {
-  description = "Existing ZFS dataset per environment for Kubernetes volumes. Each becomes storage k8s-<environment>, the only storage that environment's CSI identity can allocate on or delete from. Create the datasets first with scripts/prepare-host.sh."
+  description = "Existing ZFS dataset per environment for Kubernetes volumes. Each becomes storage k8s-<environment>, and <dataset>-bulk becomes k8s-<environment>-bulk; these are the only storages that environment's CSI identity can allocate on or delete from. Create the datasets first with scripts/prepare-host.sh."
   type        = map(string)
   default     = { dev = "nas/k8s-dev", prod = "nas/k8s-prod" }
   validation {
     condition     = alltrue([for environment in keys(var.kubernetes_storage_pools) : contains(["dev", "prod"], environment)])
     error_message = "Kubernetes storage pools must be keyed by dev or prod."
+  }
+}
+
+variable "kubernetes_bulk_blocksize" {
+  description = "ZFS block size of volumes on each environment's bulk storage (k8s-<environment>-bulk, on dataset <pool>-bulk), for large files written once such as media. Small blocks waste space to parity padding on RAIDZ; large blocks slow small random writes, so databases stay on k8s-<environment>."
+  type        = string
+  default     = "128k"
+  validation {
+    condition     = can(regex("^(4|8|16|32|64|128)k$", var.kubernetes_bulk_blocksize))
+    error_message = "Use a ZFS volume block size from 4k to 128k."
   }
 }
 
