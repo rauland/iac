@@ -132,6 +132,8 @@ run "boot_and_configuration_contract" {
     condition = (
       proxmox_virtual_environment_vm.node["worker-01"].cpu[0].cores == 4 &&
       proxmox_virtual_environment_vm.node["worker-01"].memory[0].dedicated == 8192 &&
+      proxmox_virtual_environment_vm.node["worker-01"].memory[0].floating == 8192 &&
+      proxmox_virtual_environment_vm.node["worker-01"].scsi_hardware == "virtio-scsi-single" &&
       proxmox_virtual_environment_vm.node["worker-01"].disk[0].size == 64 &&
       proxmox_virtual_environment_vm.node["worker-01"].network_device[0].bridge == "vmbr1"
     )
