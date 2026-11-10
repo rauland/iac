@@ -44,7 +44,7 @@ variable "image_paths" {
 variable "infra_vm_ids" {
   description = "Existing shared infrastructure guests. Workload roots own dev/prod membership through VM pool_id."
   type        = set(number)
-  default     = [100, 101, 116]
+  default     = [101]
 }
 
 variable "csi_volume_owner_vmid" {
