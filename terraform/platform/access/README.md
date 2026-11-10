@@ -198,7 +198,7 @@ The Python verifier requires `requests`, reads the protected credential export,
 creates two stopped diskless guests in dev/prod, tests owner lifecycle access
 and denied cross-environment writes, and deletes both guests in a `finally`
 block. When the export includes `k8s-csi-dev`, it also checks that the token can
-create and delete a 4 MiB volume on `k8s-dev` but not on `zfs` or `local-lvm`,
+create and delete a 4 MiB volume on `k8s-dev` but not on `local-data` or `local-lvm`,
 and cannot read prod guests or change memory. It prints no secrets.
 
 The Talos module's `removed` block stops managing pre-RBAC boot media without

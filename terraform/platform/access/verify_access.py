@@ -87,7 +87,7 @@ def verify(endpoint, credentials, node):
             call(csi, "GET", f"/nodes/{node}/qemu/{guests['prod']}/config", expected=403)
             call(csi, "POST", f"/nodes/{node}/qemu/{vm_id}/config", expected=403, data={"memory": 256})
             disk = {"vmid": vm_id, "filename": f"vm-{vm_id}-disk-9", "size": "4M"}
-            for storage in ["zfs", "local-lvm"]:
+            for storage in ["local-data", "local-lvm"]:
                 call(csi, "POST", f"/nodes/{node}/storage/{storage}/content", expected=403, data=disk)
             volume = call(csi, "POST", f"/nodes/{node}/storage/k8s-dev/content", data=disk)
             volumes.append((csi, volume))
