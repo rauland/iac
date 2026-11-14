@@ -86,6 +86,16 @@
       ],
     },
     {
+      // A Helm chart in an OCI registry such as GHCR has no release date that
+      // Renovate can read, so minimumReleaseAge would hold its updates as
+      // pending forever. Treat a missing date as old enough for these charts
+      // only; every other dependency still has to be three days old.
+      description: 'Let OCI Helm charts through minimumReleaseAge without a release date',
+      matchManagers: ['flux'],
+      matchDatasources: ['docker'],
+      minimumReleaseAgeBehaviour: 'timestamp-optional',
+    },
+    {
       // A major version can need steps first (migrations, removed settings, new
       // requirements). Tick it on the dashboard to get its pull request.
       description: 'Hold major updates on the Dependency Dashboard until approved',
