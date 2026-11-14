@@ -85,6 +85,9 @@ talos_nodes = {
   # GPU label matches; only workloads that tolerate the taint run here. The
   # host CPU type passes AVX2 and AVX-512 through for the model layers that run
   # on the CPU; a VM with a passed-through GPU cannot migrate anyway.
+  # 64 GB holds the largest Qwen3.8-Flash-Next pack Strata offers. The host
+  # has room for it only while the dev cluster is stopped (its roots carry
+  # .disabled): stop this VM, or give it less memory, before starting dev.
   prod-worker-03 = {
     node_name         = "prod-worker-03"
     node_type         = "worker"
@@ -94,7 +97,7 @@ talos_nodes = {
     ipv4_address      = "dhcp"
     cpu               = 8
     cpu_type          = "host"
-    memory            = 49152
+    memory            = 65536
     disk_size         = 64
     pci_devices       = [{ mapping = "gpu-rtx3060" }, { mapping = "gpu-rtx3060-audio" }]
     system_extensions = ["nonfree-kmod-nvidia-lts", "nvidia-container-toolkit-lts"]
