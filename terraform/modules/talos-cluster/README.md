@@ -190,6 +190,13 @@ a reboot inside Talos keeps the same QEMU process. Drain the node, stop and
 start the VM from Proxmox, then uncordon it. A VM with a passed-through device
 also cannot balloon its memory or live-migrate.
 
+The same applies to the VM's SCSI controller and balloon device. Nodes use
+`virtio-scsi-single`, one controller per disk, so every disk, the CSI plugin's
+volumes included, gets its own I/O thread. The balloon device is as large as
+the VM's memory, so Proxmox reports the guest's own memory use but never
+reclaims any. A change to either stays pending in Proxmox until each node's VM
+is stopped and started, one node at a time.
+
 `system_extensions` builds one Image Factory image for the whole cluster, and
 the upgrade workflow installs it on every node. A node's own
 `system_extensions` give that node a separate image with the cluster's

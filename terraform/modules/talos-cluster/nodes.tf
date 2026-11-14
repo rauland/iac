@@ -9,11 +9,14 @@ resource "proxmox_virtual_environment_vm" "node" {
   tags                = []
   bios                = "ovmf"
   machine             = "q35"
-  scsi_hardware       = "virtio-scsi-pci"
   boot_order          = ["scsi0", "ide2"]
   hotplug             = "network,disk,usb"
   stop_on_destroy     = true
   reboot_after_update = false
+  # One controller per disk, so each disk, the Proxmox CSI plugin's volumes
+  # included, gets its own I/O thread. Takes effect when the VM is stopped and
+  # started again.
+  scsi_hardware = "virtio-scsi-single"
 
   agent {
     enabled = true
@@ -29,8 +32,13 @@ resource "proxmox_virtual_environment_vm" "node" {
     type  = each.value.cpu_type
   }
 
+  # A balloon device as large as the VM's memory, so Proxmox shows the guest's
+  # own memory use instead of the QEMU process's. Proxmox never reclaims memory
+  # from it, so Talos keeps a fixed amount. Takes effect when the VM is stopped
+  # and started again.
   memory {
     dedicated = each.value.memory
+    floating  = each.value.memory
   }
 
   efi_disk {
