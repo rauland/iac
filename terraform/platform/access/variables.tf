@@ -92,6 +92,23 @@ variable "pci_mappings" {
       iommu_group  = 2
       comment      = "NVIDIA Quadro P2200 for media transcoding"
     }
+    # The GPU and its audio function share IOMMU group 4, so the VM takes both.
+    gpu-rtx3060 = {
+      environment  = "prod"
+      path         = "0000:17:00.0"
+      id           = "10de:2503"
+      subsystem_id = "1462:397b"
+      iommu_group  = 4
+      comment      = "NVIDIA GeForce RTX 3060 12GB for local AI models"
+    }
+    gpu-rtx3060-audio = {
+      environment  = "prod"
+      path         = "0000:17:00.1"
+      id           = "10de:228e"
+      subsystem_id = "1462:397b"
+      iommu_group  = 4
+      comment      = "Audio function of the RTX 3060, in the same IOMMU group"
+    }
   }
   validation {
     condition     = alltrue([for mapping in var.pci_mappings : contains(["dev", "prod"], mapping.environment)])

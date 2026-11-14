@@ -27,6 +27,22 @@ spec:
     # config.yaml with the Proxmox API URL, token and region; see the
     # cluster's proxmox-csi directory.
     existingConfigSecret: proxmox-csi-plugin
+    node:
+      # The chart's own three, plus the AI node's taint, so volumes can also
+      # be mounted there.
+      tolerations:
+        - key: karpenter.sh/disrupted
+          operator: Exists
+          effect: NoSchedule
+        - key: node.kubernetes.io/unschedulable
+          operator: Exists
+          effect: NoSchedule
+        - key: node.kubernetes.io/disk-pressure
+          operator: Exists
+          effect: NoSchedule
+        - key: dedicated
+          operator: Exists
+          effect: NoSchedule
     storageClass:
       - name: proxmox
         storage: ${csi_storage}
