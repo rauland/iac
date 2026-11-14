@@ -1,0 +1,3 @@
+Dev is stopped to free host memory for prod's AI node; see
+terraform/workloads/prod/talos/terraform.auto.tfvars. Start prod-worker-03 with
+less memory, or stop it, before removing this marker and starting dev.
