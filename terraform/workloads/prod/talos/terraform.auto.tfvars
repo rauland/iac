@@ -78,4 +78,42 @@ talos_nodes = {
       EOT
     ]
   }
+  # The AI node: the RTX 3060 (Ampere, also on the 580 LTS driver) for local
+  # models. Its memory holds the parts of a model that do not fit in the GPU's
+  # 12 GB, and passthrough pins all of it on the host. The dedicated=ai taint
+  # keeps the household apps off it, the media apps included, although their
+  # GPU label matches; only workloads that tolerate the taint run here.
+  prod-worker-03 = {
+    node_name         = "prod-worker-03"
+    node_type         = "worker"
+    pve_node          = "pve"
+    api_address       = "10.0.0.56"
+    mac_address       = "02:00:00:00:53:04"
+    ipv4_address      = "dhcp"
+    cpu               = 8
+    memory            = 49152
+    disk_size         = 64
+    pci_devices       = [{ mapping = "gpu-rtx3060" }, { mapping = "gpu-rtx3060-audio" }]
+    system_extensions = ["nonfree-kmod-nvidia-lts", "nvidia-container-toolkit-lts"]
+    config_patches = [
+      <<-EOT
+      machine:
+        kernel:
+          modules:
+            - name: nvidia
+            - name: nvidia_uvm
+            - name: nvidia_drm
+            - name: nvidia_modeset
+        sysctls:
+          net.core.bpf_jit_harden: "1"
+      ---
+      apiVersion: v1alpha1
+      kind: KubeNodeConfig
+      labels:
+        nvidia.com/gpu.present: "true"
+      taints:
+        dedicated: ai:NoSchedule
+      EOT
+    ]
+  }
 }

@@ -111,7 +111,11 @@ run "environment_boundaries" {
   assert {
     condition = (
       toset(local.roles.PCIMappingUser) == toset(["Mapping.Use"]) &&
-      toset([for grant in local.service_grants : "${grant.name}:${grant.path}" if grant.role == "PCIMappingUser"]) == toset(["tf-prod-apply:/mapping/pci/gpu-p2200"]) &&
+      toset([for grant in local.service_grants : "${grant.name}:${grant.path}" if grant.role == "PCIMappingUser"]) == toset([
+        "tf-prod-apply:/mapping/pci/gpu-p2200",
+        "tf-prod-apply:/mapping/pci/gpu-rtx3060",
+        "tf-prod-apply:/mapping/pci/gpu-rtx3060-audio",
+      ]) &&
       alltrue([for grant in local.service_grants : grant.role == "PCIMappingUser" if startswith(grant.path, "/mapping/")])
     )
     error_message = "Only an environment's apply identity may use that environment's PCI mappings, and only to attach them."

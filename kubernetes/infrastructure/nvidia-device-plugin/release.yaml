@@ -27,3 +27,14 @@ spec:
     runtimeClassName: nvidia
     nodeSelector:
       nvidia.com/gpu.present: "true"
+    # The chart's own two, plus the AI node's taint, so the plugin also
+    # advertises that node's GPU.
+    tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      - key: dedicated
+        operator: Exists
+        effect: NoSchedule
