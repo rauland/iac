@@ -90,7 +90,7 @@ metadata:
 spec:
   url: https://github.com/kubernetes-csi/external-snapshotter
   ref:
-    tag: v8.4.0
+    tag: v8.7.0
   interval: 24h
   ignore: |
     /*
