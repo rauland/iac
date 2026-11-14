@@ -3,7 +3,7 @@ cluster_name       = "dev"
 cluster_endpoint   = "https://10.0.0.50:6443"
 bootstrap_node     = "dev-cp-01"
 talos_version      = "v1.14.5"
-kubernetes_version = "v1.37.1"
+kubernetes_version = "v1.37.2"
 dns_servers        = ["10.0.0.1"]
 
 # Served by terraform/platform/cluster-oidc, so AWS trusts the cluster's
