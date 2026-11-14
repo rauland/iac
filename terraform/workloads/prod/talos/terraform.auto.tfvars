@@ -82,7 +82,9 @@ talos_nodes = {
   # models. Its memory holds the parts of a model that do not fit in the GPU's
   # 12 GB, and passthrough pins all of it on the host. The dedicated=ai taint
   # keeps the household apps off it, the media apps included, although their
-  # GPU label matches; only workloads that tolerate the taint run here.
+  # GPU label matches; only workloads that tolerate the taint run here. The
+  # host CPU type passes AVX2 and AVX-512 through for the model layers that run
+  # on the CPU; a VM with a passed-through GPU cannot migrate anyway.
   prod-worker-03 = {
     node_name         = "prod-worker-03"
     node_type         = "worker"
@@ -91,6 +93,7 @@ talos_nodes = {
     mac_address       = "02:00:00:00:53:04"
     ipv4_address      = "dhcp"
     cpu               = 8
+    cpu_type          = "host"
     memory            = 49152
     disk_size         = 64
     pci_devices       = [{ mapping = "gpu-rtx3060" }, { mapping = "gpu-rtx3060-audio" }]
