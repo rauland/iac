@@ -88,6 +88,10 @@ talos_nodes = {
   # 64 GB holds the largest Qwen3.8-Flash-Next pack Strata offers. The host
   # has room for it only while the dev cluster is stopped (its roots carry
   # .disabled): stop this VM, or give it less memory, before starting dev.
+  # The boot disk, on the SSD, also holds the model files in the strata user
+  # volume: Qwen3.8 reads its n-gram table at random from disk for every
+  # token, which the hard disks behind the CSI storages cannot keep up with.
+  # The disk was grown in Proxmox; EPHEMERAL grows into it at the next boot.
   prod-worker-03 = {
     node_name         = "prod-worker-03"
     node_type         = "worker"
@@ -98,7 +102,7 @@ talos_nodes = {
     cpu               = 8
     cpu_type          = "host"
     memory            = 65536
-    disk_size         = 64
+    disk_size         = 224
     pci_devices       = [{ mapping = "gpu-rtx3060" }, { mapping = "gpu-rtx3060-audio" }]
     system_extensions = ["nonfree-kmod-nvidia-lts", "nvidia-container-toolkit-lts"]
     config_patches = [
@@ -119,6 +123,13 @@ talos_nodes = {
         nvidia.com/gpu.present: "true"
       taints:
         dedicated: ai:NoSchedule
+      ---
+      # A directory on EPHEMERAL, so it shares that volume's encryption, at
+      # /var/mnt/strata; Strata mounts it as a local PersistentVolume.
+      apiVersion: v1alpha1
+      kind: UserVolumeConfig
+      name: strata
+      volumeType: directory
       EOT
     ]
   }
