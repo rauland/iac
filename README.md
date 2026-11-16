@@ -188,3 +188,7 @@ protections or the health of deployed services.
 | Talos and Kubernetes upgrades | Implemented | A manual [upgrade workflow](terraform/modules/talos-cluster/README.md#upgrade-workflow) upgrades Talos node by node, draining workers through a control plane, or upgrades Kubernetes. It shares the Talos root's concurrency group, so it never overlaps a plan or apply. |
 | IP address management | Planned | Addresses are supplied explicitly or through DHCP; no IPAM integration allocates addresses or manages reservations. |
 | Host access | Not planned | No automation uses SSH; nodes are managed through the Proxmox and Talos APIs. See the [platform direction](docs/decisions/0001-kubernetes-first.md). |
+
+## License
+
+This repository is licensed under the [MIT License](LICENSE).
