@@ -4,7 +4,7 @@ cluster_name       = "prod"
 cluster_endpoint   = "https://10.0.0.53:6443"
 bootstrap_node     = "prod-cp-01"
 talos_version      = "v1.14.5"
-kubernetes_version = "v1.37.1"
+kubernetes_version = "v1.37.2"
 dns_servers        = ["10.0.0.1"]
 
 # The NVIDIA extensions must not go in this cluster-wide list: the container
