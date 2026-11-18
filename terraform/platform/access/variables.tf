@@ -63,6 +63,16 @@ variable "kubernetes_storage_pools" {
   }
 }
 
+variable "monitoring_environments" {
+  description = "Clusters that run the Proxmox exporter. Each gets a read-only k8s-monitor-<environment> identity with PVEAuditor on /."
+  type        = set(string)
+  default     = ["prod"]
+  validation {
+    condition     = alltrue([for environment in var.monitoring_environments : contains(["dev", "prod"], environment)])
+    error_message = "Monitoring environments must be dev or prod."
+  }
+}
+
 variable "kubernetes_bulk_blocksize" {
   description = "ZFS block size of volumes on each environment's bulk storage (k8s-<environment>-bulk, on dataset <pool>-bulk), for large files written once such as media. Small blocks waste space to parity padding on RAIDZ; large blocks slow small random writes, so databases stay on k8s-<environment>."
   type        = string

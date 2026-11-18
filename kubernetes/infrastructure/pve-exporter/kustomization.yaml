@@ -1,0 +1,13 @@
+# The Proxmox VE exporter, scraped by kube-prometheus-stack, with alerts for
+# the host, its storages and its guests. A cluster's overlay supplies the
+# Secret pve-exporter (keys user, token-name, token-value) for a read-only
+# PVEAuditor token, and its Flux Kustomization sets pve_host and, optionally,
+# pve_ignored_guests. It needs the monitoring stack's CRDs and namespace.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+resources:
+  - deployment.yaml
+  - service.yaml
+  - service-monitor.yaml
+  - rules.yaml

@@ -49,7 +49,8 @@ use, and node audit privileges. They do not manage access assignments.
 Automation is separated into plan/apply users for dev/prod and Kubernetes CSI
 users for environments with Kubernetes storage. Every token
 has privilege separation enabled and matching explicit user/token ACLs. No
-automation identity created here has a global `/` or `/vms` grant.
+automation identity created here has a global `/` or `/vms` grant, except the
+read-only [monitoring identity](#monitoring).
 
 Talos VMs are created without tags: Proxmox checks create-time tags on
 `/vms/ID` before pool assignment, which pool-scoped tokens cannot pass.
@@ -126,6 +127,22 @@ Pass through every device in the IOMMU group that the host does not need, and
 make sure no other guest is configured with the device: Proxmox starts only the
 first VM that claims it. Attach a mapping to a Talos node with `pci_devices`;
 see the [Talos module](../../modules/talos-cluster/README.md#pci-passthrough).
+
+### Monitoring
+
+Each environment in `monitoring_environments` (default `prod`) gets a
+`k8s-monitor-<environment>@pve` identity for the
+[Proxmox exporter](../../../kubernetes/README.md#proxmox-host). It has the
+built-in `PVEAuditor` role on `/`, the exporter's documented setup: it reads
+the node, every storage and every guest, including guests outside the dev and
+prod pools, so one scrape covers the whole host. `PVEAuditor` holds only audit
+privileges. It cannot change, start or stop anything, read guest files, or see
+token secrets, but it can list users, groups, ACLs and guest configurations.
+It is the only automation grant on `/`, and the tests check that it stays
+read-only.
+
+The token secret goes into the cluster as a SOPS-encrypted Secret; see the
+[Kubernetes guide](../../../kubernetes/README.md#proxmox-host).
 
 ## Credential export and GitHub cutover
 

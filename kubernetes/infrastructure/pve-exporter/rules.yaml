@@ -1,0 +1,79 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pve-exporter
+  labels:
+    app.kubernetes.io/name: pve-exporter
+spec:
+  groups:
+    - name: proxmox
+      rules:
+        - alert: ProxmoxScrapeFailing
+          expr: up{job="pve-exporter"} == 0 or absent(up{job="pve-exporter"})
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Proxmox metrics are missing
+            description: >-
+              Prometheus has not scraped the Proxmox exporter for 10 minutes.
+              Either the exporter is down or it cannot reach the Proxmox API
+              at ${pve_host}, so the other Proxmox alerts cannot fire.
+        - alert: ProxmoxNodeDown
+          expr: pve_up{id=~"node/.+"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Proxmox node {{ $labels.id }} is offline
+            description: The Proxmox API reports {{ $labels.id }} as offline.
+        - alert: ProxmoxStorageUnavailable
+          expr: pve_up{id=~"storage/.+"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Proxmox storage {{ $labels.id }} is unavailable
+            description: >-
+              {{ $labels.id }} is not active. Guests and volumes on it cannot
+              start or be written.
+        - alert: ProxmoxStorageFilling
+          expr: >-
+            pve_disk_usage_bytes{id=~"storage/.+"}
+            / (pve_disk_size_bytes{id=~"storage/.+"} > 0) > 0.85
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: Proxmox storage {{ $labels.id }} is {{ $value | humanizePercentage }} full
+            description: >-
+              Storages on the same ZFS pool share its free space, so they fill
+              together.
+        - alert: ProxmoxStorageAlmostFull
+          expr: >-
+            pve_disk_usage_bytes{id=~"storage/.+"}
+            / (pve_disk_size_bytes{id=~"storage/.+"} > 0) > 0.95
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: Proxmox storage {{ $labels.id }} is {{ $value | humanizePercentage }} full
+            description: >-
+              Writes to guests and volumes on it will soon fail. A full ZFS
+              pool is also slow to recover.
+        # A guest set to start at boot that is not running. Guests whose
+        # name matches pve_ignored_guests, such as a cluster stopped on
+        # purpose, are left out.
+        - alert: ProxmoxGuestDown
+          expr: >-
+            (pve_up{id=~"(qemu|lxc)/.+"} == 0)
+            and on (id) (pve_onboot_status == 1)
+            unless on (id) pve_guest_info{name=~"${pve_ignored_guests:=}"}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Proxmox guest {{ $labels.id }} is not running
+            description: >-
+              {{ $labels.id }} starts at boot but has not been running for 10
+              minutes.

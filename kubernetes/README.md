@@ -396,7 +396,7 @@ Tunnel to Traefik; the certificate does not depend on either.
 ## Monitoring
 
 Prod runs [kube-prometheus-stack](infrastructure/monitoring): Prometheus keeps
-15 days of node, Kubernetes and volume metrics on a 20 GiB volume, Grafana
+15 days of node, Kubernetes, volume and [Proxmox host](#proxmox-host) metrics on a 20 GiB volume, Grafana
 serves dashboards at `grafana.<cluster_domain>`, and Alertmanager sends the
 stack's standard alerts (node down, pods failing, memory pressure, volumes
 filling) to an [ntfy](https://ntfy.sh) topic through ntfy's built-in
@@ -413,6 +413,48 @@ Prometheus and Alertmanager are not exposed; reach them with
 Talos binds etcd's, the scheduler's, the controller manager's and kube-proxy's
 metrics to localhost, so those scrapes and their alerts are disabled until the
 Talos configuration exposes them.
+
+### Proxmox host
+
+The [Proxmox VE exporter](infrastructure/pve-exporter) reads the host through
+its API with the read-only `k8s-monitor-prod@pve` token from
+[`platform/access`](../terraform/platform/access/README.md#monitoring), and
+Prometheus scrapes it once a minute. Its alerts fire when:
+
+- the exporter cannot be scraped for 10 minutes, which also covers the Proxmox
+  API being unreachable (`ProxmoxScrapeFailing`);
+- a node is offline (`ProxmoxNodeDown`) or a storage is inactive
+  (`ProxmoxStorageUnavailable`);
+- a storage is over 85% full for 30 minutes, or over 95% for 10
+  (`ProxmoxStorageFilling`, `ProxmoxStorageAlmostFull`);
+- a guest set to start at boot has not been running for 10 minutes
+  (`ProxmoxGuestDown`). Guests whose name matches `pve_ignored_guests`, such
+  as a cluster stopped on purpose, are left out.
+
+The API does not report ZFS pool health or disk SMART data, so a degraded pool
+or a failing disk does not alert here.
+
+Its Flux Kustomization, `pve-exporter`, sets `pve_host` and
+`pve_ignored_guests`. The token goes in the SOPS-encrypted Secret
+`credentials.sops.yaml`. To create or rotate it, as an administrator:
+
+```sh
+secret=$(terraform -chdir=terraform/platform/access output -json automation_credentials |
+  jq -r '."k8s-monitor-prod".secret')
+cat <<YAML | sops --encrypt --filename-override kubernetes/clusters/prod/pve-exporter/credentials.sops.yaml \
+  --input-type yaml --output-type yaml /dev/stdin > kubernetes/clusters/prod/pve-exporter/credentials.sops.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pve-exporter
+  namespace: monitoring
+stringData:
+  user: k8s-monitor-prod@pve
+  token-name: ci
+  token-value: $secret
+YAML
+unset secret
+```
 
 ## Secrets
 
