@@ -41,15 +41,23 @@ locals {
     ]...), {
     for environment in keys(var.kubernetes_storage_pools) :
     "k8s-csi-${environment}" => { environment = environment, operation = "csi" }
+    }, {
+    for environment in var.monitoring_environments :
+    "k8s-monitor-${environment}" => { environment = environment, operation = "monitor" }
   })
   # Explicit ACLs apply to both owners and privilege-separated tokens.
   service_grants = flatten([
-    for name, service in local.services : service.operation == "csi" ? concat([
-      { path = "/nodes/${var.node_name}", role = "NodeAudit", name = name },
-      { path = "/pool/${service.environment}", role = "KubernetesDisk", name = name },
-      ], [
-      for storage in local.kubernetes_storages[service.environment] :
-      { path = "/storage/${storage}", role = "KubernetesStorage", name = name }
+    # The Proxmox exporter reads every guest, storage and node, including
+    # guests outside the dev and prod pools. PVEAuditor is read-only, and
+    # this is the only grant on / to automation.
+    for name, service in local.services : service.operation == "monitor" ? [
+      { path = "/", role = "PVEAuditor", name = name }
+      ] : service.operation == "csi" ? concat([
+        { path = "/nodes/${var.node_name}", role = "NodeAudit", name = name },
+        { path = "/pool/${service.environment}", role = "KubernetesDisk", name = name },
+        ], [
+        for storage in local.kubernetes_storages[service.environment] :
+        { path = "/storage/${storage}", role = "KubernetesStorage", name = name }
       ]) : concat(
       [{ path = "/nodes/${var.node_name}", role = "NodeAudit", name = name }],
       [

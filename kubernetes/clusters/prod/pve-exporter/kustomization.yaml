@@ -1,0 +1,7 @@
+# Applied by the pve-exporter Flux Kustomization, which decrypts the token
+# Secret and substitutes pve_host; the root kustomization does not list it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../infrastructure/pve-exporter
+  - credentials.sops.yaml

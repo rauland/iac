@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pve-exporter
+  labels:
+    app.kubernetes.io/name: pve-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pve-exporter
+    spec:
+      # The image's prometheus user.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pve-exporter
+          image: prompve/prometheus-pve-exporter:3.11.0@sha256:290756c34fd13e1d9972b8e64344d49a15ab99dd0053b29d9716f1ca4ae4c069
+          args:
+            # Guests are backed up by VolSync, not Proxmox backup jobs, so the
+            # "not backed up" list would name every guest. There is no
+            # QDevice on a single host.
+            - --no-collector.backup-info
+            - --no-collector.qdevice
+          env:
+            # Configuration comes from these variables instead of pve.yml.
+            - name: PVE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: pve-exporter
+                  key: user
+            - name: PVE_TOKEN_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: pve-exporter
+                  key: token-name
+            - name: PVE_TOKEN_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: pve-exporter
+                  key: token-value
+            - name: PVE_VERIFY_SSL
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 9221
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

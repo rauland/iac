@@ -10,7 +10,7 @@ run "environment_boundaries" {
 
   assert {
     condition = alltrue([
-      for grant in local.service_grants : (
+      for grant in local.service_grants : local.services[grant.name].operation == "monitor" || (
         grant.path != "/" && grant.path != "/vms" &&
         (!startswith(grant.path, "/pool/") || grant.path == "/pool/${local.services[grant.name].environment}")
       )
@@ -18,8 +18,16 @@ run "environment_boundaries" {
     error_message = "Automation must never receive global or cross-environment VM access."
   }
   assert {
+    condition = (
+      toset([for name, service in local.services : name if service.operation == "monitor"]) == toset(["k8s-monitor-prod"]) &&
+      toset([for grant in local.service_grants : "${grant.name}:${grant.path}:${grant.role}" if local.services[grant.name].operation == "monitor"]) == toset(["k8s-monitor-prod:/:PVEAuditor"]) &&
+      alltrue([for grant in local.service_grants : local.services[grant.name].operation == "monitor" && grant.role == "PVEAuditor" if grant.path == "/"])
+    )
+    error_message = "Only the monitoring identity may hold a grant on /, and only the read-only PVEAuditor role."
+  }
+  assert {
     condition = alltrue([
-      for name, service in local.services : contains(["apply", "csi"], service.operation) || alltrue([
+      for name, service in local.services : contains(["apply", "csi", "monitor"], service.operation) || alltrue([
         for grant in local.service_grants :
         contains(concat(["PVEAuditor", "NodeAudit", "StorageRead", "NetworkRead"], service.operation == "plan" ? ["PlanDiskAccess", "CSIVolumeRead"] : []), grant.role) if grant.name == name
       ])
@@ -43,11 +51,11 @@ run "environment_boundaries" {
   }
   assert {
     condition = (
-      toset(keys(local.services)) == toset(["tf-dev-plan", "tf-dev-apply", "tf-prod-plan", "tf-prod-apply", "k8s-csi-dev", "k8s-csi-prod"]) &&
+      toset(keys(local.services)) == toset(["tf-dev-plan", "tf-dev-apply", "tf-prod-plan", "tf-prod-apply", "k8s-csi-dev", "k8s-csi-prod", "k8s-monitor-prod"]) &&
       alltrue([for grant in local.service_grants : grant.role == "StorageRead" if grant.path == "/storage/local"]) &&
       alltrue([for storage in proxmox_storage_directory.environment_images : !startswith(storage.path, "/var/lib/vz")])
     )
-    error_message = "Only the Terraform and CSI identities exist, and none can write to shared image storage."
+    error_message = "Only the Terraform, CSI and monitoring identities exist, and none can write to shared image storage."
   }
   assert {
     condition = (
@@ -130,6 +138,14 @@ run "reject_unknown_pci_environment" {
     }
   }
   expect_failures = [var.pci_mappings]
+}
+
+run "reject_unknown_monitoring_environment" {
+  command = plan
+  variables {
+    monitoring_environments = ["staging"]
+  }
+  expect_failures = [var.monitoring_environments]
 }
 
 run "reject_invalid_bulk_blocksize" {
