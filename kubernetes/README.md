@@ -431,6 +431,9 @@ Prometheus scrapes it once a minute. Its alerts fire when:
   (`ProxmoxGuestDown`). Guests whose name matches `pve_ignored_guests`, such
   as a cluster stopped on purpose, are left out.
 
+Grafana shows the host, its storages and every guest on the "Proxmox via
+Prometheus" dashboard, from [`dashboard.json`](infrastructure/pve-exporter/dashboard.json).
+
 The API does not report ZFS pool health or disk SMART data, so a degraded pool
 or a failing disk does not alert here.
 
