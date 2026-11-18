@@ -11,3 +11,17 @@ resources:
   - service.yaml
   - service-monitor.yaml
   - rules.yaml
+# "Proxmox via Prometheus" (grafana.com dashboard 10347, revision 5), with its
+# data source set to the chart's Prometheus (uid prometheus). Grafana's
+# sidecar loads ConfigMaps labelled grafana_dashboard. Flux must not
+# substitute in it: the dashboard's own $instance variables would be emptied.
+configMapGenerator:
+  - name: pve-exporter-dashboard
+    files:
+      - proxmox.json=dashboard.json
+    options:
+      disableNameSuffixHash: true
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled
